@@ -32,7 +32,8 @@ online and directly when online-only features are needed.
 2. Nginx applies per-IP/per-route rate limits and security headers.
 3. Nest global middleware: Helmet → body-size limit → CORS allow-list.
 4. Route-level Zod/class-validator DTO validation.
-5. Guard (Phase 2+) resolves the authenticated user.
+5. Guard resolves the authenticated user (`JwtAuthGuard`, with `@Public()`
+   opting health and auth routes out).
 6. Service contains the business logic; repositories/Prisma stay in the data layer.
 7. `TransformInterceptor` wraps success as `{ ok: true, data }`;
    `HttpExceptionFilter` wraps failures as `{ ok: false, error }`.
@@ -81,7 +82,8 @@ apps/api/src/
 │   ├── interceptors/          # TransformInterceptor → shared success envelope
 │   └── pipes/                 # ZodValidationPipe
 ├── health/                    # /health/live, /health/ready
-└── (Phase 2) auth/ users/ transactions/ categories/ reports/ sync/
+├── auth/ users/ transactions/ categories/ reports/   # Phase 2
+└── (Phase 5) sync/
 ```
 
 Each feature module follows: `*.controller.ts` (HTTP only) →
@@ -169,7 +171,7 @@ These are deliberate departures (or clarifications) worth reviewing:
 6. **`Device` table.** Needed so changes can be routed _away_ from the device
    that produced them, and so each device keeps its own pull cursor.
 
-7. **Auth transport is decided now, implemented in Phase 2:** bearer access
+7. **Auth transport was decided in Phase 1 and implemented in Phase 2:** bearer access
    token (15 min) in memory/localStorage on the web + rotating refresh token in
    an HTTP-only, `SameSite=Lax` cookie, protected by a double-submit CSRF
    cookie. This avoids putting the short-lived token where JS can read it on

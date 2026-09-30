@@ -28,6 +28,15 @@ export const configuration = () => ({
     audience: process.env.JWT_AUDIENCE ?? 'expenditure-tracker-clients',
     cookieDomain: process.env.COOKIE_DOMAIN ?? 'localhost',
     cookieSecure: process.env.COOKIE_SECURE === 'true',
+    argon2: {
+      memoryCost: Number(process.env.ARGON2_MEMORY_COST ?? 65536),
+      timeCost: Number(process.env.ARGON2_TIME_COST ?? 3),
+      parallelism: Number(process.env.ARGON2_PARALLELISM ?? 1),
+    },
+    login: {
+      maxFailedAttempts: Number(process.env.LOGIN_MAX_FAILED_ATTEMPTS ?? 10),
+      lockoutSeconds: Number(process.env.LOGIN_LOCKOUT_SECONDS ?? 900),
+    },
     google: {
       clientId: optionalEnv('GOOGLE_CLIENT_ID', ''),
       clientSecret: optionalEnv('GOOGLE_CLIENT_SECRET', ''),

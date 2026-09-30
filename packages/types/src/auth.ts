@@ -1,4 +1,5 @@
 import type { IsoDateTime } from './common';
+import type { UserProfile } from './user';
 
 export const AUTH_PROVIDERS = ['email', 'phone', 'google'] as const;
 export type AuthProvider = (typeof AUTH_PROVIDERS)[number];
@@ -32,6 +33,15 @@ export interface AuthTokens {
   /** Seconds until `accessToken` expires. */
   expiresIn: number;
   refreshToken: string;
+}
+
+/**
+ * Payload returned by every token-issuing auth endpoint (register, login,
+ * refresh, verify-otp, OAuth callback). The refresh token is *also* set as an
+ * HTTP-only cookie for browser clients; mobile clients persist the string.
+ */
+export interface AuthSession extends AuthTokens {
+  user: UserProfile;
 }
 
 export interface RegisterInput {

@@ -5,6 +5,7 @@ import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { API_PREFIX } from '@exp/config';
 import { json, urlencoded } from 'express';
+import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
@@ -20,6 +21,8 @@ async function bootstrap(): Promise<void> {
   const maxBodySize = config.get<string>('app.maxRequestBodySize') ?? '100kb';
   app.use(json({ limit: maxBodySize }));
   app.use(urlencoded({ extended: true, limit: maxBodySize }));
+  // Required by the HTTP-only refresh cookie and the double-submit CSRF check.
+  app.use(cookieParser());
 
   app.use(
     helmet({

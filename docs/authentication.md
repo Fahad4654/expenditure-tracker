@@ -9,8 +9,10 @@ Three sign-in methods, one identity table. Every path converges on the same
 | Phone + OTP      | `/auth/send-otp`, `/auth/verify-otp`     | `phone` (+ `phoneVerified`) |
 | Google           | `/auth/google` → `/auth/google/callback` | `googleId` / `email`        |
 
-> **Status:** designed in Phase 1, implemented in Phase 2. This document is the
-> contract the implementation must satisfy.
+> **Status:** email + password is implemented (Phase 2). Phone + OTP, Google
+> OAuth and password reset are designed here but not yet implemented — they
+> need an SMS provider, OAuth credentials and email delivery respectively.
+> This document is the contract the implementation must satisfy.
 
 ---
 
@@ -31,8 +33,9 @@ POST /auth/register
 4. Hash with **Argon2id** (`ARGON2_MEMORY_COST=65536`, `ARGON2_TIME_COST=3`)
    or bcrypt (cost 12) — never plain text, never reversible.
 5. Create the user with `defaultCurrency`/`timezone` defaults.
-6. Issue an email-verification token (hashed, single-use, expiring) and return
-   the token pair so the user can use the app immediately.
+6. Return the token pair so the user can use the app immediately.
+   Email-verification delivery is deferred with the other out-of-band channels;
+   `emailVerified` stays `false` until then.
 
 ### Login
 
@@ -181,8 +184,11 @@ Bearer-token requests are not CSRF-exposed (a cross-site form cannot set an
 
 ### Logout
 
-Revokes the refresh token **family** (`revokedAt`), clears cookies, and returns 204. Access tokens remain cryptographically valid until they expire (≤15 min) —
-short-lived access tokens make server-side access-token denylists unnecessary.
+Revokes the refresh token **family** (`revokedAt`), clears cookies, and
+returns `200 { "ok": true, "data": null }`. Access tokens remain
+cryptographically valid until they expire (≤15 min) — short-lived access
+tokens make server-side access-token denylists unnecessary. Logout is
+idempotent: a missing or already-revoked token still succeeds.
 
 ---
 
@@ -208,10 +214,14 @@ short-lived access tokens make server-side access-token denylists unnecessary.
 - [x] CORS allow-list (`CORS_ORIGINS`), credentials enabled, no `*`
 - [x] Helmet security headers + Nginx edge headers
 - [x] Request body size limit (`MAX_REQUEST_BODY_SIZE`, Nginx `client_max_body_size`)
-- [x] Per-IP rate limits (`general`, `auth`, `sync` zones) + app-level throttler
+- [x] Per-IP rate limits at the Nginx edge (`general`, `auth`, `sync` zones);
+      the application-level throttler lands in Phase 6
 - [x] Login lockout after repeated failures
-- [x] OTP expiry, attempt cap, resend cooldown, per-hour quota
+- [ ] OTP expiry, attempt cap, resend cooldown, per-hour quota (blocked on an
+      SMS provider)
 - [x] DTO validation (Zod shared with the client)
+- [x] Login lockout thresholds configurable (`LOGIN_MAX_FAILED_ATTEMPTS`,
+      `LOGIN_LOCKOUT_SECONDS`)
 - [x] SQL injection impossible by construction (Prisma parameterised queries)
 - [x] No passwords/OTP/refresh tokens in logs or API responses
 - [x] Stack traces never returned to clients

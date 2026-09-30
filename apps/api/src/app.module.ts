@@ -4,6 +4,11 @@ import { configuration } from './config/configuration';
 import { validateEnv } from './config/env.validation';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './health/health.module';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
+import { CategoriesModule } from './categories/categories.module';
+import { TransactionsModule } from './transactions/transactions.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
@@ -18,9 +23,12 @@ import { HealthModule } from './health/health.module';
     }),
     PrismaModule,
     HealthModule,
-    // Phase 2 modules land here:
-    // AuthModule, UsersModule, TransactionsModule, CategoriesModule,
-    // ReportsModule, SyncModule.
+    AuthModule,
+    UsersModule,
+    CategoriesModule,
+    TransactionsModule,
+    ReportsModule,
+    // Phase 5: SyncModule.
   ],
 })
 export class AppModule {}

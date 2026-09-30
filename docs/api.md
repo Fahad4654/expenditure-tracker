@@ -50,7 +50,8 @@ rejected are **never** echoed back (they may contain passwords or OTPs).
 
 ## Conventions
 
-- **Auth:** `Authorization: Bearer <access token>` (Phase 2).
+- **Auth:** `Authorization: Bearer <access token>`; `/auth/refresh` and
+  `/auth/logout` also accept the HTTP-only refresh cookie + `X-CSRF-Token`.
 - **Pagination:** `?page=1&limit=20` → `meta: { page, limit, total, totalPages }`.
 - **Dates:** `YYYY-MM-DD` for `transactionDate`, ISO-8601 for instants.
 - **Money:** decimal strings (`"250.00"`), never JSON numbers.
@@ -78,29 +79,46 @@ curl http://localhost:4000/api/v1/health/ready
 # {"ok":true,"data":{"status":"ok","checks":{"postgres":{"status":"up","latencyMs":13}}}}
 ```
 
-### Auth (Phase 2)
+### Auth
 
-| Method | Path                    | Description                             |
-| ------ | ----------------------- | --------------------------------------- |
-| `POST` | `/auth/register`        | `{ name, email, password }`             |
-| `POST` | `/auth/login`           | `{ email, password }` → tokens          |
-| `POST` | `/auth/refresh`         | Rotate refresh token (HTTP-only cookie) |
-| `POST` | `/auth/logout`          | Revoke refresh token family             |
-| `POST` | `/auth/send-otp`        | `{ phone }` → OTP challenge             |
-| `POST` | `/auth/verify-otp`      | `{ phone, code }` → tokens              |
-| `GET`  | `/auth/google`          | Start Google OAuth                      |
-| `GET`  | `/auth/google/callback` | OAuth callback                          |
-| `POST` | `/auth/forgot-password` | Start password reset                    |
-| `POST` | `/auth/reset-password`  | Complete password reset                 |
+| Method | Path             | Description                                                                   |
+| ------ | ---------------- | ----------------------------------------------------------------------------- |
+| `POST` | `/auth/register` | `{ name, email, password }` → session, 201                                    |
+| `POST` | `/auth/login`    | `{ email, password }` → session, 200                                          |
+| `POST` | `/auth/refresh`  | Rotate refresh token (cookie + `X-CSRF-Token`, or `refreshToken` in the body) |
+| `POST` | `/auth/logout`   | Revoke refresh token family, clear cookies, 200                               |
+| `GET`  | `/auth/me`       | Current profile (bearer)                                                      |
 
-### Users (Phase 2)
+A session is `{ user, accessToken, expiresIn, refreshToken }`. `expiresIn` is
+in seconds. Failures: `409 CONFLICT` (email taken), `401 INVALID_CREDENTIALS`
+(wrong email **or** password — identical for both), `429 ACCOUNT_LOCKED`
+(`LOGIN_MAX_FAILED_ATTEMPTS` reached within `LOGIN_LOCKOUT_SECONDS`),
+`401 REFRESH_TOKEN_INVALID` (revoked/expired/replayed — a replay revokes the
+whole family), `403 CSRF_INVALID` (cookie used without a matching
+`X-CSRF-Token`).
+
+### Deferred auth endpoints
+
+Designed in [authentication.md](authentication.md), not yet routed — they need
+an SMS provider, OAuth credentials or email delivery.
+
+| Method | Path                    | Description                 |
+| ------ | ----------------------- | --------------------------- |
+| `POST` | `/auth/send-otp`        | `{ phone }` → OTP challenge |
+| `POST` | `/auth/verify-otp`      | `{ phone, code }` → tokens  |
+| `GET`  | `/auth/google`          | Start Google OAuth          |
+| `GET`  | `/auth/google/callback` | OAuth callback              |
+| `POST` | `/auth/forgot-password` | Start password reset        |
+| `POST` | `/auth/reset-password`  | Complete password reset     |
+
+### Users
 
 | Method  | Path        | Description                              |
 | ------- | ----------- | ---------------------------------------- |
 | `GET`   | `/users/me` | Current profile                          |
 | `PATCH` | `/users/me` | Update name / defaultCurrency / timezone |
 
-### Transactions (Phase 2)
+### Transactions
 
 | Method   | Path                | Description                                 |
 | -------- | ------------------- | ------------------------------------------- |
@@ -113,7 +131,18 @@ curl http://localhost:4000/api/v1/health/ready
 Query parameters: `page`, `limit`, `search`, `type`, `categoryId`, `from`, `to`,
 `preset` (`today|week|month|year|custom`), `sort`, `order`.
 
-### Categories (Phase 2)
+Behaviour:
+
+- `POST` with a `clientId` the caller already used returns the existing row with
+  **200** (not 201) — creation is idempotent for offline clients.
+- `PATCH` accepts `baseVersion`; a mismatch is **409 CONFLICT**, never a silent
+  overwrite. A successful write increments `version`.
+- `DELETE` is a tombstone: the row keeps `deletedAt` and a bumped `version` so
+  sync can announce the removal.
+- Any id owned by another user is **404**, not 403 — existence is never
+  disclosed.
+
+### Categories
 
 | Method   | Path              | Description                                        |
 | -------- | ----------------- | -------------------------------------------------- |
@@ -122,7 +151,15 @@ Query parameters: `page`, `limit`, `search`, `type`, `categoryId`, `from`, `to`,
 | `PATCH`  | `/categories/:id` | Update (own only)                                  |
 | `DELETE` | `/categories/:id` | Soft delete (own only; system categories rejected) |
 
-### Reports (Phase 2)
+Behaviour:
+
+- A `categoryId` the caller cannot see (another user's, or deleted) is **404**.
+- Mutating a system category is **403 FORBIDDEN**.
+- Deleting a category that still has non-deleted transactions is **409
+  CONFLICT** — move or delete them first.
+- A duplicate `(userId, name)` is **409 CONFLICT**.
+
+### Reports
 
 | Method | Path                  | Description                                          |
 | ------ | --------------------- | ---------------------------------------------------- |
@@ -131,7 +168,11 @@ Query parameters: `page`, `limit`, `search`, `type`, `categoryId`, `from`, `to`,
 | `GET`  | `/reports/monthly`    | Per-month income/expense/balance series              |
 | `GET`  | `/reports/categories` | Category-wise breakdown with percentages             |
 
-All accept `preset` or `from`/`to` plus `timezone`.
+All accept `preset` or `from`/`to` and are evaluated in the caller's
+`timezone` (from their profile), so "today" and "this month" follow the user's
+calendar rather than the server's. Every response echoes the resolved `range`.
+Percentages in `/reports/categories` are rounded to 2dp and therefore sum to
+within a cent of 100.
 
 ### Sync (Phase 5)
 

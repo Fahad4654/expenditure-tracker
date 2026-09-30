@@ -6,7 +6,7 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import { ApiErrorCode } from '@exp/types';
+import { ApiErrorCode, API_ERROR_CODES } from '@exp/types';
 import type { Request, Response } from 'express';
 
 const STATUS_TO_CODE: Record<number, ApiErrorCode> = {
@@ -25,8 +25,12 @@ interface HttpExceptionBody {
   message?: string | string[];
   error?: string;
   statusCode?: number;
+  /** Stable machine-readable code; honoured when present and known. */
+  code?: string;
   details?: Array<{ path: string; message: string }>;
 }
+
+const KNOWN_CODES = new Set<string>(API_ERROR_CODES);
 
 /**
  * Converts every thrown error into the shared `{ ok: false, error }` envelope.
@@ -58,6 +62,11 @@ export class HttpExceptionFilter implements ExceptionFilter {
         ? parsed.message.join('; ')
         : (parsed.message ?? exception.message);
       details = parsed.details;
+      // An explicit code (see `apiError()`) refines the status-derived default,
+      // e.g. 401 + `INVALID_CREDENTIALS` vs 401 + `REFRESH_TOKEN_INVALID`.
+      if (parsed.code !== undefined && KNOWN_CODES.has(parsed.code)) {
+        code = parsed.code as ApiErrorCode;
+      }
     }
 
     if (status === HttpStatus.INTERNAL_SERVER_ERROR) {

@@ -139,18 +139,34 @@ npm test --workspace @exp/types           # money math
 cd apps/mobile && flutter test            # mobile
 ```
 
-Current Phase 1 coverage:
+Current coverage — 87 tests, all DB-free (`PrismaService` is mocked, so the
+suite runs without infrastructure or secrets):
 
 - `apps/api/test/health.spec.ts` — success/error envelopes, readiness failure
-  path, 404 contract (DB-free: `PrismaService` is mocked).
+  path, 404 contract.
+- `apps/api/test/utils.spec.ts` — TTL parsing, timezone-aware date ranges,
+  UTC-midnight Prisma bounds, money aggregation above `2^53`.
+- `apps/api/test/guards.spec.ts` — `JwtAuthGuard` (bearer parsing, `@Public()`
+  bypass, no user id from the request) and `CookieCsrfGuard` double-submit.
+- `apps/api/test/auth.spec.ts` — register/login, identical wrong-email and
+  wrong-password errors, dummy-hash timing path, lockout thresholds, refresh
+  rotation and family revocation on reuse, idempotent logout.
+- `apps/api/test/resources.spec.ts` — category ownership rules, system-category
+  guard, in-use conflict, `clientId` idempotency, `baseVersion` conflict,
+  tombstone deletes, listing bounds.
 - `apps/web/src/lib/api.test.ts` — envelope unwrapping, `ApiError` mapping,
   bearer-token handling (jsdom, `fetch` stubbed).
 - `apps/web/src/routes.test.ts` — route manifest shape and id encoding.
 - `packages/types/test/money.spec.ts` — decimal↔minor-unit round trips,
   exactness beyond `Number.MAX_SAFE_INTEGER`, formatting.
 
-Phase 2 adds auth, authorization, transaction CRUD, category CRUD, report math,
-sync idempotency and security tests.
+An external smoke suite (`/tmp/opencode/smoke.py`, not committed) exercises the
+same routes against a live PostgreSQL — 55 checks covering envelopes, cookie
+flags, CSRF, rotation/reuse, cross-user 404s, idempotent creates and report
+totals.
+
+Remaining test debt: sync idempotency and conflict tests (Phase 5), rate
+limiter tests (Phase 6), and Flutter/widget tests for the mobile app.
 
 **Tests must not require secrets.** `vitest.config.mts` loads the root `.env`
 if present, but nothing depends on it.
@@ -162,7 +178,7 @@ if present, but nothing depends on it.
 | Phase                        | Scope                                                                                                                                | Status      |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ----------- |
 | **1 — Architecture**         | Monorepo, TypeScript, NestJS, React/Vite, Flutter, Docker, PostgreSQL, Prisma, initial schema & docs                                 | ✅ **Done** |
-| **2 — Database + Backend**   | Prisma schema refinements, migrations, User/Category/Transaction, auth foundation, authorization, transaction & category CRUD, tests | ⬜          |
+| **2 — Database + Backend**   | Prisma schema refinements, migrations, User/Category/Transaction, auth foundation, authorization, transaction & category CRUD, tests | ✅ **Done** |
 | **3 — Web application**      | Auth UI, dashboard, transactions, categories, reports, profile/settings                                                              | ⬜          |
 | **4 — Mobile application**   | Flutter architecture, auth, SQLite, transactions, dashboard, reports, categories (online-first)                                      | ⬜          |
 | **5 — Offline-first**        | Local persistence, sync queue, connectivity, `/sync`, retry, idempotency, conflicts, sync status UI                                  | ⬜          |
@@ -186,6 +202,30 @@ if present, but nothing depends on it.
 - `typecheck` · `lint` · `test` all green (26 tests)
 
 ---
+
+### Delivered in Phase 2
+
+- **Auth foundation:** Argon2id hashing (`@node-rs/argon2`), JWT access tokens,
+  rotating refresh tokens stored as SHA-256 hashes with family revocation on
+  reuse, HTTP-only refresh cookie + double-submit CSRF, login lockout
+  (`LOGIN_MAX_FAILED_ATTEMPTS` / `LOGIN_LOCKOUT_SECONDS`).
+- **Authorization:** global `JwtAuthGuard` with `@Public()` opt-out; `sub` from
+  the verified token is the only source of user id. Another user's rows are
+  **404**, never 403.
+- **Users:** `GET`/`PATCH /users/me`, plus per-user timezone/currency defaults
+  that drive every date-range query.
+- **Categories:** list/create/update/delete with system-category protection
+  (403) and in-use conflict (409).
+- **Transactions:** CRUD with `clientId` idempotency (201 vs 200 replay),
+  `baseVersion` optimistic concurrency (409), tombstone soft deletes, search,
+  filters, sorting and pagination.
+- **Reports:** summary, daily, monthly and category breakdowns, each evaluated
+  in the caller's timezone and echoing the resolved range.
+- **Error contract:** `apiError()` factory with stable `code`s; validation
+  failures carry `details[].path` as `body.<field>` / `params.<field>` /
+  `query.<field>`.
+- **Tests:** 65 new API tests (87 total across the monorepo), all DB-free.
+- `typecheck` · `lint` · `test` · `build` · `prettier --check` all green.
 
 ## Troubleshooting
 
