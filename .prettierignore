@@ -1,0 +1,7 @@
+node_modules
+dist
+build
+coverage
+apps/mobile/build
+apps/mobile/.dart_tool
+package-lock.json

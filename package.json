@@ -1,0 +1,38 @@
+{
+  "name": "expenditure-tracker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Personal expenditure and income tracking platform (web + mobile + API).",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "build:packages": "npm run build --workspace @exp/types --workspace @exp/validation --workspace @exp/config",
+    "build:api": "npm run build --workspace @exp/api",
+    "build:web": "npm run build --workspace @exp/web",
+    "build": "npm run build:packages && npm run db:generate && npm run build:api && npm run build:web",
+    "dev:api": "npm run dev --workspace @exp/api",
+    "dev:web": "npm run dev --workspace @exp/web",
+    "dev": "npm run db:generate && npm run build:packages && concurrently -n api,web -c cyan,magenta \"npm:dev:api\" \"npm:dev:web\"",
+    "start:api": "npm run start:prod --workspace @exp/api",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "db:generate": "prisma generate --schema apps/api/prisma/schema.prisma",
+    "db:migrate": "prisma migrate dev --schema apps/api/prisma/schema.prisma",
+    "db:deploy": "prisma migrate deploy --schema apps/api/prisma/schema.prisma",
+    "db:push": "prisma db push --schema apps/api/prisma/schema.prisma",
+    "db:studio": "prisma studio --schema apps/api/prisma/schema.prisma",
+    "db:seed": "npm run build:packages && npm run db:seed --workspace @exp/api",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "prettier": "^3.6.2",
+    "typescript": "5.9.3"
+  }
+}
