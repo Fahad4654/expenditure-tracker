@@ -78,37 +78,37 @@ enum ChangeKind {
 // --- User & authentication ---------------------------------------------------
 
 model User {
-  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name            String
-  email           String?   @unique
-  phone           String?   @unique
-  passwordHash    String?
-  googleId        String?   @unique
-  avatarUrl       String?
-  emailVerified   Boolean   @default(false)
-  phoneVerified   Boolean   @default(false)
-  role            UserRole  @default(USER)
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String
+  email         String?  @unique
+  phone         String?  @unique
+  passwordHash  String?
+  googleId      String?  @unique
+  avatarUrl     String?
+  emailVerified Boolean  @default(false)
+  phoneVerified Boolean  @default(false)
+  role          UserRole @default(USER)
 
-  defaultCurrency String    @default("BDT") @db.Char(3)
-  timezone        String    @default("Asia/Dhaka")
+  defaultCurrency String @default("BDT") @db.Char(3)
+  timezone        String @default("Asia/Dhaka")
 
   // Brute-force protection
-  failedLogins    Int       @default(0)
-  lockedUntil     DateTime?
-  lastLoginAt     DateTime?
+  failedLogins Int       @default(0)
+  lockedUntil  DateTime?
+  lastLoginAt  DateTime?
 
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  deletedAt       DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
-  refreshTokens   RefreshToken[]
-  otpCodes        OtpCode[]
-  userTokens      UserToken[]
-  categories      Category[]
-  transactions    Transaction[]
-  syncOperations  SyncOperation[]
-  devices         Device[]
-  changeLogs      ChangeLog[]
+  refreshTokens  RefreshToken[]
+  otpCodes       OtpCode[]
+  userTokens     UserToken[]
+  categories     Category[]
+  transactions   Transaction[]
+  syncOperations SyncOperation[]
+  devices        Device[]
+  changeLogs     ChangeLog[]
 
   @@index([createdAt])
 }
@@ -117,20 +117,20 @@ model User {
 /// Tokens rotate on every use and are grouped into a `familyId` so a single
 /// stolen token can revoke the whole chain.
 model RefreshToken {
-  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId       String    @db.Uuid
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String    @db.Uuid
   /// Stable "token family" — lets us revoke every rotation of a stolen chain.
-  familyId     String    @db.Uuid
+  familyId      String    @db.Uuid
   /// Monotonic rotation counter inside the family.
   rotationIndex Int       @default(0)
   /// SHA-256 of the opaque refresh token. Raw tokens are never stored.
-  tokenHash    String    @unique
-  userAgent    String?
-  ipHash       String?
-  expiresAt    DateTime
-  revokedAt    DateTime?
-  replacedById String?   @db.Uuid
-  createdAt    DateTime  @default(now())
+  tokenHash     String    @unique
+  userAgent     String?
+  ipHash        String?
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  replacedById  String?   @db.Uuid
+  createdAt     DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -177,17 +177,19 @@ model UserToken {
 // --- Categories --------------------------------------------------------------
 
 model Category {
-  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   /// NULL for system categories (shared, read-only).
-  userId        String?      @db.Uuid
+  userId        String?         @db.Uuid
   name          String
-  kind          CategoryKind @default(USER)
+  kind          CategoryKind    @default(USER)
   icon          String?
   color         String?
-  isSystem      Boolean      @default(false)
+  isSystem      Boolean         @default(false)
   suggestedType TransactionType @default(EXPENSE)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  /// Monotonic write counter used for last-write-wins sync (mirrors Transaction).
+  version       Int             @default(1)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
   deletedAt     DateTime?
 
   user         User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -209,13 +211,13 @@ model Transaction {
   deviceId String?
   userId   String  @db.Uuid
 
-  type   TransactionType
+  type     TransactionType
   /// NEVER a float. `Decimal(18,2)`.
-  amount Decimal @db.Decimal(18, 2)
+  amount   Decimal         @db.Decimal(18, 2)
   /// ISO-4217. Defaults to the user's `defaultCurrency`.
-  currency String @default("BDT") @db.Char(3)
+  currency String          @default("BDT") @db.Char(3)
 
-  categoryId String  @db.Uuid
+  categoryId  String  @db.Uuid
   title       String
   description String?
 
@@ -243,15 +245,15 @@ model Transaction {
 
 model Device {
   /// Client-supplied stable device identifier (UUID stored in secure storage).
-  id           String    @id
-  userId       String    @db.Uuid
-  name         String?
-  platform     String?
+  id         String    @id
+  userId     String    @db.Uuid
+  name       String?
+  platform   String?
   /// Opaque cursor of the last successful pull for this device.
-  lastCursor   String?
-  lastSyncAt   DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  lastCursor String?
+  lastSyncAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -261,22 +263,22 @@ model Device {
 /// Append-only record of every offline operation the server has seen.
 /// `(userId, operationId)` is unique, which is what makes replay safe.
 model SyncOperation {
-  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id              String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   /// Idempotency key generated by the client.
-  operationId String @db.Uuid
-  userId   String @db.Uuid
-  deviceId String
-  entityType SyncEntityType
-  entityId String @db.Uuid
-  operation SyncOperationKind
-  status   SyncOperationStatus
+  operationId     String              @db.Uuid
+  userId          String              @db.Uuid
+  deviceId        String
+  entityType      SyncEntityType
+  entityId        String              @db.Uuid
+  operation       SyncOperationKind
+  status          SyncOperationStatus
   /// Client wall-clock time (advisory only — never trusted for LWW).
   clientTimestamp DateTime
-  receivedAt      DateTime @default(now())
+  receivedAt      DateTime            @default(now())
   /// Original payload, kept for auditing/conflict inspection.
-  payload  Json?
+  payload         Json?
   /// Rejection/conflict reason. Must never contain tokens or PII secrets.
-  reason   String?
+  reason          String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
