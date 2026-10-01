@@ -10,6 +10,7 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { isDevOrigin } from './common/utils/dev-origin';
 import { loadApiEnv } from './config/load-env';
 
 loadApiEnv();
@@ -36,8 +37,17 @@ async function bootstrap(): Promise<void> {
   app.enableShutdownHooks();
 
   const corsOrigins = config.get<string[]>('app.corsOrigins') ?? [];
+  const isProduction = config.get<string>('env') === 'production';
   app.enableCors({
-    origin: corsOrigins,
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+      // No Origin header: native Flutter, curl, server-to-server — always fine.
+      if (!origin) return callback(null, true);
+      if (corsOrigins.includes(origin)) return callback(null, true);
+      // Development only: accept any loopback/LAN origin so the Flutter web
+      // preview (random localhost port) and phone-browser testing work without
+      // editing CORS_ORIGINS for every run.
+      callback(null, !isProduction && isDevOrigin(origin));
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],

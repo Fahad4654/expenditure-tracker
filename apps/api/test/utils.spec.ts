@@ -10,6 +10,7 @@ import {
 } from '../src/common/utils/date-range';
 import { sumDecimalStrings, sumFromAggregate, toDecimalString } from '../src/common/utils/money';
 import { ttlToSeconds } from '../src/auth/token.service';
+import { isDevOrigin } from '../src/common/utils/dev-origin';
 
 describe('ttlToSeconds', () => {
   it('parses every supported unit', () => {
@@ -129,5 +130,26 @@ describe('money', () => {
     expect(sumFromAggregate(undefined)).toBe('0.00');
     expect(sumFromAggregate('125.5')).toBe('125.50');
     expect(sumFromAggregate(125.5)).toBe('125.50');
+  });
+});
+
+describe('isDevOrigin', () => {
+  it('accepts loopback hosts on any port', () => {
+    expect(isDevOrigin('http://localhost:54321')).toBe(true);
+    expect(isDevOrigin('http://localhost')).toBe(true);
+    expect(isDevOrigin('http://127.0.0.1:8080')).toBe(true);
+    expect(isDevOrigin('http://[::1]:9000')).toBe(true);
+  });
+
+  it('accepts private LAN origins for phone-browser testing', () => {
+    expect(isDevOrigin('http://192.168.1.20:8080')).toBe(true);
+    expect(isDevOrigin('http://10.0.0.5')).toBe(true);
+    expect(isDevOrigin('http://172.20.5.1')).toBe(true);
+  });
+
+  it('rejects public origins and malformed values', () => {
+    expect(isDevOrigin('https://example.com')).toBe(false);
+    expect(isDevOrigin('http://172.32.0.1')).toBe(false);
+    expect(isDevOrigin('not-a-url')).toBe(false);
   });
 });
