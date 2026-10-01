@@ -52,25 +52,26 @@ expenditure-tracker/
 
 ## Quick start (native, recommended for development)
 
+Frontend and backend are **fully independent npm projects** — no root
+`package.json`, no shared `node_modules`, no common commands. Install and run
+each from its own directory:
+
 ```bash
-# 1. Install
+# API (:4000)
+cd apps/api
 npm install
-
-# 2. Configure — one .env per app
-cp apps/api/.env.example apps/api/.env   # then edit DATABASE_URL and JWT secrets
-cp apps/web/.env.example apps/web/.env   # API base URL seen by the browser
-
-# 3. Database: generate client, create tables, seed system categories
-npm run db:generate
-npm run db:migrate            # prompts for a name when the schema changed
+cp .env.example .env        # edit DATABASE_URL and JWT secrets
+npm run db:generate         # Prisma client
+npm run db:migrate          # prompts for a name when the schema changed
 npm run db:seed
+npm run dev
 
-# 4. Run API (:4000) + Web (:3000) together
+# Web (:3000) — second terminal
+cd apps/web
+npm install
+cp .env.example .env        # API base URL seen by the browser
 npm run dev
 ```
-
-`npm run dev` runs both apps in watch mode — there is no separate build step
-to remember.
 
 Verify:
 
@@ -85,19 +86,41 @@ open http://localhost:4000/docs       # Swagger / OpenAPI
 
 ## Useful commands
 
-| Command                          | What it does                                       |
-| -------------------------------- | -------------------------------------------------- |
-| `npm run dev`                    | Run API + Web in watch mode                        |
-| `npm run build`                  | Generate Prisma client → build API → Web           |
-| `npm run typecheck`              | Strict TypeScript check across all workspaces      |
-| `npm run lint`                   | ESLint across all workspaces                       |
-| `npm test`                       | Vitest suites (API, web client, shared money math) |
-| `npm run db:migrate`             | Create/apply a new Prisma migration (dev)          |
-| `npm run db:deploy`              | Apply pending migrations (CI/production)           |
-| `npm run db:seed`                | Idempotent system-category seed                    |
-| `npm run db:studio`              | Prisma Studio                                      |
-| `cd apps/mobile && flutter run`  | Run the mobile app                                 |
-| `cd apps/mobile && flutter test` | Mobile tests                                       |
+Each command runs **from inside its app directory**.
+
+### Backend — `apps/api`
+
+| Command             | What it does                               |
+| ------------------- | ------------------------------------------ |
+| `npm run dev`       | NestJS in watch mode (:4000)               |
+| `npm run build`     | Production build (`dist/`)                 |
+| `npm run typecheck` | Strict TypeScript check                    |
+| `npm run lint`      | ESLint                                     |
+| `npm test`          | Vitest suite                               |
+| `npm run format`    | Prettier write                             |
+| `npm run db:migrate`| Create/apply a new Prisma migration (dev)  |
+| `npm run db:deploy` | Apply pending migrations (CI/production)   |
+| `npm run db:seed`   | Idempotent system-category seed            |
+| `npm run db:studio` | Prisma Studio                              |
+
+### Frontend — `apps/web`
+
+| Command             | What it does                               |
+| ------------------- | ------------------------------------------ |
+| `npm run dev`       | Vite dev server (:3000)                    |
+| `npm run build`     | Production build (`dist/`)                 |
+| `npm run preview`   | Serve the production build                 |
+| `npm run typecheck` | Strict TypeScript check                    |
+| `npm run lint`      | ESLint                                     |
+| `npm test`          | Vitest suite                               |
+| `npm run format`    | Prettier write                             |
+
+### Mobile — `apps/mobile`
+
+| Command                          | What it does   |
+| -------------------------------- | -------------- |
+| `cd apps/mobile && flutter run`  | Run the app    |
+| `cd apps/mobile && flutter test` | Mobile tests   |
 
 ### Mobile API base URL
 

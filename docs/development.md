@@ -14,22 +14,30 @@
 
 ## First run
 
+The frontend and backend are **fully independent npm projects** — no root
+`package.json`, no shared `node_modules`, no common commands. Install and run
+each app from its own directory:
+
 ```bash
+# API (:4000)
+cd apps/api
 npm install
+cp .env.example .env       # → set DATABASE_URL, JWT_ACCESS_SECRET, JWT_REFRESH_SECRET
+npm run db:generate        # Prisma client
+npm run db:migrate         # create/apply migrations
+npm run db:seed            # 11 system categories
+npm run dev                # watch mode
 
-cp apps/api/.env.example apps/api/.env   # → set DATABASE_URL, JWT_ACCESS_SECRET, JWT_REFRESH_SECRET
-cp apps/web/.env.example apps/web/.env   # → API base URL + dev port seen by the browser
-
-npm run db:generate     # Prisma client
-npm run db:migrate      # create/apply migrations
-npm run db:seed         # 11 system categories
-
-npm run dev             # API :4000 + Web :3000, both in watch mode
+# Web (:3000) — second terminal
+cd apps/web
+npm install
+cp .env.example .env       # → API base URL + dev port seen by the browser
+npm run dev                # watch mode
 ```
 
-`npm run dev` runs the API and the web client in watch mode. Each app has its
-own copy of the shared modules under `src/shared/`, so editing one app's copy
-does not touch the other — keep the two copies mirrored.
+Each app has its own copy of the shared modules under `src/shared/`, so
+editing one app's copy does not touch the other — keep the two copies
+mirrored.
 
 Sanity checks:
 
@@ -53,19 +61,41 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:4000
 
 ## Everyday commands
 
-| Command                           | Purpose                                     |
-| --------------------------------- | ------------------------------------------- |
-| `npm run dev`                     | API + Web in watch mode                     |
-| `npm run build`                   | Full production build of everything         |
-| `npm run typecheck`               | Strict TS across all workspaces             |
-| `npm run lint`                    | ESLint                                      |
-| `npm test`                        | Vitest (API + web client, incl. money math) |
-| `npm run format`                  | Prettier write                              |
-| `npm run db:migrate`              | New migration (dev)                         |
-| `npm run db:deploy`               | Apply pending migrations (CI/prod)          |
-| `npm run db:seed`                 | Idempotent system categories                |
-| `npm run db:studio`               | Prisma Studio                               |
-| `flutter analyze && flutter test` | Mobile                                      |
+Every command runs **from inside its app directory**:
+
+### `apps/api`
+
+| Command                | Purpose                                 |
+| ---------------------- | --------------------------------------- |
+| `npm run dev`          | NestJS watch mode (:4000)               |
+| `npm run build`        | Production build (`dist/`)              |
+| `npm run typecheck`    | Strict TypeScript check                 |
+| `npm run lint`         | ESLint                                  |
+| `npm test`             | Vitest (75 tests, incl. money math)     |
+| `npm run format`       | Prettier write                          |
+| `npm run db:migrate`   | New migration (dev)                     |
+| `npm run db:deploy`    | Apply pending migrations (CI/prod)      |
+| `npm run db:seed`      | Idempotent system categories            |
+| `npm run db:studio`    | Prisma Studio                           |
+
+### `apps/web`
+
+| Command             | Purpose                             |
+| ------------------- | ----------------------------------- |
+| `npm run dev`       | Vite dev server (:3000)             |
+| `npm run build`     | Production build (`dist/`)          |
+| `npm run preview`   | Serve the production build          |
+| `npm run typecheck` | Strict TypeScript check             |
+| `npm run lint`      | ESLint                              |
+| `npm test`          | Vitest (47 tests)                   |
+| `npm run format`    | Prettier write                      |
+
+### `apps/mobile`
+
+| Command                           | Purpose |
+| --------------------------------- | ------- |
+| `flutter run`                     | Run     |
+| `flutter analyze && flutter test` | Checks |
 
 ---
 
@@ -95,7 +125,8 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:4000
 
 ### Naming & style
 
-- Prettier (repo-root `.prettierrc`) — 2-space, single quotes, trailing commas.
+- Prettier (`.prettierrc` in each app directory) — 2-space, single quotes,
+  trailing commas. Run `npm run format` from within the app.
 - Files: `kebab-case.ts`; React components `PascalCase.tsx`.
 - DTOs: `*Input` / `*Query` suffixes; Zod schemas `*Schema`.
 - Env vars: `SCREAMING_SNAKE_CASE`, declared once in
@@ -126,9 +157,8 @@ ships React's production build.
 ## Testing
 
 ```bash
-npm test                                  # all Node workspaces
-npm test --workspace @exp/api             # API only
-npm test --workspace @exp/web             # web client only
+cd apps/api && npm test                   # API (75 tests)
+cd apps/web && npm test                   # web client (47 tests)
 cd apps/mobile && flutter test            # mobile
 ```
 
@@ -191,7 +221,8 @@ if present, but nothing depends on it.
 
 ### Delivered in Phase 1
 
-- npm-workspace monorepo with `apps/`, `docs/`
+- Independent apps under `apps/` (each with its own npm project and lockfile),
+  docs under `docs/`
 - Per-app shared modules under `apps/*/src/shared/` (`types`, `validation`, `config`)
 - NestJS 12 API: config validation, Prisma, health endpoints, global envelope
   interceptor + exception filter, Helmet, CORS allow-list, Swagger
@@ -256,9 +287,9 @@ if present, but nothing depends on it.
 | Symptom                                                                   | Fix                                                                                |
 | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
 | `Missing required environment variable "DATABASE_URL"`                    | `cp apps/api/.env.example apps/api/.env`                                           |
-| Prisma `P1012` schema validation error                                    | `npm run db:validate`                                                              |
+| Prisma `P1012` schema validation error                                    | `cd apps/api && npm run db:validate`                                               |
 | Migration `P3018` (type mismatch)                                         | Fix the schema, delete `apps/api/prisma/migrations/*`, re-run `npm run db:migrate` |
-| "applied to the database but missing from the local migrations directory" | `npm run db:reset`                                                                 |
+| "applied to the database but missing from the local migrations directory" | `cd apps/api && npm run db:reset`                                                  |
 | Web cannot reach the API                                                  | Check `VITE_API_URL` and `CORS_ORIGINS`                                            |
 | Port already in use                                                       | `API_PORT` in `apps/api/.env`, `WEB_PORT` in `apps/web/.env`                       |
 | Mobile sees connection refused on Android                                 | Use `http://10.0.2.2:4000`, not `localhost`                                        |

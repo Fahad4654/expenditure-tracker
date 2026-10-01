@@ -74,7 +74,8 @@ phone — no partial indexes needed.
 `@@unique([userId, name])` stops a user creating "Food" twice.
 Seed data comes from `DEFAULT_SYSTEM_CATEGORIES` in `apps/api/src/shared/types` (11 categories:
 Food, Transport, Shopping, Bills, Entertainment, Health, Education, Salary,
-Business, Investment, Other) via the idempotent `npm run db:seed`.
+Business, Investment, Other) via the idempotent `db:seed` script (run from
+`apps/api`).
 
 > Because `userId` is `NULL` for system categories, Postgres does not enforce
 > uniqueness across them. They are only ever created by the seed, which checks
@@ -216,6 +217,8 @@ Device (userId)
 ## Migrations
 
 ```bash
+cd apps/api
+
 npm run db:migrate     # dev: creates + applies (prompts for a name)
 npm run db:deploy      # CI/prod: applies pending migrations only
 npm run db:studio      # browse data

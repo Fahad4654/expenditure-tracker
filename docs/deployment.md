@@ -5,11 +5,14 @@ static bundle. PostgreSQL 16 runs as a normal service; Redis is optional.
 
 ## Artefacts
 
-| Command             | Output                              |
-| ------------------- | ----------------------------------- |
-| `npm run build`     | `apps/api/dist`, `apps/web/dist`    |
-| `npm run db:deploy` | applies committed Prisma migrations |
-| `npm run db:seed`   | idempotent system-category seed     |
+| Command                        | Output                              |
+| ------------------------------ | ----------------------------------- |
+| `cd apps/api && npm run build` | `apps/api/dist`                     |
+| `cd apps/web && npm run build` | `apps/web/dist`                     |
+| `cd apps/api && npm run db:deploy` | applies committed Prisma migrations |
+| `cd apps/api && npm run db:seed`   | idempotent system-category seed     |
+
+Each app is installed independently — there is no root install.
 
 ---
 
@@ -17,15 +20,23 @@ static bundle. PostgreSQL 16 runs as a normal service; Redis is optional.
 
 ```bash
 git clone <repo> /opt/expenditure-tracker && cd /opt/expenditure-tracker
+
+# API
+cd apps/api
 npm ci
-cp apps/api/.env.example apps/api/.env    # then fill in the values below
-npm run build                       # packages → Prisma client → API → web
-npm run db:deploy                   # apply migrations
-npm run db:seed                     # first release only (idempotent)
+cp .env.example .env          # then fill in the values below
+npm run build                 # Prisma client → NestJS
+npm run db:deploy             # apply migrations
+npm run db:seed               # first release only (idempotent)
+
+# Web
+cd ../web
+npm ci
+VITE_API_URL=https://api.example.com npm run build
 ```
 
-`VITE_API_URL` is inlined into the web bundle at **build** time — set it before
-`npm run build` if the API origin differs from the dev default.
+`VITE_API_URL` is inlined into the web bundle at **build** time — set it for
+the web build if the API origin differs from the dev default.
 
 ---
 
@@ -180,7 +191,7 @@ HTTP. Add a port-80 → 443 redirect and HSTS once HTTPS is confirmed working.
 ## Migrations
 
 ```bash
-npm run db:deploy      # apply committed migrations (CI/production)
+cd apps/api && npm run db:deploy    # apply committed migrations (CI/production)
 ```
 
 **Migration policy:** generate migrations in development, commit them, apply
@@ -198,22 +209,21 @@ defaults; drop columns only after the code that reads them is gone).
 stages: [verify, build, deploy]
 
 verify:
-  - npm ci
-  - npm run typecheck
-  - npm run lint
-  - npm test
+  - (cd apps/api && npm ci && npm run typecheck && npm run lint && npm test)
+  - (cd apps/web && npm ci && npm run typecheck && npm run lint && npm test)
   - flutter analyze && flutter test
   # needs DATABASE_URL; fails if someone edited the schema without a migration
-  - cd apps/api && npx prisma migrate diff
-      --from-schema-drag --to-migrations prisma/migrations
+  - (cd apps/api && npx prisma migrate diff
+      --from-schema-drag --to-migrations prisma/migrations)
 
 build:
-  - VITE_API_URL=$PUBLIC_API_URL npm run build
+  - (cd apps/api && npm run build)
+  - (cd apps/web && VITE_API_URL=$PUBLIC_API_URL npm run build)
 
 deploy:
   - rsync -a --delete --exclude .env --exclude node_modules \
       ./ $TARGET:/opt/expenditure-tracker/
-  - ssh $TARGET 'cd /opt/expenditure-tracker && npm ci && npm run db:deploy'
+  - ssh $TARGET 'cd /opt/expenditure-tracker/apps/api && npm ci && npm run db:deploy'
   - ssh $TARGET 'systemctl restart expenditure-api'
   - smoke: curl -fsS $PUBLIC_API_URL/api/v1/health/ready
   - rollback = redeploy the previous commit (migrations must be backward

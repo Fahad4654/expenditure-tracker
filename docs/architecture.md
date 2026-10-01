@@ -48,9 +48,11 @@ online and directly when online-only features are needed.
 
 ---
 
-## 2. Monorepo & shared code
+## 2. Apps & shared code
 
-npm workspaces (no Turborepo/Nx — deliberate; see §6):
+The frontend and backend are **fully independent npm projects** — each has its
+own `package.json`, lockfile and `node_modules`, with no root install and no
+common run/build commands (no Turborepo/Nx either — deliberate; see §6):
 
 | Module                  | Purpose                                                             |
 | ----------------------- | ------------------------------------------------------------------- |
@@ -186,8 +188,8 @@ These are deliberate departures (or clarifications) worth reviewing:
 9. **No GraphQL.** The brief specifies REST + OpenAPI; offline sync is a
    batch-REST problem, and REST keeps the mobile client trivial.
 
-10. **No Turborepo/Nx.** Three workspaces and a `concurrently` script cover the
-    need; a task graph would be machinery without a payoff at this size.
+10. **No Turborepo/Nx.** Each app installs, runs and builds on its own — a
+    task graph would be machinery without a payoff at this size.
 
 ---
 
@@ -195,8 +197,8 @@ These are deliberate departures (or clarifications) worth reviewing:
 
 | Decision                  | Reason                                                                               |
 | ------------------------- | ------------------------------------------------------------------------------------ |
-| npm workspaces            | Ships with npm; zero extra tooling                                                   |
-| Zod in a shared package   | One source of truth for validation; the browser can pre-validate before a round-trip |
+| Independent npm projects  | Each app stands alone: own install, own lockfile, no root tooling                     |
+| Zod schemas (mirrored)    | One set of validation rules; the browser can pre-validate before a round-trip         |
 | REST + envelope           | Trivial to reason about, trivial to test, easy to cache                              |
 | UUID PKs                  | Required for offline-first sync; no ID negotiation round-trip                        |
 | Soft delete (`deletedAt`) | Sync needs tombstones; "deletes must not accidentally disappear"                     |
