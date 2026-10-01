@@ -1,6 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { timingSafeEqual } from 'node:crypto';
-import { COOKIE_NAMES } from '@exp/config';
+import { COOKIE_NAMES } from '../../shared/config';
 import type { Request } from 'express';
 import { errors } from '../http/api-error';
 

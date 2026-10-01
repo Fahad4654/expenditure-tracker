@@ -1,4 +1,4 @@
-import { COOKIE_NAMES } from '@exp/config';
+import { COOKIE_NAMES } from '../shared/config';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { API_BASE_URL, apiFetch, setUnauthorizedHandler, storeAccessToken } from './api';
 

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { CategoryReport, DailyReport, MonthlyReport, SummaryResponse } from '@exp/types';
+import type { CategoryReport, DailyReport, MonthlyReport, SummaryResponse } from '../shared/types';
 import type { ShortPreset } from '../lib/format';
 import { Button, Card, ErrorBanner, PageHeader, Spinner } from '../components/ui';
 import { API_ROUTES, apiFetch } from '../lib/api';

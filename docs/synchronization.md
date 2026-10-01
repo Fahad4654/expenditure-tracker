@@ -85,7 +85,7 @@ Content-Type: application/json
 
 Limits: **≤ 200 operations per request** (`SYNC_DEFAULTS.maxOperationsPerBatch`).
 Validation is shared — the API parses `syncRequestSchema` from
-`@exp/validation`, so the client can pre-validate locally and fail fast.
+`src/shared/validation`, so the client can pre-validate locally and fail fast.
 
 ### Response
 

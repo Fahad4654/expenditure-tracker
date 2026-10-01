@@ -1,9 +1,9 @@
 import { Injectable, PipeTransform, UnprocessableEntityException } from '@nestjs/common';
-import { toFieldErrors } from '@exp/validation';
+import { toFieldErrors } from '../../shared/validation';
 import type { z } from 'zod';
 
 /**
- * Route-level validation using the shared Zod schemas from `@exp/validation`,
+ * Route-level validation using the shared Zod schemas from `shared/validation`,
  * so the API and the web client enforce identical rules.
  *
  * Usage: `@Query(new ZodValidationPipe(listTransactionsSchema)) query: ListTransactionsQueryDto`

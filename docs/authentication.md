@@ -25,7 +25,7 @@ POST /auth/register
 { "name": "Ayesha Rahman", "email": "ayesha@example.com", "password": "…" }
 ```
 
-1. Validate with `registerSchema` (`@exp/validation`): name 2–80 chars,
+1. Validate with `registerSchema` (`src/shared/validation`): name 2–80 chars,
    valid email, password 8–72 chars containing a letter **and** a number.
 2. Normalise email to lower case.
 3. If the email exists → `409 CONFLICT` (constant-ish time: always run a hash

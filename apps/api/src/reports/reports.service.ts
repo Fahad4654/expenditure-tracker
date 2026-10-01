@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { toMinorUnits } from '@exp/types';
+import { toMinorUnits } from '../shared/types';
 import type {
   CategoryBreakdownPoint,
   CategoryReport,
@@ -11,13 +11,13 @@ import type {
   MonthlyReport,
   MonthlyReportPoint,
   SummaryResponse,
-} from '@exp/types';
+} from '../shared/types';
 import type {
   CategoryReportQueryDto,
   DailyReportQueryDto,
   MonthlyReportQueryDto,
   ReportQueryDto,
-} from '@exp/validation';
+} from '../shared/validation';
 import {
   addDays,
   dateRangeWhere,

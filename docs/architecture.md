@@ -52,19 +52,22 @@ online and directly when online-only features are needed.
 
 npm workspaces (no Turborepo/Nx — deliberate; see §6):
 
-| Package           | Purpose                                                             |
-| ----------------- | ------------------------------------------------------------------- |
-| `@exp/types`      | Domain types, enums, route-independent constants, **money helpers** |
-| `@exp/validation` | Zod schemas — the _same_ rules run in the browser and on the API    |
-| `@exp/config`     | API route map, cookie/storage names, sync tuning, env helpers       |
+| Module                  | Purpose                                                             |
+| ----------------------- | ------------------------------------------------------------------- |
+| `src/shared/types`      | Domain types, enums, route-independent constants, **money helpers** |
+| `src/shared/validation` | Zod schemas — the _same_ rules run in the browser and on the API    |
+| `src/shared/config`     | API route map, cookie/storage names, sync tuning, env helpers       |
 
-Each package compiles to `dist/` with `tsc`, so `apps/api` and `apps/web` import
-it as an ordinary dependency (no path-mapping or transpile step at runtime).
+Each app keeps its **own copy** of these modules under `src/shared/`
+(`apps/api/src/shared/` and `apps/web/src/shared/`). The copies are
+deliberately identical — there is no shared package, so a change to one copy
+must be mirrored in the other.
 
 **Rule:** business logic is never duplicated between web and mobile. Anything
-both need (money math, validation, sync vocabulary) lives in `packages/`. Dart
-cannot import TypeScript, so the _protocol_ is shared by contract
-(`docs/synchronization.md` + `@exp/types`) and mirrored once in Dart.
+both need (money math, validation, sync vocabulary) lives in each app's
+`src/shared/`. Dart cannot import TypeScript, so the _protocol_ is shared by
+contract (`docs/synchronization.md` + `src/shared/types`) and mirrored once
+in Dart.
 
 ---
 
@@ -106,13 +109,13 @@ contain business logic.
 
 One interceptor and one exception filter produce these, so clients only ever
 branch on `ok` and switch on stable machine-readable `code` values
-(`@exp/types` → `API_ERROR_CODES`). Human-readable messages are never parsed.
+(`src/shared/types` → `API_ERROR_CODES`). Human-readable messages are never parsed.
 
 ### Money
 
 PostgreSQL `Decimal(18,2)` → Prisma `Decimal` → JSON **decimal string**
 (`"100.50"`). Arithmetic uses integer minor units (`bigint`) in
-`@exp/types/money`. No `number` ever touches a monetary value — not for
+`src/shared/types/money.ts`. No `number` ever touches a monetary value — not for
 storage, not for aggregation, not even for display formatting.
 
 ### Time & dates

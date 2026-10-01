@@ -9,8 +9,8 @@ import {
   type DailyReportQueryDto,
   type MonthlyReportQueryDto,
   type ReportQueryDto,
-} from '@exp/validation';
-import type { CategoryReport, DailyReport, MonthlyReport, SummaryResponse } from '@exp/types';
+} from '../shared/validation';
+import type { CategoryReport, DailyReport, MonthlyReport, SummaryResponse } from '../shared/types';
 import { CurrentUser, type AuthenticatedUser } from '../common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { ReportsService } from './reports.service';

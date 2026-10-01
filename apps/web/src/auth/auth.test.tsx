@@ -1,5 +1,5 @@
-import { STORAGE_KEYS } from '@exp/config';
-import type { AuthSession, UserProfile } from '@exp/types';
+import { STORAGE_KEYS } from '../shared/config';
+import type { AuthSession, UserProfile } from '../shared/types';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';

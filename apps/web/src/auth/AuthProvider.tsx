@@ -6,7 +6,7 @@ import {
   setUnauthorizedHandler,
   storeAccessToken,
 } from '../lib/api';
-import type { AuthSession, LoginInput, RegisterInput, UserProfile } from '@exp/types';
+import type { AuthSession, LoginInput, RegisterInput, UserProfile } from '../shared/types';
 import { AuthContext, type AuthContextValue, type AuthStatus } from './auth-context';
 
 interface State {

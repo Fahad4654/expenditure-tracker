@@ -6,7 +6,7 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import { ApiErrorCode, API_ERROR_CODES } from '@exp/types';
+import { ApiErrorCode, API_ERROR_CODES } from '../../shared/types';
 import type { Request, Response } from 'express';
 
 const STATUS_TO_CODE: Record<number, ApiErrorCode> = {

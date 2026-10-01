@@ -27,9 +27,9 @@ npm run db:seed         # 11 system categories
 npm run dev             # API :4000 + Web :3000, both in watch mode
 ```
 
-`npm run dev` builds the shared packages first and keeps them rebuilt in watch
-mode, so editing `packages/*` hot-reloads both apps — never run
-`build:packages` by hand.
+`npm run dev` runs the API and the web client in watch mode. Each app has its
+own copy of the shared modules under `src/shared/`, so editing one app's copy
+does not touch the other — keep the two copies mirrored.
 
 Sanity checks:
 
@@ -53,19 +53,19 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:4000
 
 ## Everyday commands
 
-| Command                           | Purpose                                           |
-| --------------------------------- | ------------------------------------------------- |
-| `npm run dev`                     | API + Web + package watch (builds packages first) |
-| `npm run build`                   | Full production build of everything               |
-| `npm run typecheck`               | Strict TS across all workspaces                   |
-| `npm run lint`                    | ESLint                                            |
-| `npm test`                        | Vitest (API, web client, shared money math)       |
-| `npm run format`                  | Prettier write                                    |
-| `npm run db:migrate`              | New migration (dev)                               |
-| `npm run db:deploy`               | Apply pending migrations (CI/prod)                |
-| `npm run db:seed`                 | Idempotent system categories                      |
-| `npm run db:studio`               | Prisma Studio                                     |
-| `flutter analyze && flutter test` | Mobile                                            |
+| Command                           | Purpose                                     |
+| --------------------------------- | ------------------------------------------- |
+| `npm run dev`                     | API + Web in watch mode                     |
+| `npm run build`                   | Full production build of everything         |
+| `npm run typecheck`               | Strict TS across all workspaces             |
+| `npm run lint`                    | ESLint                                      |
+| `npm test`                        | Vitest (API + web client, incl. money math) |
+| `npm run format`                  | Prettier write                              |
+| `npm run db:migrate`              | New migration (dev)                         |
+| `npm run db:deploy`               | Apply pending migrations (CI/prod)          |
+| `npm run db:seed`                 | Idempotent system categories                |
+| `npm run db:studio`               | Prisma Studio                               |
+| `flutter analyze && flutter test` | Mobile                                      |
 
 ---
 
@@ -79,14 +79,15 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:4000
   live in `src/routes.ts`; `src/lib/api.ts` is the single HTTP entry point.
 - `apps/mobile` — Flutter. Feature folders under `lib/features/`, infrastructure
   under `lib/core/`.
-- `packages/*` — anything both web and API need. Never duplicate logic.
+- `src/shared/` (per app) — `types`, `validation`, `config`. Deliberately
+  duplicated: mirror every change in both apps.
 
 ### Code rules (applied on every PR)
 
 1. Strict TypeScript; `any` is a lint error.
 2. Validate every external input with a shared Zod schema.
 3. Never trust a client-supplied user id — take it from the JWT.
-4. Never use floating point for money; use `@exp/types` money helpers.
+4. Never use floating point for money; use the money helpers in `src/shared/types`.
 5. Handle errors explicitly; never swallow an exception.
 6. Add indexes with any new query path.
 7. Write tests for business-critical behaviour.
@@ -128,11 +129,10 @@ ships React's production build.
 npm test                                  # all Node workspaces
 npm test --workspace @exp/api             # API only
 npm test --workspace @exp/web             # web client only
-npm test --workspace @exp/types           # money math
 cd apps/mobile && flutter test            # mobile
 ```
 
-Current coverage — 112 tests, all DB-free (`PrismaService` is mocked, so the
+Current coverage — 122 tests, all DB-free (`PrismaService` is mocked, so the
 suite runs without infrastructure or secrets):
 
 - `apps/api/test/health.spec.ts` — success/error envelopes, readiness failure
@@ -161,7 +161,8 @@ suite runs without infrastructure or secrets):
   the network call, rejected credentials surface the server message, and a
   successful sign-in reaches its destination.
 - `apps/web/src/routes.test.ts` — route manifest shape and id encoding.
-- `packages/types/test/money.spec.ts` — decimal↔minor-unit round trips,
+- `apps/api/src/shared/types/money.spec.ts` + the web copy (`money.test.ts`)
+  — decimal↔minor-unit round trips,
   exactness beyond `Number.MAX_SAFE_INTEGER`, formatting.
 
 An external smoke suite (`/tmp/opencode/smoke.py`, not committed) exercises the
@@ -190,8 +191,8 @@ if present, but nothing depends on it.
 
 ### Delivered in Phase 1
 
-- npm-workspace monorepo with `apps/`, `packages/`, `docs/`
-- `@exp/types`, `@exp/validation`, `@exp/config` (built to `dist/`)
+- npm-workspace monorepo with `apps/`, `docs/`
+- Per-app shared modules under `apps/*/src/shared/` (`types`, `validation`, `config`)
 - NestJS 12 API: config validation, Prisma, health endpoints, global envelope
   interceptor + exception filter, Helmet, CORS allow-list, Swagger
 - React 19 + Vite 8 app: Tailwind 4, React Router route manifest, PWA
@@ -259,6 +260,5 @@ if present, but nothing depends on it.
 | Migration `P3018` (type mismatch)                                         | Fix the schema, delete `apps/api/prisma/migrations/*`, re-run `npm run db:migrate` |
 | "applied to the database but missing from the local migrations directory" | `npm run db:reset`                                                                 |
 | Web cannot reach the API                                                  | Check `VITE_API_URL` and `CORS_ORIGINS`                                            |
-| `@exp/*` import fails                                                     | `npm run build:packages` (`npm run dev` runs it for you)                           |
 | Port already in use                                                       | `API_PORT` in `apps/api/.env`, `WEB_PORT` in `apps/web/.env`                       |
 | Mobile sees connection refused on Android                                 | Use `http://10.0.2.2:4000`, not `localhost`                                        |

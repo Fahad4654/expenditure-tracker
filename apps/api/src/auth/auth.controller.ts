@@ -11,15 +11,15 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { COOKIE_NAMES } from '@exp/config';
-import type { AuthSession, UserProfile } from '@exp/types';
+import { COOKIE_NAMES } from '../shared/config';
+import type { AuthSession, UserProfile } from '../shared/types';
 import {
   loginSchema,
   refreshSchema,
   registerSchema,
   type LoginInputDto,
   type RegisterInputDto,
-} from '@exp/validation';
+} from '../shared/validation';
 import type { Request, Response } from 'express';
 import { CurrentUser, type AuthenticatedUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';

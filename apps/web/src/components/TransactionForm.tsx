@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from 'react';
-import type { Category, Transaction, TransactionTypeValue } from '@exp/types';
+import type { Category, Transaction, TransactionTypeValue } from '../shared/types';
 import {
   createTransactionSchema,
   toFieldErrors,
   type CreateTransactionInputDto,
-} from '@exp/validation';
+} from '../shared/validation';
 import { indexByPath } from '../lib/errors';
 import { DEFAULT_TIMEZONE, todayIn } from '../lib/format';
 import { Button, ErrorBanner, Field, Select, TextInput, inputClass, labelClass } from './ui';

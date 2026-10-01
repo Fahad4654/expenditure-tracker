@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { AuthSession, UserProfile } from '@exp/types';
-import type { LoginInputDto, RegisterInputDto } from '@exp/validation';
+import type { AuthSession, UserProfile } from '../shared/types';
+import type { LoginInputDto, RegisterInputDto } from '../shared/validation';
 import { errors } from '../common/http/api-error';
 import { PrismaService } from '../prisma/prisma.module';
 import { toUserProfile } from '../users/user.mapper';

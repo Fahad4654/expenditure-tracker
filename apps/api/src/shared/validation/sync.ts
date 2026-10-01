@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { TRANSACTION_TYPES } from '@exp/types';
+import { TRANSACTION_TYPES } from '../types';
 import { currencyCodeSchema, decimalAmountSchema, isoDateSchema, uuidSchema } from './common';
 
 /** Payload accepted inside a sync operation for a TRANSACTION entity. */

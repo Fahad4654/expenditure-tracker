@@ -26,6 +26,6 @@ abstract final class AppConfig {
 
   static bool get isDevelopment => environment != 'production';
 
-  /// Prefix shared by every REST endpoint (mirrors `API_PREFIX` in `@exp/config`).
+  /// Prefix shared by every REST endpoint (mirrors `API_PREFIX` in `apps/api/src/shared/config`).
   static const String apiPrefix = '/api/v1';
 }

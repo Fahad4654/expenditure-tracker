@@ -1,5 +1,5 @@
-import { API_ROUTES, COOKIE_NAMES, STORAGE_KEYS } from '@exp/config';
-import type { ApiErrorCode, ApiResponse, AuthSession } from '@exp/types';
+import { API_ROUTES, COOKIE_NAMES, STORAGE_KEYS } from '../shared/config';
+import type { ApiErrorCode, ApiResponse, AuthSession } from '../shared/types';
 import { queryString, type QueryValue } from './query';
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';

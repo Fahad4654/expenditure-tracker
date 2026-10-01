@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
-import type { UserProfile } from '@exp/types';
-import { toFieldErrors, updateProfileSchema } from '@exp/validation';
+import type { UserProfile } from '../shared/types';
+import { toFieldErrors, updateProfileSchema } from '../shared/validation';
 import { useAuth } from '../auth/auth-context';
 import { Button, Card, ErrorBanner, Field, PageHeader, Select, TextInput } from '../components/ui';
 import { API_ROUTES, apiFetch } from '../lib/api';

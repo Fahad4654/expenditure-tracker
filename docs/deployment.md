@@ -5,11 +5,11 @@ static bundle. PostgreSQL 16 runs as a normal service; Redis is optional.
 
 ## Artefacts
 
-| Command             | Output                                              |
-| ------------------- | --------------------------------------------------- |
-| `npm run build`     | `packages/*/dist`, `apps/api/dist`, `apps/web/dist` |
-| `npm run db:deploy` | applies committed Prisma migrations                 |
-| `npm run db:seed`   | idempotent system-category seed                     |
+| Command             | Output                              |
+| ------------------- | ----------------------------------- |
+| `npm run build`     | `apps/api/dist`, `apps/web/dist`    |
+| `npm run db:deploy` | applies committed Prisma migrations |
+| `npm run db:seed`   | idempotent system-category seed     |
 
 ---
 

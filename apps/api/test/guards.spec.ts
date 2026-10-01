@@ -1,6 +1,6 @@
 import { HttpException, type ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { COOKIE_NAMES } from '@exp/config';
+import { COOKIE_NAMES } from '../src/shared/config';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CookieCsrfGuard } from '../src/common/guards/cookie-csrf.guard';
 import { JwtAuthGuard } from '../src/common/guards/jwt-auth.guard';

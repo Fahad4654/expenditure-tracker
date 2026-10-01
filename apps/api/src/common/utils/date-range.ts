@@ -1,4 +1,4 @@
-import type { DateRangePreset, IsoDate } from '@exp/types';
+import type { DateRangePreset, IsoDate } from '../../shared/types';
 
 /**
  * Date-range resolution done in the *user's* timezone, not the server's.

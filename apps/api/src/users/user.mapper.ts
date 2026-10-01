@@ -1,4 +1,4 @@
-import type { AuthProvider, UserProfile } from '@exp/types';
+import type { AuthProvider, UserProfile } from '../shared/types';
 
 export interface UserRecord {
   id: string;

@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { loginSchema, toFieldErrors } from '@exp/validation';
+import { loginSchema, toFieldErrors } from '../shared/validation';
 import { useAuth } from '../auth/auth-context';
 import AuthShell from '../components/AuthShell';
 import { Button, ErrorBanner, Field, TextInput } from '../components/ui';

@@ -1,5 +1,5 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
-import type { ApiErrorCode } from '@exp/types';
+import type { ApiErrorCode } from '../../shared/types';
 
 /**
  * Builds an `HttpException` that carries a stable machine-readable `code`

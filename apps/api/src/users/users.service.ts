@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.module';
 import { errors } from '../common/http/api-error';
 import { toUserProfile, UserRecord } from './user.mapper';
-import type { UpdateProfileInputDto } from '@exp/validation';
-import type { UserProfile } from '@exp/types';
+import type { UpdateProfileInputDto } from '../shared/validation';
+import type { UserProfile } from '../shared/types';
 
 @Injectable()
 export class UsersService {

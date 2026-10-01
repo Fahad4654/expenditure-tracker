@@ -1,4 +1,4 @@
-import type { Uuid } from '@exp/types';
+import type { Uuid } from '../shared/types';
 
 /** RFC 4122 v4; used when `crypto.randomUUID` is unavailable (plain HTTP). */
 function fallbackUuid(): Uuid {

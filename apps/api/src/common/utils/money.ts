@@ -1,5 +1,5 @@
-import { normalizeAmount } from '@exp/types';
-import type { DecimalString } from '@exp/types';
+import { normalizeAmount } from '../../shared/types';
+import type { DecimalString } from '../../shared/types';
 
 /**
  * Money never leaves the API as a JS number.

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import type { Category, Paginated, SummaryResponse, Transaction } from '@exp/types';
+import type { Category, Paginated, SummaryResponse, Transaction } from '../shared/types';
 import { useAuth } from '../auth/auth-context';
 import TransactionRow from '../components/TransactionRow';
 import { Button, Card, EmptyState, ErrorBanner, PageHeader, Spinner } from '../components/ui';

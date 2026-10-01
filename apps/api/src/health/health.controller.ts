@@ -5,7 +5,7 @@ import { HealthService } from './health.service';
 
 /**
  * Paths are relative to the global `api/v1` prefix set in `main.ts`
- * (see `API_ROUTES.health` in `@exp/config` for the absolute URLs).
+ * (see `API_ROUTES.health` in `shared/config` for the absolute URLs).
  */
 @Public()
 @ApiTags('health')

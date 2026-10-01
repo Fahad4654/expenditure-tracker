@@ -4,7 +4,7 @@ Base URL: `http://localhost:4000/api/v1`
 Interactive docs (Swagger/OpenAPI): `http://localhost:4000/docs`
 OpenAPI JSON: `http://localhost:4000/docs-json`
 
-The version prefix lives in `API_PREFIX` (`@exp/config`) and is applied by
+The version prefix lives in `API_PREFIX` (`src/shared/config`) and is applied by
 Nest's `setGlobalPrefix`. Client code never string-concatenates paths — it uses
 `API_ROUTES`.
 
@@ -29,7 +29,7 @@ Every response uses one of exactly two shapes:
 }
 ```
 
-`code` is a stable member of `API_ERROR_CODES` (`@exp/types`). Clients switch on
+`code` is a stable member of `API_ERROR_CODES` (`src/shared/types`). Clients switch on
 `code`, never on `message`.
 
 | HTTP      | `code`                                                                  |

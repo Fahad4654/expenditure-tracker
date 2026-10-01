@@ -1,5 +1,5 @@
-import type { CurrencyCode, DecimalString, IsoDate, Timezone } from '@exp/types';
-import { formatMoney } from '@exp/types';
+import type { CurrencyCode, DecimalString, IsoDate, Timezone } from '../shared/types';
+import { formatMoney } from '../shared/types';
 
 const DAY_MS = 86_400_000;
 

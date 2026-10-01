@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import type { Category, Transaction } from '@exp/types';
-import type { CreateTransactionInputDto } from '@exp/validation';
+import type { Category, Transaction } from '../shared/types';
+import type { CreateTransactionInputDto } from '../shared/validation';
 import TransactionForm from '../components/TransactionForm';
 import NotFoundPage from './NotFoundPage';
 import { Button, Card, ErrorBanner, PageHeader, Spinner } from '../components/ui';

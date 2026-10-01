@@ -72,7 +72,7 @@ phone — no partial indexes needed.
 | `deletedAt`     | `timestamp`       |                                               |
 
 `@@unique([userId, name])` stops a user creating "Food" twice.
-Seed data comes from `DEFAULT_SYSTEM_CATEGORIES` in `@exp/types` (11 categories:
+Seed data comes from `DEFAULT_SYSTEM_CATEGORIES` in `apps/api/src/shared/types` (11 categories:
 Food, Transport, Shopping, Bills, Entertainment, Health, Education, Salary,
 Business, Investment, Other) via the idempotent `npm run db:seed`.
 
@@ -194,7 +194,7 @@ Device (userId)
 - Storage: `numeric(18, 2)`.
 - Wire: decimal **string** (`"100.50"`), never a JSON number.
 - Computation: `bigint` minor units (`toMinorUnits` / `fromMinorUnits` in
-  `@exp/types`), so `0.10 + 0.20 === 0.30` and values far beyond
+  `src/shared/types`), so `0.10 + 0.20 === 0.30` and values far beyond
   `Number.MAX_SAFE_INTEGER` stay exact.
 - Display: `formatMoney` builds the string from `Intl.NumberFormat`
   `formatToParts` + integer grouping, so a JS `number` never participates.

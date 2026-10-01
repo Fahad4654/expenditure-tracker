@@ -10,14 +10,14 @@ import {
   Post,
 } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { uuidSchema } from '@exp/validation';
+import { uuidSchema } from '../shared/validation';
 import {
   createCategorySchema,
   updateCategorySchema,
   type CreateCategoryInputDto,
   type UpdateCategoryInputDto,
-} from '@exp/validation';
-import type { Category } from '@exp/types';
+} from '../shared/validation';
+import type { Category } from '../shared/types';
 import { CurrentUser, type AuthenticatedUser } from '../common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { CategoriesService } from './categories.service';

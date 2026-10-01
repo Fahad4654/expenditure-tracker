@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { AuthSession, LoginInput, RegisterInput, UserProfile } from '@exp/types';
+import type { AuthSession, LoginInput, RegisterInput, UserProfile } from '../shared/types';
 
 /**
  * `loading` means a silent refresh is still in flight on first paint — the UI

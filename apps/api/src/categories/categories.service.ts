@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import type { Category } from '@exp/types';
-import type { CreateCategoryInputDto, UpdateCategoryInputDto } from '@exp/validation';
+import type { Category } from '../shared/types';
+import type { CreateCategoryInputDto, UpdateCategoryInputDto } from '../shared/validation';
 import { errors } from '../common/http/api-error';
 import { PrismaService } from '../prisma/prisma.module';
 

@@ -1,4 +1,4 @@
-import { API_PREFIX, optionalEnv } from '@exp/config';
+import { API_PREFIX, optionalEnv } from '../shared/config';
 
 /**
  * Typed application configuration assembled from `process.env` after

@@ -2,12 +2,12 @@ import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { Transaction as PrismaTransaction } from '@prisma/client';
-import type { Paginated, Transaction } from '@exp/types';
+import type { Paginated, Transaction } from '../shared/types';
 import type {
   CreateTransactionInputDto,
   ListTransactionsQueryDto,
   UpdateTransactionInputDto,
-} from '@exp/validation';
+} from '../shared/validation';
 import { dateRangeWhere, resolveDateRange } from '../common/utils/date-range';
 import { errors } from '../common/http/api-error';
 import { toDecimalString } from '../common/utils/money';

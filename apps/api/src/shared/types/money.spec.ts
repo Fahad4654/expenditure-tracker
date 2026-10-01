@@ -8,7 +8,7 @@ import {
   subtractAmounts,
   sumAmounts,
   toMinorUnits,
-} from '../src/money';
+} from './money';
 
 describe('minor unit conversion', () => {
   it('converts decimal strings to integer minor units', () => {

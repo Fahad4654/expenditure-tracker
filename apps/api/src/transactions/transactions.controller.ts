@@ -12,7 +12,7 @@ import {
   Res,
 } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
-import { uuidSchema } from '@exp/validation';
+import { uuidSchema } from '../shared/validation';
 import {
   createTransactionSchema,
   listTransactionsSchema,
@@ -20,8 +20,8 @@ import {
   type CreateTransactionInputDto,
   type ListTransactionsQueryDto,
   type UpdateTransactionInputDto,
-} from '@exp/validation';
-import type { Paginated, Transaction } from '@exp/types';
+} from '../shared/validation';
+import type { Paginated, Transaction } from '../shared/types';
 import type { Response } from 'express';
 import { CurrentUser, type AuthenticatedUser } from '../common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';

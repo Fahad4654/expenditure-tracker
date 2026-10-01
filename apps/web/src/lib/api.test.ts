@@ -1,4 +1,4 @@
-import { STORAGE_KEYS } from '@exp/config';
+import { STORAGE_KEYS } from '../shared/config';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { API_BASE_URL, ApiError, apiFetch } from './api';
 

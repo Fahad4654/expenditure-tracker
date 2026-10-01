@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
-import type { Category, TransactionTypeValue } from '@exp/types';
-import { createCategorySchema, toFieldErrors } from '@exp/validation';
+import type { Category, TransactionTypeValue } from '../shared/types';
+import { createCategorySchema, toFieldErrors } from '../shared/validation';
 import {
   Button,
   Card,

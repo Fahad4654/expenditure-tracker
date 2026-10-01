@@ -32,10 +32,6 @@ expenditure-tracker/
 │   ├── api/          NestJS 12 REST API + Prisma
 │   ├── web/          React 19 + Vite 8 + TypeScript + Tailwind 4
 │   └── mobile/       Flutter (Android / iOS)
-├── packages/
-│   ├── types/        Shared domain types, constants, money helpers
-│   ├── validation/   Shared Zod schemas (identical rules on web + API)
-│   └── config/       Shared route map, sync tuning, env helpers
 ├── docs/             architecture, database, API, auth, sync, dev, deploy
 └── README.md
 ```
@@ -73,8 +69,8 @@ npm run db:seed
 npm run dev
 ```
 
-`npm run dev` also builds the shared packages and keeps rebuilding them in
-watch mode — there is no separate build step to remember.
+`npm run dev` runs both apps in watch mode — there is no separate build step
+to remember.
 
 Verify:
 
@@ -89,19 +85,19 @@ open http://localhost:4000/docs       # Swagger / OpenAPI
 
 ## Useful commands
 
-| Command                          | What it does                                        |
-| -------------------------------- | --------------------------------------------------- |
-| `npm run dev`                    | Build + watch shared packages, then run API + Web   |
-| `npm run build`                  | Build packages → generate Prisma client → API → Web |
-| `npm run typecheck`              | Strict TypeScript check across all workspaces       |
-| `npm run lint`                   | ESLint across all workspaces                        |
-| `npm test`                       | Vitest suites (API, web client, shared money math)  |
-| `npm run db:migrate`             | Create/apply a new Prisma migration (dev)           |
-| `npm run db:deploy`              | Apply pending migrations (CI/production)            |
-| `npm run db:seed`                | Idempotent system-category seed                     |
-| `npm run db:studio`              | Prisma Studio                                       |
-| `cd apps/mobile && flutter run`  | Run the mobile app                                  |
-| `cd apps/mobile && flutter test` | Mobile tests                                        |
+| Command                          | What it does                                       |
+| -------------------------------- | -------------------------------------------------- |
+| `npm run dev`                    | Run API + Web in watch mode                        |
+| `npm run build`                  | Generate Prisma client → build API → Web           |
+| `npm run typecheck`              | Strict TypeScript check across all workspaces      |
+| `npm run lint`                   | ESLint across all workspaces                       |
+| `npm test`                       | Vitest suites (API, web client, shared money math) |
+| `npm run db:migrate`             | Create/apply a new Prisma migration (dev)          |
+| `npm run db:deploy`              | Apply pending migrations (CI/production)           |
+| `npm run db:seed`                | Idempotent system-category seed                    |
+| `npm run db:studio`              | Prisma Studio                                      |
+| `cd apps/mobile && flutter run`  | Run the mobile app                                 |
+| `cd apps/mobile && flutter test` | Mobile tests                                       |
 
 ### Mobile API base URL
 

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { TRANSACTION_TYPES } from '@exp/types';
+import { TRANSACTION_TYPES } from '../types';
 import { uuidSchema } from './common';
 
 const colorSchema = z

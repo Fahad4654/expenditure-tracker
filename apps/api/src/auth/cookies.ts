@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { API_PREFIX, COOKIE_NAMES } from '@exp/config';
+import { API_PREFIX, COOKIE_NAMES } from '../shared/config';
 import type { Response } from 'express';
 
 /** Path the refresh cookie is scoped to — nothing outside auth can see it. */

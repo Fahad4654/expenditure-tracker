@@ -1,4 +1,4 @@
-import { DEFAULT_SYSTEM_CATEGORIES } from '@exp/types';
+import { DEFAULT_SYSTEM_CATEGORIES } from '../src/shared/types';
 import { PrismaClient } from '@prisma/client';
 import { loadApiEnv } from '../src/config/load-env';
 

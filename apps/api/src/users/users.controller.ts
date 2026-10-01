@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Patch } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { updateProfileSchema, type UpdateProfileInputDto } from '@exp/validation';
-import type { UserProfile } from '@exp/types';
+import { updateProfileSchema, type UpdateProfileInputDto } from '../shared/validation';
+import type { UserProfile } from '../shared/types';
 import { CurrentUser, type AuthenticatedUser } from '../common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { UsersService } from './users.service';

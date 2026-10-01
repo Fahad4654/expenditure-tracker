@@ -2,7 +2,7 @@ import { createHash, createHmac, randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService, type JwtSignOptions } from '@nestjs/jwt';
-import type { AccessTokenPayload, RefreshTokenPayload } from '@exp/types';
+import type { AccessTokenPayload, RefreshTokenPayload } from '../shared/types';
 import { PrismaService } from '../prisma/prisma.module';
 
 const UNIT_SECONDS: Record<string, number> = { s: 1, m: 60, h: 3600, d: 86400 };
