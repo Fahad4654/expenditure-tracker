@@ -4,7 +4,9 @@ A personal income & expense tracking platform: **React + Vite web app**,
 **Flutter mobile app** (offline-first), and a single **NestJS** API backed by
 **PostgreSQL** + **Redis**.
 
-> **Status: Phase 1 complete (architecture scaffold).**
+> **Status: Phases 1–3 complete — architecture, API and the web application
+> are built and tested.** Flutter (Phase 4), offline sync (Phase 5) and
+> production hardening (Phase 6) are next.
 > See [docs/development.md](docs/development.md) for the phase plan and current
 > progress.
 

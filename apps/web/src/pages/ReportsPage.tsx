@@ -1,0 +1,340 @@
+import { useMemo, useState } from 'react';
+import type { CategoryReport, DailyReport, MonthlyReport, SummaryResponse } from '@exp/types';
+import type { ShortPreset } from '../lib/format';
+import { Button, Card, ErrorBanner, PageHeader, Spinner } from '../components/ui';
+import { API_ROUTES, apiFetch } from '../lib/api';
+import {
+  DEFAULT_TIMEZONE,
+  daysBetween,
+  formatMonthLabel,
+  formatPercent,
+  money,
+  rangeFor,
+} from '../lib/format';
+import { useAsync } from '../lib/useAsync';
+import { useAuth } from '../auth/auth-context';
+
+const PRESETS: ReadonlyArray<{ value: ShortPreset; label: string }> = [
+  { value: 'today', label: 'Today' },
+  { value: 'week', label: 'Week' },
+  { value: 'month', label: 'Month' },
+  { value: 'year', label: 'Year' },
+];
+
+interface RangeQuery {
+  from: string;
+  to: string;
+  timezone: string;
+}
+
+/**
+ * Reports share one client-derived range so the four endpoints can never
+ * disagree about what period is on screen.
+ */
+export default function ReportsPage() {
+  const { user } = useAuth();
+  const timeZone = user?.timezone || DEFAULT_TIMEZONE;
+
+  const [preset, setPreset] = useState<ShortPreset>('month');
+  const [breakdownType, setBreakdownType] = useState<'EXPENSE' | 'INCOME'>('EXPENSE');
+  const [year, setYear] = useState(() => new Date().getFullYear());
+
+  const range = useMemo(() => rangeFor(preset, timeZone), [preset, timeZone]);
+  const rangeQuery: RangeQuery = {
+    from: range.from,
+    to: range.to,
+    timezone: timeZone,
+  };
+
+  const summary = useAsync<SummaryResponse>(
+    (signal) =>
+      apiFetch<SummaryResponse>(API_ROUTES.reports.summary, {
+        signal,
+        query: { preset: 'custom', ...rangeQuery },
+      }),
+    [range.from, range.to, timeZone],
+  );
+
+  const daily = useAsync<DailyReport>(
+    (signal) =>
+      apiFetch<DailyReport>(API_ROUTES.reports.daily, {
+        signal,
+        query: { ...rangeQuery, limit: String(daysBetween(range.from, range.to) + 1) },
+      }),
+    [range.from, range.to, timeZone],
+  );
+
+  const monthly = useAsync<MonthlyReport>(
+    (signal) =>
+      apiFetch<MonthlyReport>(API_ROUTES.reports.monthly, {
+        signal,
+        query: { year: String(year), timezone: timeZone },
+      }),
+    [year, timeZone],
+  );
+
+  const breakdown = useAsync<CategoryReport>(
+    (signal) =>
+      apiFetch<CategoryReport>(API_ROUTES.reports.categories, {
+        signal,
+        query: { preset: 'custom', type: breakdownType, ...rangeQuery },
+      }),
+    [range.from, range.to, timeZone, breakdownType],
+  );
+
+  const currency = summary.data?.currency ?? daily.data?.currency ?? 'USD';
+  const denseDaily = (daily.data?.points.length ?? 0) > 45;
+
+  return (
+    <main className="mx-auto w-full max-w-6xl px-6 py-10">
+      <PageHeader
+        title="Reports"
+        subtitle={`${range.from} → ${range.to} · ${timeZone}`}
+        actions={
+          <div className="flex gap-2" role="group" aria-label="Report period">
+            {PRESETS.map((option) => (
+              <Button
+                key={option.value}
+                variant={preset === option.value ? 'primary' : 'ghost'}
+                onClick={() => setPreset(option.value)}
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
+        }
+      />
+
+      {summary.error ? <ErrorBanner>{summary.error.message}</ErrorBanner> : null}
+
+      <section className="grid gap-4 sm:grid-cols-3" aria-label="Summary">
+        {summary.loading && !summary.data ? (
+          <Card>
+            <Spinner label="Loading summary" />
+          </Card>
+        ) : summary.data ? (
+          <>
+            <SummaryCard
+              label="Income"
+              value={money(summary.data.totalIncome, currency)}
+              tone="income"
+            />
+            <SummaryCard
+              label="Expense"
+              value={money(summary.data.totalExpense, currency)}
+              tone="expense"
+            />
+            <SummaryCard
+              label="Balance"
+              value={money(summary.data.balance, currency)}
+              tone="balance"
+            />
+          </>
+        ) : null}
+      </section>
+
+      <section className="mt-6 grid gap-6 lg:grid-cols-2">
+        <Card>
+          <h2 className="mb-1 font-semibold text-white">Daily activity</h2>
+          <p className="mb-4 text-sm text-slate-500">
+            {denseDaily
+              ? 'Too many days to chart comfortably — narrow the period above.'
+              : 'Income (emerald) vs expense (rose) per day.'}
+          </p>
+          {daily.loading && !daily.data ? (
+            <Spinner label="Loading daily report" />
+          ) : daily.error ? (
+            <ErrorBanner>{daily.error.message}</ErrorBanner>
+          ) : !denseDaily && daily.data ? (
+            <DailyBars report={daily.data} currency={currency} />
+          ) : null}
+        </Card>
+
+        <Card>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-semibold text-white">Category breakdown</h2>
+              <p className="text-sm text-slate-500">Share of the period total.</p>
+            </div>
+            <div className="flex gap-1" role="group" aria-label="Breakdown type">
+              {(['EXPENSE', 'INCOME'] as const).map((value) => (
+                <Button
+                  key={value}
+                  variant={breakdownType === value ? 'primary' : 'ghost'}
+                  onClick={() => setBreakdownType(value)}
+                >
+                  {value === 'EXPENSE' ? 'Expense' : 'Income'}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <BreakdownList
+            loading={breakdown.loading}
+            error={breakdown.error?.message ?? null}
+            type={breakdownType}
+            report={breakdown.data}
+          />
+        </Card>
+      </section>
+
+      <Card className="mt-6">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold text-white">Monthly trend</h2>
+            <p className="text-sm text-slate-500">Income and expense across a full year.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" onClick={() => setYear((y) => y - 1)}>
+              ←
+            </Button>
+            <span className="min-w-[4ch] text-center tabular-nums text-slate-200">{year}</span>
+            <Button variant="ghost" onClick={() => setYear((y) => y + 1)}>
+              →
+            </Button>
+          </div>
+        </div>
+
+        {monthly.loading && !monthly.data ? (
+          <Spinner label="Loading monthly report" />
+        ) : monthly.error ? (
+          <ErrorBanner>{monthly.error.message}</ErrorBanner>
+        ) : monthly.data ? (
+          <MonthlyBars report={monthly.data} currency={currency} />
+        ) : null}
+      </Card>
+    </main>
+  );
+}
+
+function SummaryCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: 'income' | 'expense' | 'balance';
+}) {
+  const colour =
+    tone === 'income' ? 'text-emerald-400' : tone === 'expense' ? 'text-rose-400' : 'text-white';
+  return (
+    <Card>
+      <p className="text-sm text-slate-500">{label}</p>
+      <p className={`mt-1 text-3xl font-semibold tabular-nums ${colour}`}>{value}</p>
+    </Card>
+  );
+}
+
+function DailyBars({ report, currency }: { report: DailyReport; currency: string }) {
+  const max = Math.max(
+    1,
+    ...report.points.map((point) => Math.max(Number(point.income), Number(point.expense))),
+  );
+  return (
+    <div
+      className="flex h-44 items-end gap-[3px]"
+      role="img"
+      aria-label="Daily income and expense chart"
+    >
+      {report.points.map((point) => (
+        <div key={point.date} className="group relative flex flex-1 flex-col justify-end gap-[2px]">
+          <div
+            className="w-full rounded-t-sm bg-emerald-500/80"
+            style={{ height: `${(Number(point.income) / max) * 100}%` }}
+          />
+          <div
+            className="w-full rounded-t-sm bg-rose-500/80"
+            style={{ height: `${(Number(point.expense) / max) * 100}%` }}
+          />
+          <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 whitespace-nowrap rounded-md border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-200 shadow-lg group-hover:block">
+            {point.date} · +{money(point.income, currency)} / −{money(point.expense, currency)}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MonthlyBars({ report, currency }: { report: MonthlyReport; currency: string }) {
+  const max = Math.max(
+    1,
+    ...report.points.map((point) => Math.max(Number(point.income), Number(point.expense))),
+  );
+  return (
+    <div
+      className="flex h-44 items-end gap-3"
+      role="img"
+      aria-label="Monthly income and expense chart"
+    >
+      {report.points.map((point) => (
+        <div
+          key={point.month}
+          className="group relative flex flex-1 flex-col items-center justify-end"
+        >
+          <div className="flex h-full w-full items-end gap-[2px]">
+            <div
+              className="w-1/2 rounded-t-sm bg-emerald-500/80"
+              style={{ height: `${(Number(point.income) / max) * 100}%` }}
+            />
+            <div
+              className="w-1/2 rounded-t-sm bg-rose-500/80"
+              style={{ height: `${(Number(point.expense) / max) * 100}%` }}
+            />
+          </div>
+          <span className="mt-2 text-[11px] text-slate-500">{formatMonthLabel(point.month)}</span>
+          <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 whitespace-nowrap rounded-md border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-200 shadow-lg group-hover:block">
+            {point.month} · +{money(point.income, currency)} / −{money(point.expense, currency)}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function BreakdownList({
+  loading,
+  error,
+  type,
+  report,
+}: {
+  loading: boolean;
+  error: string | null;
+  type: 'EXPENSE' | 'INCOME';
+  report: CategoryReport | null;
+}) {
+  if (loading && !report) return <Spinner label="Loading breakdown" />;
+  if (error) return <ErrorBanner>{error}</ErrorBanner>;
+  if (!report) return null;
+  if (report.points.length === 0) {
+    return <p className="text-sm text-slate-500">No {type.toLowerCase()} in this period.</p>;
+  }
+
+  return (
+    <ul className="space-y-3">
+      {report.points.map((point) => {
+        const share = Math.max(1.5, Number(point.percentage));
+        return (
+          <li key={point.categoryId}>
+            <div className="flex items-baseline justify-between gap-3 text-sm">
+              <span className="truncate text-slate-200">{point.categoryName}</span>
+              <span className="tabular-nums text-slate-400">
+                {money(point.total, report.currency)} · {formatPercent(point.percentage)}
+              </span>
+            </div>
+            <div
+              className="mt-1 h-2 overflow-hidden rounded-full bg-slate-800"
+              role="img"
+              aria-label={`${point.categoryName}: ${formatPercent(point.percentage)}`}
+            >
+              <div
+                className="h-full rounded-full bg-slate-500 transition-all"
+                style={{ width: `${share}%`, backgroundColor: point.color ?? undefined }}
+              />
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}

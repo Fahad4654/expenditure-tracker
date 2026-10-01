@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../auth/auth-context';
 import { API_BASE_URL } from '../lib/api';
+import { ROUTES } from '../routes';
 
 interface HealthPayload {
   status: string;
@@ -44,6 +47,8 @@ async function fetchApiHealth(): Promise<HealthState> {
 }
 
 export default function HomePage() {
+  const { status } = useAuth();
+  const signedIn = status === 'authenticated';
   const [health, setHealth] = useState<HealthState>({ phase: 'loading' });
 
   useEffect(() => {
@@ -89,9 +94,29 @@ export default function HomePage() {
           >
             API documentation
           </a>
-          <span className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-400">
-            Auth, dashboard and transactions arrive in Phase 2–3
-          </span>
+          {signedIn ? (
+            <Link
+              to={ROUTES.dashboard}
+              className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 transition hover:bg-slate-800"
+            >
+              Open dashboard
+            </Link>
+          ) : (
+            <>
+              <Link
+                to={ROUTES.login}
+                className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 transition hover:bg-slate-800"
+              >
+                Sign in
+              </Link>
+              <Link
+                to={ROUTES.register}
+                className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 transition hover:bg-slate-800"
+              >
+                Create account
+              </Link>
+            </>
+          )}
         </div>
       </header>
 

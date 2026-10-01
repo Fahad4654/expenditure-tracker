@@ -139,7 +139,7 @@ npm test --workspace @exp/types           # money math
 cd apps/mobile && flutter test            # mobile
 ```
 
-Current coverage — 87 tests, all DB-free (`PrismaService` is mocked, so the
+Current coverage — 112 tests, all DB-free (`PrismaService` is mocked, so the
 suite runs without infrastructure or secrets):
 
 - `apps/api/test/health.spec.ts` — success/error envelopes, readiness failure
@@ -156,6 +156,17 @@ suite runs without infrastructure or secrets):
   tombstone deletes, listing bounds.
 - `apps/web/src/lib/api.test.ts` — envelope unwrapping, `ApiError` mapping,
   bearer-token handling (jsdom, `fetch` stubbed).
+- `apps/web/src/lib/api.csrf.test.ts` — CSRF double-submit header, query
+  serialization, silent-refresh replay, the one-replay cap and the auth-path
+  retry exclusions.
+- `apps/web/src/lib/useAsync.test.ts` — loading/success/error transitions,
+  dep-key re-fetching with stale data retained, `reload()` and optimistic
+  `setData()`.
+- `apps/web/src/auth/auth.test.tsx` — silent refresh on mount, login/logout
+  state transitions, route guards and the `state.from` redirect payload.
+- `apps/web/src/pages/LoginPage.test.tsx` — client-side validation short-circuits
+  the network call, rejected credentials surface the server message, and a
+  successful sign-in reaches its destination.
 - `apps/web/src/routes.test.ts` — route manifest shape and id encoding.
 - `packages/types/test/money.spec.ts` — decimal↔minor-unit round trips,
   exactness beyond `Number.MAX_SAFE_INTEGER`, formatting.
@@ -179,7 +190,7 @@ if present, but nothing depends on it.
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ----------- |
 | **1 — Architecture**         | Monorepo, TypeScript, NestJS, React/Vite, Flutter, Docker, PostgreSQL, Prisma, initial schema & docs                                 | ✅ **Done** |
 | **2 — Database + Backend**   | Prisma schema refinements, migrations, User/Category/Transaction, auth foundation, authorization, transaction & category CRUD, tests | ✅ **Done** |
-| **3 — Web application**      | Auth UI, dashboard, transactions, categories, reports, profile/settings                                                              | ⬜          |
+| **3 — Web application**      | Auth UI, dashboard, transactions, categories, reports, profile/settings                                                              | ✅ **Done** |
 | **4 — Mobile application**   | Flutter architecture, auth, SQLite, transactions, dashboard, reports, categories (online-first)                                      | ⬜          |
 | **5 — Offline-first**        | Local persistence, sync queue, connectivity, `/sync`, retry, idempotency, conflicts, sync status UI                                  | ⬜          |
 | **6 — Production hardening** | Rate limits, headers, logging, monitoring, indexes, perf, backups, prod Docker/Nginx, CI/CD                                          | ⬜          |
@@ -225,6 +236,28 @@ if present, but nothing depends on it.
   failures carry `details[].path` as `body.<field>` / `params.<field>` /
   `query.<field>`.
 - **Tests:** 65 new API tests (87 total across the monorepo), all DB-free.
+- `typecheck` · `lint` · `test` · `build` · `prettier --check` all green.
+
+---
+
+### Delivered in Phase 3
+
+- **Session:** `AuthProvider` performs a silent refresh on first paint, owns
+  `login`/`register`/`logout`/`setUser`, and registers the `apiFetch` 401
+  handler so an expired access token is refreshed once and replayed.
+- **Guards:** `ProtectedRoute` (spinner while the refresh settles, then a
+  redirect carrying `state.from`) and `GuestOnlyRoute` for the auth screens.
+- **Forms:** shared `TransactionForm` validates with the same Zod schema the API
+  applies; server `details[].path` values are mapped back onto the fields.
+- **Pages:** dashboard (today/month summary, recent activity, top categories),
+  transaction list with debounced search/type/category/period filters and
+  pagination, create/detail/edit/delete, categories (create, rename, delete),
+  reports (summary, daily/monthly charts, category breakdown), and settings
+  (name, timezone, default currency).
+- **Deferred honestly:** `/forgot-password`, `/verify-email` and
+  `/verify-phone` render an explanation instead of a 404 — the backing routes
+  exist in the manifest but no mail or SMS provider is wired up.
+- **Tests:** 25 new web tests (112 total across the monorepo).
 - `typecheck` · `lint` · `test` · `build` · `prettier --check` all green.
 
 ## Troubleshooting

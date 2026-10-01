@@ -28,7 +28,9 @@ online and directly when online-only features are needed.
 
 ### Request lifecycle (web)
 
-1. `lib/api.ts` attaches the bearer access token and calls the API.
+1. `lib/api.ts` attaches the bearer access token, echoes the readable CSRF
+   cookie on mutating requests, and on a 401 refreshes the session once before
+   replaying the call.
 2. Nginx applies per-IP/per-route rate limits and security headers.
 3. Nest global middleware: Helmet → body-size limit → CORS allow-list.
 4. Route-level Zod/class-validator DTO validation.
@@ -206,11 +208,12 @@ These are deliberate departures (or clarifications) worth reviewing:
 ## 7. Planned module map (Phases 2–5)
 
 ```text
-auth/         register, login, refresh rotation, OTP, Google OAuth, logout
-users/        profile read/update, timezone & currency preferences
-transactions/ CRUD + search + filter + dashboard summary
-categories/   system + user categories
-reports/      summary, daily, monthly, category breakdown
-sync/         POST /sync, GET /sync/changes
-health/       liveness + readiness                ✅ Phase 1
+auth/         register, login, refresh rotation, logout      ✅ Phase 2
+users/        profile read/update, timezone & currency        ✅ Phase 2
+transactions/ CRUD + search + filter + pagination             ✅ Phase 2
+categories/   system + user categories                        ✅ Phase 2
+reports/      summary, daily, monthly, category breakdown     ✅ Phase 2
+health/       liveness + readiness                            ✅ Phase 1
+sync/         POST /sync, GET /sync/changes                   Phase 5
+otp, Google OAuth, password reset                             Phase 6
 ```
