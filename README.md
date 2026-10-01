@@ -136,7 +136,6 @@ flutter run --dart-define=API_BASE_URL=http://192.168.1.20:4000
 - Short-lived access JWTs + rotating refresh tokens in HTTP-only cookies,
   with token-family revocation
 - CORS allow-list, Helmet security headers, request body size limits
-- Per-IP and per-endpoint rate limiting (`@nestjs/throttler` inside the API)
 - Login and OTP brute-force lockouts; OTPs are hashed, expiring and attempt-limited
 - Zod/class-validator DTO validation on every external input
 - Every query is scoped to `transaction.userId === authenticatedUser.id`

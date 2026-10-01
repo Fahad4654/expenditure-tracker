@@ -183,7 +183,7 @@ if present, but nothing depends on it.
 | **3 — Web application**      | Auth UI, dashboard, transactions, categories, reports, profile/settings                                                              | ✅ **Done** |
 | **4 — Mobile application**   | Flutter architecture, auth, SQLite, transactions, dashboard, reports, categories (online-first)                                      | ⬜          |
 | **5 — Offline-first**        | Local persistence, sync queue, connectivity, `/sync`, retry, idempotency, conflicts, sync status UI                                  | ⬜          |
-| **6 — Production hardening** | Structured logging, monitoring, indexes, perf, backups, production deployment, CI/CD                                                 | ⬜          |
+| **6 — Production hardening** | Rate limits, headers, logging, monitoring, indexes, perf, backups, production deployment, CI/CD                                      | ⬜          |
 
 ### Delivered in Phase 1
 

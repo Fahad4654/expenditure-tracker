@@ -6,8 +6,8 @@
 ┌───────────────────────┐          ┌───────────────────────────┐
 │  React + Vite (web)   │  HTTPS   │      NestJS (API)         │
 │  static bundle        │─────────▶│  REST · OpenAPI · JWT     │
-└───────────────────────┘  /api/*  │  Helmet · rate limits     │
-┌───────────────────────┐          │  per-IP rate limits       │
+└───────────────────────┘  /api/*  │  Helmet security headers  │
+┌───────────────────────┐          │                           │
 │  Flutter mobile app   │─────────▶│                           │
 │  SQLite (offline)     │          │                           │
 │  sync queue           │          │                           │
@@ -30,13 +30,11 @@ online and directly when online-only features are needed.
    cookie on mutating requests, and on a 401 refreshes the session once before
    replaying the call.
 2. Nest global middleware: Helmet → body-size limit → CORS allow-list.
-3. Global `ThrottlerGuard` applies the per-IP, per-route quota (429
-   `RATE_LIMITED` when exceeded).
-4. Route-level Zod/class-validator DTO validation.
-5. Guard resolves the authenticated user (`JwtAuthGuard`, with `@Public()`
+3. Route-level Zod/class-validator DTO validation.
+4. Guard resolves the authenticated user (`JwtAuthGuard`, with `@Public()`
    opting health and auth routes out).
-6. Service contains the business logic; repositories/Prisma stay in the data layer.
-7. `TransformInterceptor` wraps success as `{ ok: true, data }`;
+5. Service contains the business logic; repositories/Prisma stay in the data layer.
+6. `TransformInterceptor` wraps success as `{ ok: true, data }`;
    `HttpExceptionFilter` wraps failures as `{ ok: false, error }`.
 
 ### Request lifecycle (mobile, offline)
@@ -179,8 +177,8 @@ These are deliberate departures (or clarifications) worth reviewing:
    every request while keeping CSRF out of the way of `GET`s.
 
 8. **Redis is optional and not yet wired.** It becomes load-bearing in
-   Phase 6 (OTP storage, refresh-token denylist). Rate limiting runs
-   in-process via `@nestjs/throttler`, so nothing depends on Redis today.
+   Phase 6 (rate limiting, OTP storage, refresh-token denylist). Adding a
+   client in Phase 1 would be speculative code.
 
 9. **No GraphQL.** The brief specifies REST + OpenAPI; offline sync is a
    batch-REST problem, and REST keeps the mobile client trivial.
@@ -200,7 +198,6 @@ These are deliberate departures (or clarifications) worth reviewing:
 | UUID PKs                  | Required for offline-first sync; no ID negotiation round-trip                        |
 | Soft delete (`deletedAt`) | Sync needs tombstones; "deletes must not accidentally disappear"                     |
 | Monolith API (modular)    | One deployable, clear module boundaries; can be split later if needed                |
-| Throttler inside the API  | Per-IP rate limits without requiring a reverse proxy                                 |
 
 ---
 

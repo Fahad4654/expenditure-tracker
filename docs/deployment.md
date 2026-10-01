@@ -35,9 +35,8 @@ npm run db:seed                     # first release only (idempotent)
 node apps/api/dist/main.js
 ```
 
-In production the API sets `trust proxy` so rate limiting and login-lockout
-auditing key on the client IP forwarded by the reverse proxy. Put it behind
-that proxy (it terminates TLS and forwards to `127.0.0.1:4000`).
+Put the API behind the reverse proxy (it terminates TLS and forwards to
+`127.0.0.1:4000`).
 
 `systemd` unit (`/etc/systemd/system/expenditure-api.service`):
 
@@ -142,9 +141,7 @@ postgresql  127.0.0.1:5432     redis  127.0.0.1:6379 (optional, Phase 6)
 `JWT_REFRESH_TTL` (`30d`), `JWT_ISSUER`, `JWT_AUDIENCE`, `COOKIE_DOMAIN`,
 `DEFAULT_CURRENCY` (`BDT`), `DEFAULT_TIMEZONE` (`Asia/Dhaka`),
 `MAX_REQUEST_BODY_SIZE` (`100kb`), `LOG_LEVEL`, `OTP_*`,
-`RATE_LIMIT_TTL_SECONDS` (`60`), `RATE_LIMIT_MAX` (`100`),
-`AUTH_RATE_LIMIT_MAX` (`10`), `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
-`GOOGLE_CALLBACK_URL`.
+`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALLBACK_URL`.
 
 Configuration is validated with Zod at boot — the process refuses to start with
 an invalid or missing required value, and the message names the variable.
@@ -175,22 +172,6 @@ ssl_protocols       TLSv1.2 TLSv1.3;
 
 Then set `COOKIE_SECURE=true` so refresh cookies are never sent over plain
 HTTP. Add a port-80 → 443 redirect and HSTS once HTTPS is confirmed working.
-
----
-
-## Rate limiting
-
-Enforced inside the API by `@nestjs/throttler` — no edge proxy required:
-
-| Quota                 | Rate                         | Applies to           |
-| --------------------- | ---------------------------- | -------------------- |
-| `RATE_LIMIT_MAX`      | 100 req/min per IP per route | every route          |
-| `AUTH_RATE_LIMIT_MAX` | 10 req/min per IP per route  | credential endpoints |
-
-The counter is **in-memory and per process**: correct for a single API
-instance. Before scaling to multiple replicas, move the throttler storage to a
-shared backend (Redis) or a shared-limit proxy, otherwise each instance
-enforces its own quota.
 
 ---
 
@@ -269,8 +250,7 @@ pg_restore --clean --if-exists --dbname="$RESTORE_URL" backup-$(date +%F).dump
 ## Scaling notes
 
 - API and web are stateless → the API can be replicated behind the reverse
-  proxy (`upstream { server 127.0.0.1:4001; server 127.0.0.1:4002; }`) once
-  rate-limit counters live in a shared store.
+  proxy (`upstream { server 127.0.0.1:4001; server 127.0.0.1:4002; }`).
 - Redis holds OTPs and refresh-token denylists once those features land —
   these must be shared, not per-instance.
 - PostgreSQL: connection pool sized for replicas × pool size; add read replicas

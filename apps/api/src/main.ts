@@ -35,22 +35,12 @@ async function bootstrap(): Promise<void> {
   app.setGlobalPrefix(API_PREFIX);
   app.enableShutdownHooks();
 
-  if (config.get<string>('env') === 'production') {
-    app.getHttpAdapter().getInstance().set('trust proxy', 1);
-  }
-
   const corsOrigins = config.get<string[]>('app.corsOrigins') ?? [];
   app.enableCors({
     origin: corsOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
-    exposedHeaders: [
-      'X-RateLimit-Limit',
-      'X-RateLimit-Remaining',
-      'X-RateLimit-Reset',
-      'Retry-After',
-    ],
     maxAge: 600,
   });
 

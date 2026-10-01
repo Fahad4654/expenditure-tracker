@@ -196,15 +196,7 @@ See [synchronization.md](synchronization.md) for the full protocol.
 
 ---
 
-## Rate limiting (application)
+## Rate limiting
 
-| Quota                 | Rate                         | Applies to                                          |
-| --------------------- | ---------------------------- | --------------------------------------------------- |
-| `RATE_LIMIT_MAX`      | 100 req/min per IP per route | every route                                         |
-| `AUTH_RATE_LIMIT_MAX` | 10 req/min per IP per route  | `POST /auth/login`, `register`, `refresh`, `logout` |
-
-Enforced in-process by `@nestjs/throttler` (a global `ThrottlerGuard`), so no
-proxy is required. A throttled request returns `429` with the standard envelope
-(`code: RATE_LIMITED`) plus `Retry-After` and `X-RateLimit-*` headers. The
-window is `RATE_LIMIT_TTL_SECONDS` (default 60). Behind a reverse proxy the API
-sets `trust proxy` in production so quotas key on the client IP, not the proxy.
+Not implemented — there is currently no per-IP or per-endpoint quota. Planned
+for Phase 6 (`RATE_LIMITED` stays in the error catalogue for when it lands).

@@ -72,13 +72,12 @@ POST /auth/verify-otp { "phone": "+8801712345678", "code": "493820" }
 
 ### Verification rules
 
-| Control                       | Default | Behaviour                                 |
-| ----------------------------- | ------- | ----------------------------------------- |
-| Expiry                        | 300 s   | `OTP_EXPIRED`                             |
-| Max attempts per code         | 5       | `OTP_TOO_MANY_ATTEMPTS`; code invalidated |
-| Resend cooldown               | 60 s    | `RATE_LIMITED`                            |
-| Requests per phone per hour   | 5       | `RATE_LIMITED`                            |
-| Requests per IP (auth routes) | 10/min  | `RATE_LIMITED`                            |
+| Control                     | Default | Behaviour                                 |
+| --------------------------- | ------- | ----------------------------------------- |
+| Expiry                      | 300 s   | `OTP_EXPIRED`                             |
+| Max attempts per code       | 5       | `OTP_TOO_MANY_ATTEMPTS`; code invalidated |
+| Resend cooldown             | 60 s    | `RATE_LIMITED`                            |
+| Requests per phone per hour | 5       | `RATE_LIMITED`                            |
 
 Each failed verification increments `attempts`; at `maxAttempts` the row is
 marked consumed. Successful verification sets `consumedAt` (single-use) and, for
@@ -214,8 +213,7 @@ idempotent: a missing or already-revoked token still succeeds.
 - [x] CORS allow-list (`CORS_ORIGINS`), credentials enabled, no `*`
 - [x] Helmet security headers
 - [x] Request body size limit (`MAX_REQUEST_BODY_SIZE`)
-- [x] Per-IP rate limits (`@nestjs/throttler`): 100/min per route,
-      10/min on credential endpoints
+- [ ] Per-IP rate limits — not implemented yet (Phase 6)
 - [x] Login lockout after repeated failures
 - [ ] OTP expiry, attempt cap, resend cooldown, per-hour quota (blocked on an
       SMS provider)
