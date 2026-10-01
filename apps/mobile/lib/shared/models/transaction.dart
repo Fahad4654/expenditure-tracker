@@ -29,10 +29,15 @@ class Transaction {
     required this.createdAt,
     required this.updatedAt,
     required this.deletedAt,
+    this.syncStatus = 'SYNCED',
   });
 
   final String id;
   final String clientId;
+
+  /// Local-only sync state: `SYNCED`, `PENDING` or `FAILED`. Never sent over
+  /// the wire — defaults to `SYNCED` for rows decoded from the API.
+  final String syncStatus;
   final String? deviceId;
   final String userId;
   final TransactionType type;
@@ -69,6 +74,7 @@ class Transaction {
       createdAt: map['createdAt']! as String,
       updatedAt: map['updatedAt']! as String,
       deletedAt: map['deletedAt'] as String?,
+      syncStatus: map['syncStatus'] as String? ?? 'SYNCED',
     );
   }
 }

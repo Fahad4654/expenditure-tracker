@@ -25,9 +25,14 @@ class Category {
     required this.suggestedType,
     required this.createdAt,
     required this.updatedAt,
+    this.version = 1,
+    this.syncStatus = 'SYNCED',
   });
 
   final String id;
+
+  /// Local-only sync state: `SYNCED`, `PENDING` or `FAILED`.
+  final String syncStatus;
 
   /// `null` for system categories visible to every user.
   final String? userId;
@@ -44,6 +49,10 @@ class Category {
   final IsoDateTime createdAt;
   final IsoDateTime updatedAt;
 
+  /// Server version observed by this client — the `baseVersion` of the next
+  /// queued update. `1` for rows created locally before the first push.
+  final int version;
+
   factory Category.fromJson(Object? json) {
     final map = json! as Map<String, dynamic>;
     return Category(
@@ -57,6 +66,8 @@ class Category {
       suggestedType: TransactionType.parse(map['suggestedType']! as String),
       createdAt: map['createdAt']! as String,
       updatedAt: map['updatedAt']! as String,
+      version: (map['version'] as num?)?.toInt() ?? 1,
+      syncStatus: map['syncStatus'] as String? ?? 'SYNCED',
     );
   }
 }

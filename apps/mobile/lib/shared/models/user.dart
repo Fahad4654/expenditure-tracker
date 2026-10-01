@@ -79,6 +79,22 @@ class UserProfile {
         createdAt: createdAt,
         updatedAt: updatedAt,
       );
+
+  /// Inverse of [fromJson] — used to persist the profile for offline reads.
+  Map<String, Object?> toJson() => {
+        'id': id,
+        'name': name,
+        'email': email,
+        'phone': phone,
+        'avatarUrl': avatarUrl,
+        'emailVerified': emailVerified,
+        'phoneVerified': phoneVerified,
+        'providers': providers.map((p) => p.wire).toList(),
+        'defaultCurrency': defaultCurrency,
+        'timezone': timezone,
+        'createdAt': createdAt,
+        'updatedAt': updatedAt,
+      };
 }
 
 /// Payload of `POST /auth/{register,login,refresh}`.
