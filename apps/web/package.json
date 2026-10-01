@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --host --port ${WEB_PORT:-3000}",
+    "dev": "vite --host",
     "build": "NODE_ENV=production vite build",
-    "preview": "vite preview --host --port ${WEB_PORT:-4173}",
+    "preview": "vite preview --host",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "test": "vitest run",

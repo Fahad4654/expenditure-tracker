@@ -18,7 +18,7 @@ static bundle. PostgreSQL 16 runs as a normal service; Redis is optional.
 ```bash
 git clone <repo> /opt/expenditure-tracker && cd /opt/expenditure-tracker
 npm ci
-cp .env.example .env                # then fill in the values below
+cp apps/api/.env.example apps/api/.env    # then fill in the values below
 npm run build                       # packages → Prisma client → API → web
 npm run db:deploy                   # apply migrations
 npm run db:seed                     # first release only (idempotent)
@@ -63,9 +63,10 @@ systemctl daemon-reload
 systemctl enable --now expenditure-api
 ```
 
-The app loads `/opt/expenditure-tracker/.env` itself (repo-root `.env`,
-existing environment always wins), so secrets can also be injected from the
-unit file or a `EnvironmentFile=`. **Never commit `.env`.**
+The app loads `/opt/expenditure-tracker/apps/api/.env` itself (existing
+environment always wins), so secrets can also be injected from the unit file
+or a `EnvironmentFile=`. The web client is static — its `VITE_API_URL` is
+inlined at build time. **Never commit `.env`.**
 
 ---
 
@@ -146,7 +147,8 @@ postgresql  127.0.0.1:5432     redis  127.0.0.1:6379 (optional, Phase 6)
 Configuration is validated with Zod at boot — the process refuses to start with
 an invalid or missing required value, and the message names the variable.
 
-**Never commit `.env`.** Only `.env.example` is tracked.
+**Never commit `.env`.** Only `apps/api/.env.example` and
+`apps/web/.env.example` are tracked.
 
 ### Google OAuth in production
 
@@ -201,8 +203,9 @@ verify:
   - npm run lint
   - npm test
   - flutter analyze && flutter test
-  - npx prisma migrate diff --from-schema-drag --to-migrations apps/api/prisma
-      # fails if someone edited the schema without creating a migration
+  # needs DATABASE_URL; fails if someone edited the schema without a migration
+  - cd apps/api && npx prisma migrate diff
+      --from-schema-drag --to-migrations prisma/migrations
 
 build:
   - VITE_API_URL=$PUBLIC_API_URL npm run build

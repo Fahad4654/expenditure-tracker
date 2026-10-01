@@ -10,9 +10,9 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
-import { loadRepoEnv } from './config/load-env';
+import { loadApiEnv } from './config/load-env';
 
-loadRepoEnv();
+loadApiEnv();
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bodyParser: false });

@@ -17,8 +17,8 @@
 ```bash
 npm install
 
-cp .env.example .env
-#   → set DATABASE_URL, JWT_ACCESS_SECRET, JWT_REFRESH_SECRET
+cp apps/api/.env.example apps/api/.env   # → set DATABASE_URL, JWT_ACCESS_SECRET, JWT_REFRESH_SECRET
+cp apps/web/.env.example apps/web/.env   # → API base URL + dev port seen by the browser
 
 npm run db:generate     # Prisma client
 npm run db:migrate      # create/apply migrations
@@ -102,20 +102,23 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:4000
 
 ### Environment variables
 
-One `.env` at the repo root. Loaded deterministically:
+Two env files, one per app — neither is ever committed:
 
-1. Variables already in `process.env` (shell/CI) always win.
-2. `apps/api/.env` (optional workspace overrides).
-3. Repo-root `.env`.
+| File            | Loaded by                              | Contents                                              |
+| --------------- | -------------------------------------- | ----------------------------------------------------- |
+| `apps/api/.env` | `loadApiEnv()` in `config/load-env.ts` | API config, `DATABASE_URL`, JWT secrets, OTP settings |
+| `apps/web/.env` | Vite (default `envDir`)                | `VITE_API_URL`, `WEB_PORT` — never anything secret    |
 
+For the API, variables already in `process.env` (shell/CI) always win;
 `process.loadEnvFile` never overwrites existing keys, so secrets injected
-through the environment are safe. Vite reads the same file through `envDir` in
-`apps/web/vite.config.ts`, so `VITE_*` keys are inlined into the client bundle —
-`VITE_API_URL` is the only one, and it must never hold a secret.
+through the environment are safe. The path is resolved relative to the config
+module, so the file is found no matter which directory the process starts
+from.
 
-Gotcha: the root `.env` sets `NODE_ENV=development` for the API, and Vite loads
-`NODE_ENV` regardless of the `VITE_` prefix. The web `build` script therefore
-pins `NODE_ENV=production` so a local build ships React's production build.
+Only `VITE_*` keys are inlined into the client bundle — `VITE_API_URL` is the
+only one, and it must never hold a secret. `WEB_PORT` sets the dev/preview
+port. The web `build` script pins `NODE_ENV=production` so a local build always
+ships React's production build.
 
 ---
 
@@ -169,7 +172,7 @@ totals.
 Remaining test debt: sync idempotency and conflict tests (Phase 5), rate
 limiter tests (Phase 6), and Flutter/widget tests for the mobile app.
 
-**Tests must not require secrets.** `vitest.config.mts` loads the root `.env`
+**Tests must not require secrets.** `vitest.config.mts` loads `apps/api/.env`
 if present, but nothing depends on it.
 
 ---
@@ -251,11 +254,11 @@ if present, but nothing depends on it.
 
 | Symptom                                                                   | Fix                                                                                |
 | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `Missing required environment variable "DATABASE_URL"`                    | `cp .env.example .env`                                                             |
-| Prisma `P1012` schema validation error                                    | `npx prisma validate --schema apps/api/prisma/schema.prisma`                       |
+| `Missing required environment variable "DATABASE_URL"`                    | `cp apps/api/.env.example apps/api/.env`                                           |
+| Prisma `P1012` schema validation error                                    | `npm run db:validate`                                                              |
 | Migration `P3018` (type mismatch)                                         | Fix the schema, delete `apps/api/prisma/migrations/*`, re-run `npm run db:migrate` |
-| "applied to the database but missing from the local migrations directory" | `npx prisma migrate reset --force --schema apps/api/prisma/schema.prisma`          |
+| "applied to the database but missing from the local migrations directory" | `npm run db:reset`                                                                 |
 | Web cannot reach the API                                                  | Check `VITE_API_URL` and `CORS_ORIGINS`                                            |
 | `@exp/*` import fails                                                     | `npm run build:packages` (`npm run dev` runs it for you)                           |
-| Port already in use                                                       | `API_PORT` / `WEB_PORT` in `.env`                                                  |
+| Port already in use                                                       | `API_PORT` in `apps/api/.env`, `WEB_PORT` in `apps/web/.env`                       |
 | Mobile sees connection refused on Android                                 | Use `http://10.0.2.2:4000`, not `localhost`                                        |

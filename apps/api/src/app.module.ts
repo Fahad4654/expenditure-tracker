@@ -16,7 +16,7 @@ import { ReportsModule } from './reports/reports.module';
       isGlobal: true,
       load: [configuration],
       validate: validateEnv,
-      // `loadRepoEnv()` (called from `main.ts`) is the single loader; reading
+      // `loadApiEnv()` (called from `main.ts`) is the single loader; reading
       // files twice would risk inconsistent precedence between shell/CI and
       // file-provided values.
       ignoreEnvFile: true,

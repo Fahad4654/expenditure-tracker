@@ -1,8 +1,8 @@
 import { DEFAULT_SYSTEM_CATEGORIES } from '@exp/types';
 import { PrismaClient } from '@prisma/client';
-import { loadRepoEnv } from '../src/config/load-env';
+import { loadApiEnv } from '../src/config/load-env';
 
-loadRepoEnv();
+loadApiEnv();
 
 /**
  * Idempotent seed: creates the shared system categories exactly once.

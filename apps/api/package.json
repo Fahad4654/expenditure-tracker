@@ -13,6 +13,13 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "db:validate": "prisma validate",
+    "db:reset": "prisma migrate reset --force",
     "db:seed": "tsx prisma/seed.ts"
   },
   "prisma": {

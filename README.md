@@ -37,7 +37,6 @@ expenditure-tracker/
 │   ├── validation/   Shared Zod schemas (identical rules on web + API)
 │   └── config/       Shared route map, sync tuning, env helpers
 ├── docs/             architecture, database, API, auth, sync, dev, deploy
-├── .env.example
 └── README.md
 ```
 
@@ -61,12 +60,13 @@ expenditure-tracker/
 # 1. Install
 npm install
 
-# 2. Configure
-cp .env.example .env          # then edit DATABASE_URL and JWT secrets
+# 2. Configure — one .env per app
+cp apps/api/.env.example apps/api/.env   # then edit DATABASE_URL and JWT secrets
+cp apps/web/.env.example apps/web/.env   # API base URL seen by the browser
 
 # 3. Database: generate client, create tables, seed system categories
 npm run db:generate
-npm run db:migrate            # first time: `npx prisma migrate dev --name init`
+npm run db:migrate            # prompts for a name when the schema changed
 npm run db:seed
 
 # 4. Run API (:4000) + Web (:3000) together
