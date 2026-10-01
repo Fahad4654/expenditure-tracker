@@ -100,6 +100,8 @@ Every command runs **from inside its app directory**:
 | --------------------------------- | ------- |
 | `flutter run`                     | Run     |
 | `flutter analyze && flutter test` | Checks |
+| `LIVE_API=1 flutter test test/live_api_smoke_test.dart` | Live API smoke (API on :4000) |
+| `JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 flutter build apk --debug` | Build APK (JDK 17+) |
 
 ---
 
@@ -166,7 +168,7 @@ cd apps/web && npm test                   # web client (47 tests)
 cd apps/mobile && flutter test            # mobile
 ```
 
-Current coverage — 122 tests, all DB-free (`PrismaService` is mocked, so the
+Current coverage — 144 tests, all DB-free (`PrismaService` is mocked, so the
 suite runs without infrastructure or secrets):
 
 - `apps/api/test/health.spec.ts` — success/error envelopes, readiness failure
@@ -195,6 +197,17 @@ suite runs without infrastructure or secrets):
   the network call, rejected credentials surface the server message, and a
   successful sign-in reaches its destination.
 - `apps/web/src/routes.test.ts` — route manifest shape and id encoding.
+- `apps/mobile/test/formatters_test.dart` — money parsing, minor-unit exactness
+  beyond 2^53, date/list formatters.
+- `apps/mobile/test/auth_flow_test.dart` + `widget_test.dart` — boot routing
+  (signed-in vs. login), login/register validation, invalid credentials
+  surfacing, tab navigation.
+- `apps/mobile/test/transactions_test.dart` + `dashboard_test.dart` — add-form
+  validation, idempotent `clientId` create, list/detail/edit flows, dashboard
+  summaries.
+- `apps/mobile/test/live_api_smoke_test.dart` — opt-in (`LIVE_API=1`) round
+  trip through the real API: register → categories → create → idempotent
+  replay → reports → delete → logout → revoked refresh rejection.
 - `apps/api/src/shared/types/money.spec.ts` + the web copy (`money.test.ts`)
   — decimal↔minor-unit round trips,
   exactness beyond `Number.MAX_SAFE_INTEGER`, formatting.
@@ -204,8 +217,8 @@ same routes against a live PostgreSQL — 55 checks covering envelopes, cookie
 flags, CSRF, rotation/reuse, cross-user 404s, idempotent creates and report
 totals.
 
-Remaining test debt: sync idempotency and conflict tests (Phase 5), rate
-limiter tests (Phase 6), and Flutter/widget tests for the mobile app.
+Remaining test debt: sync idempotency and conflict tests (Phase 5) and rate
+limiter tests (Phase 6).
 
 **Tests must not require secrets.** `vitest.config.mts` loads `apps/api/.env`
 if present, but nothing depends on it.
@@ -219,7 +232,7 @@ if present, but nothing depends on it.
 | **1 — Architecture**         | Monorepo, TypeScript, NestJS, React/Vite, Flutter, PostgreSQL, Prisma, initial schema & docs                                         | ✅ **Done** |
 | **2 — Database + Backend**   | Prisma schema refinements, migrations, User/Category/Transaction, auth foundation, authorization, transaction & category CRUD, tests | ✅ **Done** |
 | **3 — Web application**      | Auth UI, dashboard, transactions, categories, reports, profile/settings                                                              | ✅ **Done** |
-| **4 — Mobile application**   | Flutter architecture, auth, SQLite, transactions, dashboard, reports, categories (online-first)                                      | ⬜          |
+| **4 — Mobile application**   | Flutter architecture, auth, transactions, dashboard, reports, categories, profile (online-first)                                   | ✅ **Done** |
 | **5 — Offline-first**        | Local persistence, sync queue, connectivity, `/sync`, retry, idempotency, conflicts, sync status UI                                  | ⬜          |
 | **6 — Production hardening** | Rate limits, headers, logging, monitoring, indexes, perf, backups, production deployment, CI/CD                                      | ⬜          |
 
@@ -285,6 +298,36 @@ if present, but nothing depends on it.
   exist in the manifest but no mail or SMS provider is wired up.
 - **Tests:** 25 new web tests (112 total across the monorepo).
 - `typecheck` · `lint` · `test` · `build` · `prettier --check` all green.
+
+---
+
+### Delivered in Phase 4
+
+- **Network layer:** `HttpApiClient` unwraps the `{ok,data}` envelope, maps
+  error envelopes to `ApiError` (stable `code` + `details[]`), injects the
+  bearer token, and refreshes once on 401 with a single-flight lock and
+  request replay; `TokenStore` persists only the refresh token (secure
+  storage in production, in-memory backend in tests).
+- **Repositories:** `Auth`, `Transactions`, `Categories`, `Reports`, `Users`
+  mirroring the web client's contracts, including `clientId` idempotency and
+  `baseVersion` optimistic concurrency.
+- **Auth flow:** splash restores the session (refresh → shell) or lands on
+  login; login/register validate client-side and surface the server's
+  message; logout revokes and clears tokens.
+- **Shell:** bottom navigation with a central "Add" FAB, lazy tab creation,
+  and a shared `ValueNotifier` so a new transaction refreshes both the
+  dashboard and the list.
+- **Pages:** dashboard (today/month summaries, spending-by-category bars,
+  recent activity), transactions (search/type/category/preset filters,
+  add/edit/detail/delete with 409 conflict handling), categories
+  (create/edit/archive with system-category and in-use errors), reports
+  (summary, daily/monthly/category charts), profile (details, defaults,
+  change password, sign out).
+- **Platform:** `INTERNET` permission + cleartext for local dev on Android,
+  local-network allowance on iOS; builds on `minSdk 24`.
+- **Tests:** 22 mobile tests (144 total across the monorepo) plus an opt-in
+  live-API smoke test (`LIVE_API=1`).
+- `flutter analyze` · `flutter test` · `flutter build apk --debug` all green.
 
 ## Troubleshooting
 
