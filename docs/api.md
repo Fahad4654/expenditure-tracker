@@ -196,13 +196,15 @@ See [synchronization.md](synchronization.md) for the full protocol.
 
 ---
 
-## Rate limiting (edge + application)
+## Rate limiting (application)
 
-| Zone      | Rate                   | Applies to          |
-| --------- | ---------------------- | ------------------- |
-| `general` | 30 r/s per IP          | `/api/*`            |
-| `auth`    | 5 r/min per IP         | `/api/v1/auth/*`    |
-| `sync`    | 5 r/s per IP, burst 40 | `POST /api/v1/sync` |
+| Quota                 | Rate                         | Applies to                                          |
+| --------------------- | ---------------------------- | --------------------------------------------------- |
+| `RATE_LIMIT_MAX`      | 100 req/min per IP per route | every route                                         |
+| `AUTH_RATE_LIMIT_MAX` | 10 req/min per IP per route  | `POST /auth/login`, `register`, `refresh`, `logout` |
 
-Nginx enforces these at the edge; `@nestjs/throttler` adds a second,
-account-aware layer in Phase 6.
+Enforced in-process by `@nestjs/throttler` (a global `ThrottlerGuard`), so no
+proxy is required. A throttled request returns `429` with the standard envelope
+(`code: RATE_LIMITED`) plus `Retry-After` and `X-RateLimit-*` headers. The
+window is `RATE_LIMIT_TTL_SECONDS` (default 60). Behind a reverse proxy the API
+sets `trust proxy` in production so quotas key on the client IP, not the proxy.

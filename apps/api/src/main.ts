@@ -26,8 +26,6 @@ async function bootstrap(): Promise<void> {
 
   app.use(
     helmet({
-      // Content-Security-Policy is owned by the Nginx edge config so that
-      // Swagger UI and the web origin are not fought over twice.
       contentSecurityPolicy: false,
       crossOriginResourcePolicy: { policy: 'cross-origin' },
       crossOriginEmbedderPolicy: false,
@@ -37,13 +35,22 @@ async function bootstrap(): Promise<void> {
   app.setGlobalPrefix(API_PREFIX);
   app.enableShutdownHooks();
 
+  if (config.get<string>('env') === 'production') {
+    app.getHttpAdapter().getInstance().set('trust proxy', 1);
+  }
+
   const corsOrigins = config.get<string[]>('app.corsOrigins') ?? [];
   app.enableCors({
     origin: corsOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
-    exposedHeaders: ['X-RateLimit-Remaining', 'X-RateLimit-Reset'],
+    exposedHeaders: [
+      'X-RateLimit-Limit',
+      'X-RateLimit-Remaining',
+      'X-RateLimit-Reset',
+      'Retry-After',
+    ],
     maxAge: 600,
   });
 

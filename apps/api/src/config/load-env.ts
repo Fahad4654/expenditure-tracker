@@ -6,7 +6,7 @@ import { resolve } from 'node:path';
  * runs.
  *
  * Precedence (highest first):
- *   1. Variables already present in `process.env` (Docker/K8s/CI) — never
+ *   1. Variables already present in `process.env` (shell/CI) — never
  *      overwritten, because `process.loadEnvFile` skips existing keys.
  *   2. `apps/api/.env` (workspace-local overrides, optional).
  *   3. Repo-root `.env` (the single source of truth for local development).

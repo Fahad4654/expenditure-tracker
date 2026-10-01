@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Throttle } from '@nestjs/throttler';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { COOKIE_NAMES } from '@exp/config';
 import type { AuthSession, UserProfile } from '@exp/types';
@@ -29,6 +30,13 @@ import { AuthService, AuthResult } from './auth.service';
 import { clearAuthCookies, cookieDomainOrUndefined, setAuthCookies } from './cookies';
 import { ClientContext, ttlToSeconds } from './token.service';
 
+const authThrottle = {
+  default: {
+    limit: () => Number(process.env.AUTH_RATE_LIMIT_MAX ?? 10),
+    ttl: () => Number(process.env.RATE_LIMIT_TTL_SECONDS ?? 60) * 1000,
+  },
+} as const;
+
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
@@ -46,6 +54,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle(authThrottle)
   @Post('register')
   @ApiOperation({ summary: 'Create an account and start a session' })
   @ApiOkResponse({ description: 'Session issued' })
@@ -60,6 +69,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle(authThrottle)
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Sign in with email and password' })
@@ -76,6 +86,7 @@ export class AuthController {
 
   @Public()
   @UseGuards(CookieCsrfGuard)
+  @Throttle(authThrottle)
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -99,6 +110,7 @@ export class AuthController {
 
   @Public()
   @UseGuards(CookieCsrfGuard)
+  @Throttle(authThrottle)
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Revoke the refresh token family and clear cookies' })

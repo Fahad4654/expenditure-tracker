@@ -36,13 +36,7 @@ expenditure-tracker/
 │   ├── types/        Shared domain types, constants, money helpers
 │   ├── validation/   Shared Zod schemas (identical rules on web + API)
 │   └── config/       Shared route map, sync tuning, env helpers
-├── infrastructure/
-│   ├── docker/       dev + production Dockerfiles
-│   ├── nginx/        reverse proxy, rate limiting, security headers
-│   └── postgres/     database init scripts
 ├── docs/             architecture, database, API, auth, sync, dev, deploy
-├── docker-compose.yml          local development stack
-├── docker-compose.prod.yml     production stack (nginx + api + web + db + redis)
 ├── .env.example
 └── README.md
 ```
@@ -51,13 +45,13 @@ expenditure-tracker/
 
 ## Prerequisites
 
-| Tool       | Version                      |
-| ---------- | ---------------------------- |
-| Node.js    | ≥ 22.18 (24 recommended)     |
-| npm        | ≥ 11                         |
-| Docker     | with Compose v2              |
-| Flutter    | ≥ 3.44                       |
-| PostgreSQL | 16 (or use the Docker stack) |
+| Tool       | Version                  |
+| ---------- | ------------------------ |
+| Node.js    | ≥ 22.18 (24 recommended) |
+| npm        | ≥ 11                     |
+| PostgreSQL | 16 (local install)       |
+| Flutter    | ≥ 3.44                   |
+| Redis      | 7 (optional, Phase 6)    |
 
 ---
 
@@ -79,6 +73,9 @@ npm run db:seed
 npm run dev
 ```
 
+`npm run dev` also builds the shared packages and keeps rebuilding them in
+watch mode — there is no separate build step to remember.
+
 Verify:
 
 ```bash
@@ -88,33 +85,23 @@ open http://localhost:3000            # web app
 open http://localhost:4000/docs       # Swagger / OpenAPI
 ```
 
-### Using the Docker stack instead
-
-```bash
-docker compose up --build
-```
-
-This starts `postgres`, `redis`, `api` (watch) and `web` (watch). Point
-`DATABASE_URL` in your `.env` at the container if you want the host-run apps to
-use the same database.
-
 ---
 
 ## Useful commands
 
-| Command                          | What it does                                            |
-| -------------------------------- | ------------------------------------------------------- |
-| `npm run dev`                    | Build shared packages, then run API + Web in watch mode |
-| `npm run build`                  | Build packages → generate Prisma client → API → Web     |
-| `npm run typecheck`              | Strict TypeScript check across all workspaces           |
-| `npm run lint`                   | ESLint across all workspaces                            |
-| `npm test`                       | Vitest suites (API, web client, shared money math)      |
-| `npm run db:migrate`             | Create/apply a new Prisma migration (dev)               |
-| `npm run db:deploy`              | Apply pending migrations (CI/production)                |
-| `npm run db:seed`                | Idempotent system-category seed                         |
-| `npm run db:studio`              | Prisma Studio                                           |
-| `cd apps/mobile && flutter run`  | Run the mobile app                                      |
-| `cd apps/mobile && flutter test` | Mobile tests                                            |
+| Command                          | What it does                                        |
+| -------------------------------- | --------------------------------------------------- |
+| `npm run dev`                    | Build + watch shared packages, then run API + Web   |
+| `npm run build`                  | Build packages → generate Prisma client → API → Web |
+| `npm run typecheck`              | Strict TypeScript check across all workspaces       |
+| `npm run lint`                   | ESLint across all workspaces                        |
+| `npm test`                       | Vitest suites (API, web client, shared money math)  |
+| `npm run db:migrate`             | Create/apply a new Prisma migration (dev)           |
+| `npm run db:deploy`              | Apply pending migrations (CI/production)            |
+| `npm run db:seed`                | Idempotent system-category seed                     |
+| `npm run db:studio`              | Prisma Studio                                       |
+| `cd apps/mobile && flutter run`  | Run the mobile app                                  |
+| `cd apps/mobile && flutter test` | Mobile tests                                        |
 
 ### Mobile API base URL
 
@@ -139,7 +126,7 @@ flutter run --dart-define=API_BASE_URL=http://192.168.1.20:4000
 | [docs/authentication.md](docs/authentication.md)   | Email / OTP / Google flows, token lifecycle, security |
 | [docs/synchronization.md](docs/synchronization.md) | Offline-first protocol, conflict rules                |
 | [docs/development.md](docs/development.md)         | Local setup, conventions, phase plan                  |
-| [docs/deployment.md](docs/deployment.md)           | Docker, Nginx, env, backups, CI/CD                    |
+| [docs/deployment.md](docs/deployment.md)           | Build, systemd, env, backups, CI/CD                   |
 
 ---
 
@@ -149,7 +136,7 @@ flutter run --dart-define=API_BASE_URL=http://192.168.1.20:4000
 - Short-lived access JWTs + rotating refresh tokens in HTTP-only cookies,
   with token-family revocation
 - CORS allow-list, Helmet security headers, request body size limits
-- Per-IP and per-endpoint rate limiting (Nginx + `@nestjs/throttler`)
+- Per-IP and per-endpoint rate limiting (`@nestjs/throttler` inside the API)
 - Login and OTP brute-force lockouts; OTPs are hashed, expiring and attempt-limited
 - Zod/class-validator DTO validation on every external input
 - Every query is scoped to `transaction.userId === authenticatedUser.id`

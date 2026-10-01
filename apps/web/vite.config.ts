@@ -6,7 +6,7 @@ import { defineConfig } from 'vitest/config';
 // The monorepo keeps a single `.env` at the repo root. Vite only reads `.env`
 // files from `envDir`, so point it at the root. Only `VITE_*` keys are ever
 // exposed to the browser (`DATABASE_URL`, JWT secrets, … stay private), and
-// variables already present in `process.env` — Docker/CI — take precedence.
+// variables already present in `process.env` — CI — take precedence.
 //
 // Gotcha: the root `.env` sets `NODE_ENV=development` for the API, and Vite
 // treats `NODE_ENV` specially (it is loaded regardless of the `VITE_` prefix).

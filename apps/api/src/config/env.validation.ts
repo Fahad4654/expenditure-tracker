@@ -48,6 +48,11 @@ const envSchema = z.object({
   LOGIN_MAX_FAILED_ATTEMPTS: z.coerce.number().int().min(1).max(100).default(10),
   LOGIN_LOCKOUT_SECONDS: z.coerce.number().int().min(1).max(86400).default(900),
 
+  // --- Rate limiting (@nestjs/throttler, per IP) -----------------------------
+  RATE_LIMIT_TTL_SECONDS: z.coerce.number().int().min(1).max(3600).default(60),
+  RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(100),
+  AUTH_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(10),
+
   MAX_REQUEST_BODY_SIZE: z.string().min(1).default('100kb'),
   LOG_LEVEL: z.string().default('debug'),
 });

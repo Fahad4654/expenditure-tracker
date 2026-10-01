@@ -1,6 +1,6 @@
 /**
  * Small, dependency-free environment helpers for Node processes (the NestJS
- * API, Prisma seeding, Docker entrypoints). Not safe to import from browser
+ * API, Prisma seeding, CLI scripts). Not safe to import from browser
  * code — `process` is not defined there. Fails fast with a clear message
  * instead of letting `undefined` propagate into production.
  */

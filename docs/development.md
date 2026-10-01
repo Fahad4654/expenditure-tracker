@@ -2,14 +2,13 @@
 
 ## Prerequisites
 
-| Tool             | Version                  | Notes                        |
-| ---------------- | ------------------------ | ---------------------------- |
-| Node.js          | ≥ 22.18 (24 recommended) | `node -v`                    |
-| npm              | ≥ 11                     | ships with Node 24           |
-| Docker + Compose | v2                       | for the database/redis stack |
-| PostgreSQL       | 16                       | or use the Docker stack      |
-| Flutter          | ≥ 3.44                   | mobile only                  |
-| Redis            | 7                        | optional until Phase 6       |
+| Tool       | Version                  | Notes                  |
+| ---------- | ------------------------ | ---------------------- |
+| Node.js    | ≥ 22.18 (24 recommended) | `node -v`              |
+| npm        | ≥ 11                     | ships with Node 24     |
+| PostgreSQL | 16                       | local install          |
+| Flutter    | ≥ 3.44                   | mobile only            |
+| Redis      | 7                        | optional until Phase 6 |
 
 ---
 
@@ -28,25 +27,16 @@ npm run db:seed         # 11 system categories
 npm run dev             # API :4000 + Web :3000, both in watch mode
 ```
 
+`npm run dev` builds the shared packages first and keeps them rebuilt in watch
+mode, so editing `packages/*` hot-reloads both apps — never run
+`build:packages` by hand.
+
 Sanity checks:
 
 ```bash
 curl http://localhost:4000/api/v1/health/ready   # postgres "up"
 open http://localhost:3000                        # web app
 open http://localhost:4000/docs                   # Swagger
-```
-
-### Docker alternative
-
-```bash
-docker compose up --build
-```
-
-Brings up `postgres`, `redis`, `api` (watch) and `web` (watch). Source is
-bind-mounted; dependencies live in named volumes. Reset with:
-
-```bash
-docker compose down -v && docker compose up --build
 ```
 
 ### Mobile
@@ -63,19 +53,19 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:4000
 
 ## Everyday commands
 
-| Command                           | Purpose                                         |
-| --------------------------------- | ----------------------------------------------- |
-| `npm run dev`                     | API + Web in watch mode (builds packages first) |
-| `npm run build`                   | Full production build of everything             |
-| `npm run typecheck`               | Strict TS across all workspaces                 |
-| `npm run lint`                    | ESLint                                          |
-| `npm test`                        | Vitest (API, web client, shared money math)     |
-| `npm run format`                  | Prettier write                                  |
-| `npm run db:migrate`              | New migration (dev)                             |
-| `npm run db:deploy`               | Apply pending migrations (CI/prod)              |
-| `npm run db:seed`                 | Idempotent system categories                    |
-| `npm run db:studio`               | Prisma Studio                                   |
-| `flutter analyze && flutter test` | Mobile                                          |
+| Command                           | Purpose                                           |
+| --------------------------------- | ------------------------------------------------- |
+| `npm run dev`                     | API + Web + package watch (builds packages first) |
+| `npm run build`                   | Full production build of everything               |
+| `npm run typecheck`               | Strict TS across all workspaces                   |
+| `npm run lint`                    | ESLint                                            |
+| `npm test`                        | Vitest (API, web client, shared money math)       |
+| `npm run format`                  | Prettier write                                    |
+| `npm run db:migrate`              | New migration (dev)                               |
+| `npm run db:deploy`               | Apply pending migrations (CI/prod)                |
+| `npm run db:seed`                 | Idempotent system categories                      |
+| `npm run db:studio`               | Prisma Studio                                     |
+| `flutter analyze && flutter test` | Mobile                                            |
 
 ---
 
@@ -114,12 +104,12 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:4000
 
 One `.env` at the repo root. Loaded deterministically:
 
-1. Variables already in `process.env` (Docker/CI) always win.
+1. Variables already in `process.env` (shell/CI) always win.
 2. `apps/api/.env` (optional workspace overrides).
 3. Repo-root `.env`.
 
-`process.loadEnvFile` never overwrites existing keys, so container-injected
-secrets are safe. Vite reads the same file through `envDir` in
+`process.loadEnvFile` never overwrites existing keys, so secrets injected
+through the environment are safe. Vite reads the same file through `envDir` in
 `apps/web/vite.config.ts`, so `VITE_*` keys are inlined into the client bundle —
 `VITE_API_URL` is the only one, and it must never hold a secret.
 
@@ -188,16 +178,16 @@ if present, but nothing depends on it.
 
 | Phase                        | Scope                                                                                                                                | Status      |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ----------- |
-| **1 — Architecture**         | Monorepo, TypeScript, NestJS, React/Vite, Flutter, Docker, PostgreSQL, Prisma, initial schema & docs                                 | ✅ **Done** |
+| **1 — Architecture**         | Monorepo, TypeScript, NestJS, React/Vite, Flutter, PostgreSQL, Prisma, initial schema & docs                                         | ✅ **Done** |
 | **2 — Database + Backend**   | Prisma schema refinements, migrations, User/Category/Transaction, auth foundation, authorization, transaction & category CRUD, tests | ✅ **Done** |
 | **3 — Web application**      | Auth UI, dashboard, transactions, categories, reports, profile/settings                                                              | ✅ **Done** |
 | **4 — Mobile application**   | Flutter architecture, auth, SQLite, transactions, dashboard, reports, categories (online-first)                                      | ⬜          |
 | **5 — Offline-first**        | Local persistence, sync queue, connectivity, `/sync`, retry, idempotency, conflicts, sync status UI                                  | ⬜          |
-| **6 — Production hardening** | Rate limits, headers, logging, monitoring, indexes, perf, backups, prod Docker/Nginx, CI/CD                                          | ⬜          |
+| **6 — Production hardening** | Structured logging, monitoring, indexes, perf, backups, production deployment, CI/CD                                                 | ⬜          |
 
 ### Delivered in Phase 1
 
-- npm-workspace monorepo with `apps/`, `packages/`, `infrastructure/`, `docs/`
+- npm-workspace monorepo with `apps/`, `packages/`, `docs/`
 - `@exp/types`, `@exp/validation`, `@exp/config` (built to `dist/`)
 - NestJS 12 API: config validation, Prisma, health endpoints, global envelope
   interceptor + exception filter, Helmet, CORS allow-list, Swagger
@@ -205,9 +195,6 @@ if present, but nothing depends on it.
   manifest, landing page that reports live API health
 - Flutter app: theming, compile-time config, planned screen map
 - Prisma schema: 10 tables, full index set, initial migration applied & seeded
-- `docker-compose.yml` (dev) and `docker-compose.prod.yml` (nginx edge →
-  nginx-served static bundle + API)
-- Nginx configs validated with `nginx -t`, web image built and smoke-tested
 - Docs: architecture, database, api, authentication, synchronization,
   development, deployment
 - `typecheck` · `lint` · `test` all green (26 tests)
@@ -269,6 +256,6 @@ if present, but nothing depends on it.
 | Migration `P3018` (type mismatch)                                         | Fix the schema, delete `apps/api/prisma/migrations/*`, re-run `npm run db:migrate` |
 | "applied to the database but missing from the local migrations directory" | `npx prisma migrate reset --force --schema apps/api/prisma/schema.prisma`          |
 | Web cannot reach the API                                                  | Check `VITE_API_URL` and `CORS_ORIGINS`                                            |
-| `@exp/*` import fails                                                     | `npm run build:packages`                                                           |
+| `@exp/*` import fails                                                     | `npm run build:packages` (`npm run dev` runs it for you)                           |
 | Port already in use                                                       | `API_PORT` / `WEB_PORT` in `.env`                                                  |
 | Mobile sees connection refused on Android                                 | Use `http://10.0.2.2:4000`, not `localhost`                                        |

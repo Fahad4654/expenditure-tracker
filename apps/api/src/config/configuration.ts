@@ -18,6 +18,10 @@ export const configuration = () => ({
       .filter(Boolean),
     maxRequestBodySize: process.env.MAX_REQUEST_BODY_SIZE ?? '100kb',
     logLevel: process.env.LOG_LEVEL ?? 'debug',
+    rateLimit: {
+      ttlSeconds: Number(process.env.RATE_LIMIT_TTL_SECONDS ?? 60),
+      max: Number(process.env.RATE_LIMIT_MAX ?? 100),
+    },
   },
   auth: {
     accessSecret: process.env.JWT_ACCESS_SECRET ?? '',

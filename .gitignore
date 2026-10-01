@@ -55,6 +55,3 @@ apps/mobile/ios/.symlinks/
 .turbo/
 .cache/
 *.eslintcache
-
-# Docker volumes (local data)
-.infrastructure-data/

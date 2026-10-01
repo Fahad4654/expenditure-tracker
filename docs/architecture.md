@@ -3,23 +3,21 @@
 ## 1. System overview
 
 ```text
-                    ┌──────────────────────────────────────────────┐
-                    │                  Nginx edge                  │
-                    │  rate limit · security headers · TLS · routing│
-                    └───────┬──────────────────────────┬───────────┘
-                            │ /                        │ /api/*, /docs
-                            ▼                          ▼
-                 ┌─────────────────────┐    ┌──────────────────────────┐
-                 │  React + Vite (web) │    │      NestJS (API)        │
-                 │  React 19 · Tailwind│    │ REST · OpenAPI · JWT     │
-                 └──────────┬──────────┘    └────────────┬─────────────┘
-                            │ HTTPS/JSON                 │
-                            │                            ▼
-                 ┌──────────┴──────────┐    ┌──────────────────────────┐
-                 │  Flutter mobile app │    │  Prisma → PostgreSQL     │
-                 │  SQLite (offline)   │───▶│  Redis (cache/OTP/rate)  │
-                 │  sync queue         │POST│  sync/changes endpoints  │
-                 └─────────────────────┘    └──────────────────────────┘
+┌───────────────────────┐          ┌───────────────────────────┐
+│  React + Vite (web)   │  HTTPS   │      NestJS (API)         │
+│  static bundle        │─────────▶│  REST · OpenAPI · JWT     │
+└───────────────────────┘  /api/*  │  Helmet · rate limits     │
+┌───────────────────────┐          │  per-IP rate limits       │
+│  Flutter mobile app   │─────────▶│                           │
+│  SQLite (offline)     │          │                           │
+│  sync queue           │          │                           │
+└───────────────────────┘          └───────────┬───────────────┘
+                                               │
+                                               ▼
+                                   ┌───────────────────────────┐
+                                   │  Prisma → PostgreSQL      │
+                                   │  Redis (cache · OTP)      │
+                                   └───────────────────────────┘
 ```
 
 Both clients speak the **same REST API**. There is no BFF: the web app calls
@@ -31,8 +29,9 @@ online and directly when online-only features are needed.
 1. `lib/api.ts` attaches the bearer access token, echoes the readable CSRF
    cookie on mutating requests, and on a 401 refreshes the session once before
    replaying the call.
-2. Nginx applies per-IP/per-route rate limits and security headers.
-3. Nest global middleware: Helmet → body-size limit → CORS allow-list.
+2. Nest global middleware: Helmet → body-size limit → CORS allow-list.
+3. Global `ThrottlerGuard` applies the per-IP, per-route quota (429
+   `RATE_LIMITED` when exceeded).
 4. Route-level Zod/class-validator DTO validation.
 5. Guard resolves the authenticated user (`JwtAuthGuard`, with `@Public()`
    opting health and auth routes out).
@@ -179,9 +178,9 @@ These are deliberate departures (or clarifications) worth reviewing:
    cookie. This avoids putting the short-lived token where JS can read it on
    every request while keeping CSRF out of the way of `GET`s.
 
-8. **Redis is provisioned but not yet wired.** It becomes load-bearing in
-   Phase 6 (rate limiting, OTP storage, refresh-token denylist). Adding a
-   client in Phase 1 would be speculative code.
+8. **Redis is optional and not yet wired.** It becomes load-bearing in
+   Phase 6 (OTP storage, refresh-token denylist). Rate limiting runs
+   in-process via `@nestjs/throttler`, so nothing depends on Redis today.
 
 9. **No GraphQL.** The brief specifies REST + OpenAPI; offline sync is a
    batch-REST problem, and REST keeps the mobile client trivial.
@@ -201,7 +200,7 @@ These are deliberate departures (or clarifications) worth reviewing:
 | UUID PKs                  | Required for offline-first sync; no ID negotiation round-trip                        |
 | Soft delete (`deletedAt`) | Sync needs tombstones; "deletes must not accidentally disappear"                     |
 | Monolith API (modular)    | One deployable, clear module boundaries; can be split later if needed                |
-| Nginx edge                | Rate limits and headers enforced even if an app instance misbehaves                  |
+| Throttler inside the API  | Per-IP rate limits without requiring a reverse proxy                                 |
 
 ---
 
