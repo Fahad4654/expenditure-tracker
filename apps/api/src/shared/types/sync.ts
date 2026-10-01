@@ -68,4 +68,14 @@ export interface SyncResponse {
 export interface SyncChangesQuery {
   cursor?: string | null;
   limit?: number;
+  deviceId?: string | null;
+}
+
+/** `GET /sync/changes` response. */
+export interface SyncChangesResponse {
+  changes: SyncServerChange[];
+  /** Cursor to send next — advances past every examined row. */
+  cursor: string;
+  hasMore: boolean;
+  serverTime: IsoDateTime;
 }

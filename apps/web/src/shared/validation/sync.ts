@@ -87,6 +87,8 @@ export const syncRequestSchema = z
 export const syncChangesQuerySchema = z.object({
   cursor: z.string().max(256).nullish(),
   limit: z.coerce.number().int().min(1).max(500).default(200),
+  /// Pulling device — its own writes are excluded from the response.
+  deviceId: z.string().trim().min(1).max(128).nullish(),
 });
 
 export type SyncOperationInputDto = z.infer<typeof syncOperationSchema>;

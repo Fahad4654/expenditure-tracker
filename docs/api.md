@@ -181,6 +181,28 @@ within a cent of 100.
 | `POST` | `/sync`         | Push a batch of offline operations   |
 | `GET`  | `/sync/changes` | Pull server changes after `?cursor=` |
 
+`POST /sync` body: `{ deviceId, cursor?, operations[≤200] }` where each
+operation is `{ operationId, entityId, entityType, operation, timestamp,
+baseVersion?, payload }`. It runs as one database transaction and returns:
+
+```jsonc
+{
+  "results": [/* per-operation: APPLIED | DUPLICATE | CONFLICT | REJECTED (+ reason, entity) */],
+  "changes": [/* rows with id > cursor, excluding this device's own writes */],
+  "cursor": "1057",
+  "serverTime": "…"
+}
+```
+
+- A replayed `operationId` answers `DUPLICATE` from the `SyncOperation` ledger
+  and performs no second write.
+- A stale `baseVersion` still applies (last-write-wins) but is reported as
+  `CONFLICT` with the authoritative entity; a server tombstone wins over a
+  later `UPDATE`.
+- `GET /sync/changes?cursor=&limit=&deviceId=` pages the `ChangeLog`
+  (`hasMore` when the page is full). A null cursor starts from the beginning
+  and includes the shared system categories.
+
 See [synchronization.md](synchronization.md) for the full protocol.
 
 ---

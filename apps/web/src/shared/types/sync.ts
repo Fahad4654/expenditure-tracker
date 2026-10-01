@@ -69,3 +69,12 @@ export interface SyncChangesQuery {
   cursor?: string | null;
   limit?: number;
 }
+
+/** `GET /sync/changes` response. */
+export interface SyncChangesResponse {
+  changes: SyncServerChange[];
+  /** Cursor to send next — advances past every examined row. */
+  cursor: string;
+  hasMore: boolean;
+  serverTime: IsoDateTime;
+}

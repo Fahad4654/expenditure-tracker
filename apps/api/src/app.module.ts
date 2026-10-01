@@ -9,6 +9,7 @@ import { UsersModule } from './users/users.module';
 import { CategoriesModule } from './categories/categories.module';
 import { TransactionsModule } from './transactions/transactions.module';
 import { ReportsModule } from './reports/reports.module';
+import { SyncModule } from './sync/sync.module';
 
 @Module({
   imports: [
@@ -28,7 +29,7 @@ import { ReportsModule } from './reports/reports.module';
     CategoriesModule,
     TransactionsModule,
     ReportsModule,
-    // Phase 5: SyncModule.
+    SyncModule,
   ],
 })
 export class AppModule {}
