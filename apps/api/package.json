@@ -21,6 +21,7 @@
     "db:validate": "prisma validate",
     "db:reset": "prisma migrate reset --force",
     "db:seed": "tsx prisma/seed.ts",
+    "postinstall": "prisma generate",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
