@@ -10,7 +10,7 @@ static bundle. PostgreSQL 16 runs as a normal service; Redis is optional.
 | `cd apps/api && npm run build` | `apps/api/dist`                     |
 | `cd apps/web && npm run build` | `apps/web/dist`                     |
 | `cd apps/api && npm run db:deploy` | applies committed Prisma migrations |
-| `cd apps/api && npm run db:seed`   | idempotent system-category seed     |
+| `cd apps/api && npm run db:seed`   | idempotent seed (categories + demo users, skipped in production) |
 
 Each app is installed independently — there is no root install.
 

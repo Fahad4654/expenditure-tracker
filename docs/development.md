@@ -25,7 +25,7 @@ npm install
 cp .env.example .env       # → set DATABASE_URL, JWT_ACCESS_SECRET, JWT_REFRESH_SECRET
 npm run db:generate        # Prisma client
 npm run db:migrate         # create/apply migrations
-npm run db:seed            # 11 system categories
+npm run db:seed            # system categories + demo users
 npm run dev                # watch mode
 
 # Web (:3000) — second terminal
@@ -38,6 +38,10 @@ npm run dev                # watch mode
 Each app has its own copy of the shared modules under `src/shared/`, so
 editing one app's copy does not touch the other — keep the two copies
 mirrored.
+
+Demo users (seeded only when `NODE_ENV` is not `production`):
+`demo@example.com`, `alice@example.com`, `bob@example.com` — password
+`Password123!`.
 
 Sanity checks:
 
@@ -75,7 +79,7 @@ Every command runs **from inside its app directory**:
 | `npm run format`       | Prettier write                          |
 | `npm run db:migrate`   | New migration (dev)                     |
 | `npm run db:deploy`    | Apply pending migrations (CI/prod)      |
-| `npm run db:seed`      | Idempotent system categories            |
+| `npm run db:seed`      | Seed categories + demo users            |
 | `npm run db:studio`    | Prisma Studio                           |
 
 ### `apps/web`

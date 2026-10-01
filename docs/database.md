@@ -222,7 +222,7 @@ cd apps/api
 npm run db:migrate     # dev: creates + applies (prompts for a name)
 npm run db:deploy      # CI/prod: applies pending migrations only
 npm run db:studio      # browse data
-npm run db:seed        # idempotent system categories
+npm run db:seed        # categories + demo users (dev only)
 ```
 
 Migrations are committed. CI runs `db:deploy`, never `db:migrate` (the latter

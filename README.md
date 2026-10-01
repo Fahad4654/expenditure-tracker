@@ -63,7 +63,7 @@ npm install
 cp .env.example .env        # edit DATABASE_URL and JWT secrets
 npm run db:generate         # Prisma client
 npm run db:migrate          # prompts for a name when the schema changed
-npm run db:seed
+npm run db:seed                         # categories + demo users
 npm run dev
 
 # Web (:3000) — second terminal
@@ -100,7 +100,7 @@ Each command runs **from inside its app directory**.
 | `npm run format`    | Prettier write                             |
 | `npm run db:migrate`| Create/apply a new Prisma migration (dev)  |
 | `npm run db:deploy` | Apply pending migrations (CI/production)   |
-| `npm run db:seed`   | Idempotent system-category seed            |
+| `npm run db:seed`   | Seed categories + demo users (dev only)     |
 | `npm run db:studio` | Prisma Studio                              |
 
 ### Frontend — `apps/web`
