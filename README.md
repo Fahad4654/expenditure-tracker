@@ -42,7 +42,7 @@ expenditure-tracker/
 
 | Tool       | Version                  |
 | ---------- | ------------------------ |
-| Node.js    | ≥ 22.18 (24 recommended) |
+| Node.js    | ≥ 24.15 (or ≥ 22.22.3)  |
 | npm        | ≥ 11                     |
 | PostgreSQL | 16 (local install)       |
 | Flutter    | ≥ 3.44                   |

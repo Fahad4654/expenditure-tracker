@@ -4,7 +4,7 @@
 
 | Tool       | Version                  | Notes                  |
 | ---------- | ------------------------ | ---------------------- |
-| Node.js    | ≥ 22.18 (24 recommended) | `node -v`              |
+| Node.js    | ≥ 24.15 (or ≥ 22.22.3)  | `node -v`              |
 | npm        | ≥ 11                     | ships with Node 24     |
 | PostgreSQL | 16                       | local install          |
 | Flutter    | ≥ 3.44                   | mobile only            |
