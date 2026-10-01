@@ -11,6 +11,8 @@ import type {
 import { dateRangeWhere, resolveDateRange } from '../common/utils/date-range';
 import { errors } from '../common/http/api-error';
 import { toDecimalString } from '../common/utils/money';
+import { withTx } from '../common/utils/with-tx';
+import { recordChange } from '../sync/change-feed';
 import { PrismaService } from '../prisma/prisma.module';
 import { UsersService } from '../users/users.service';
 
@@ -59,44 +61,58 @@ export class TransactionsService {
   async create(
     userId: string,
     input: CreateTransactionInputDto,
+    db?: Prisma.TransactionClient,
   ): Promise<{ transaction: Transaction; created: boolean }> {
     const clientId = input.clientId ?? randomUUID();
 
-    if (input.clientId) {
-      const existing = await this.prisma.transaction.findUnique({
-        where: { userId_clientId: { userId, clientId } },
-      });
-      if (existing) return { transaction: toTransaction(existing), created: false };
-    }
-
-    await this.requireVisibleCategory(userId, input.categoryId);
-
-    try {
-      const created = await this.prisma.transaction.create({
-        data: {
-          clientId,
-          deviceId: input.deviceId ?? null,
-          userId,
-          type: input.type,
-          amount: input.amount,
-          currency: input.currency ?? (await this.users.financeDefaults(userId)).defaultCurrency,
-          categoryId: input.categoryId,
-          title: input.title,
-          description: input.description ?? null,
-          transactionDate: `${input.transactionDate}T00:00:00.000Z`,
-        },
-      });
-      return { transaction: toTransaction(created), created: true };
-    } catch (error) {
-      // Lost the race against a concurrent replay of the same `clientId`.
-      if (isUniqueViolation(error)) {
-        const existing = await this.prisma.transaction.findUnique({
+    return withTx(this.prisma, db, async (tx) => {
+      if (input.clientId) {
+        const existing = await tx.transaction.findUnique({
           where: { userId_clientId: { userId, clientId } },
         });
         if (existing) return { transaction: toTransaction(existing), created: false };
       }
-      throw error;
-    }
+
+      await this.requireVisibleCategory(userId, input.categoryId, tx);
+
+      try {
+        const created = await tx.transaction.create({
+          data: {
+            clientId,
+            deviceId: input.deviceId ?? null,
+            userId,
+            type: input.type,
+            amount: input.amount,
+            currency:
+              input.currency ?? (await this.users.financeDefaults(userId)).defaultCurrency,
+            categoryId: input.categoryId,
+            title: input.title,
+            description: input.description ?? null,
+            transactionDate: `${input.transactionDate}T00:00:00.000Z`,
+          },
+        });
+        await recordChange(tx, {
+          userId,
+          deviceId: created.deviceId,
+          entityType: 'TRANSACTION',
+          entityId: created.id,
+          kind: 'UPSERT',
+          version: created.version,
+        });
+        return { transaction: toTransaction(created), created: true };
+      } catch (error) {
+        // Lost the race against a concurrent replay of the same `clientId`.
+        // Read via the root client: a caught P2002 poisons the interactive
+        // transaction, so no further statement may run on `tx` here.
+        if (isUniqueViolation(error)) {
+          const existing = await this.prisma.transaction.findUnique({
+            where: { userId_clientId: { userId, clientId } },
+          });
+          if (existing) return { transaction: toTransaction(existing), created: false };
+        }
+        throw error;
+      }
+    });
   }
 
   async list(userId: string, query: ListTransactionsQueryDto): Promise<Paginated<Transaction>> {
@@ -149,63 +165,101 @@ export class TransactionsService {
     return toTransaction(transaction);
   }
 
-  async update(userId: string, id: string, input: UpdateTransactionInputDto): Promise<Transaction> {
-    if (input.categoryId) await this.requireVisibleCategory(userId, input.categoryId);
-
+  async update(
+    userId: string,
+    id: string,
+    input: UpdateTransactionInputDto,
+    db?: Prisma.TransactionClient,
+  ): Promise<Transaction> {
     const { baseVersion, ...fields } = input;
 
-    const result = await this.prisma.transaction.updateMany({
-      where: {
-        id,
-        userId,
-        deletedAt: null,
-        // Optimistic concurrency: only apply if the caller saw this version.
-        ...(baseVersion !== undefined && { version: baseVersion }),
-      },
-      data: {
-        ...(fields.type !== undefined && { type: fields.type }),
-        ...(fields.amount !== undefined && { amount: fields.amount }),
-        ...(fields.currency !== undefined && { currency: fields.currency }),
-        ...(fields.categoryId !== undefined && { categoryId: fields.categoryId }),
-        ...(fields.title !== undefined && { title: fields.title }),
-        ...(fields.description !== undefined && { description: fields.description }),
-        ...(fields.transactionDate !== undefined && {
-          transactionDate: `${fields.transactionDate}T00:00:00.000Z`,
-        }),
-        version: { increment: 1 },
-      },
-    });
+    return withTx(this.prisma, db, async (tx) => {
+      if (input.categoryId) await this.requireVisibleCategory(userId, input.categoryId, tx);
 
-    if (result.count === 0) {
-      const current = await this.prisma.transaction.findFirst({
-        where: { id, userId, deletedAt: null },
-        select: { version: true },
+      const result = await tx.transaction.updateMany({
+        where: {
+          id,
+          userId,
+          deletedAt: null,
+          // Optimistic concurrency: only apply if the caller saw this version.
+          ...(baseVersion !== undefined && { version: baseVersion }),
+        },
+        data: {
+          ...(fields.type !== undefined && { type: fields.type }),
+          ...(fields.amount !== undefined && { amount: fields.amount }),
+          ...(fields.currency !== undefined && { currency: fields.currency }),
+          ...(fields.categoryId !== undefined && { categoryId: fields.categoryId }),
+          ...(fields.title !== undefined && { title: fields.title }),
+          ...(fields.description !== undefined && { description: fields.description }),
+          ...(fields.transactionDate !== undefined && {
+            transactionDate: `${fields.transactionDate}T00:00:00.000Z`,
+          }),
+          version: { increment: 1 },
+        },
       });
-      if (!current) throw errors.notFound('Transaction not found');
-      throw errors.conflict(
-        `Transaction was modified by someone else (expected version ${baseVersion}, found ${current.version})`,
-      );
-    }
 
-    return this.get(userId, id);
+      if (result.count === 0) {
+        const current = await tx.transaction.findFirst({
+          where: { id, userId, deletedAt: null },
+          select: { version: true },
+        });
+        if (!current) throw errors.notFound('Transaction not found');
+        throw errors.conflict(
+          `Transaction was modified by someone else (expected version ${baseVersion}, found ${current.version})`,
+        );
+      }
+
+      const updated = await tx.transaction.findFirst({
+        where: { id, userId, deletedAt: null },
+      });
+      if (!updated) throw errors.notFound('Transaction not found');
+      // REST edits carry no deviceId — broadcast to every device.
+      await recordChange(tx, {
+        userId,
+        deviceId: null,
+        entityType: 'TRANSACTION',
+        entityId: updated.id,
+        kind: 'UPSERT',
+        version: updated.version,
+      });
+      return toTransaction(updated);
+    });
   }
 
-  async remove(userId: string, id: string): Promise<Transaction> {
-    const result = await this.prisma.transaction.updateMany({
-      where: { id, userId, deletedAt: null },
-      // Tombstone, not a hard delete: sync still needs to announce the removal.
-      data: { deletedAt: new Date(), version: { increment: 1 } },
-    });
-    if (result.count === 0) throw errors.notFound('Transaction not found');
+  async remove(
+    userId: string,
+    id: string,
+    db?: Prisma.TransactionClient,
+  ): Promise<Transaction> {
+    return withTx(this.prisma, db, async (tx) => {
+      const result = await tx.transaction.updateMany({
+        where: { id, userId, deletedAt: null },
+        // Tombstone, not a hard delete: sync still needs to announce the removal.
+        data: { deletedAt: new Date(), version: { increment: 1 } },
+      });
+      if (result.count === 0) throw errors.notFound('Transaction not found');
 
-    const deleted = await this.prisma.transaction.findFirst({ where: { id, userId } });
-    if (!deleted) throw errors.notFound('Transaction not found');
-    return toTransaction(deleted);
+      const deleted = await tx.transaction.findFirst({ where: { id, userId } });
+      if (!deleted) throw errors.notFound('Transaction not found');
+      await recordChange(tx, {
+        userId,
+        deviceId: null,
+        entityType: 'TRANSACTION',
+        entityId: deleted.id,
+        kind: 'DELETE',
+        version: deleted.version,
+      });
+      return toTransaction(deleted);
+    });
   }
 
   /** A category outside the caller's visibility is "not found", not "forbidden". */
-  private async requireVisibleCategory(userId: string, categoryId: string): Promise<void> {
-    const category = await this.prisma.category.findFirst({
+  private async requireVisibleCategory(
+    userId: string,
+    categoryId: string,
+    tx: Prisma.TransactionClient,
+  ): Promise<void> {
+    const category = await tx.category.findFirst({
       where: { id: categoryId, deletedAt: null, ...VISIBLE_CATEGORIES(userId) },
       select: { id: true },
     });

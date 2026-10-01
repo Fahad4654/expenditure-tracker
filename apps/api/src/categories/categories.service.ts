@@ -3,6 +3,8 @@ import { Prisma } from '@prisma/client';
 import type { Category } from '../shared/types';
 import type { CreateCategoryInputDto, UpdateCategoryInputDto } from '../shared/validation';
 import { errors } from '../common/http/api-error';
+import { withTx } from '../common/utils/with-tx';
+import { recordChange } from '../sync/change-feed';
 import { PrismaService } from '../prisma/prisma.module';
 
 interface CategoryRecord {
@@ -14,8 +16,10 @@ interface CategoryRecord {
   color: string | null;
   isSystem: boolean;
   suggestedType: 'INCOME' | 'EXPENSE';
+  version: number;
   createdAt: Date;
   updatedAt: Date;
+  deletedAt?: Date | null;
 }
 
 export function toCategory(category: CategoryRecord): Category {
@@ -37,6 +41,9 @@ export function toCategory(category: CategoryRecord): Category {
  * Categories are either shared (`isSystem`, `userId = null`) or owned by a
  * single user. Every query is scoped to the caller; another user's category is
  * reported as 404 so its existence is never disclosed.
+ *
+ * Every mutation runs in a transaction that also appends a `ChangeLog` row,
+ * so the sync feed can never miss a committed write.
  */
 @Injectable()
 export class CategoriesService {
@@ -53,74 +60,122 @@ export class CategoriesService {
     return categories.map(toCategory);
   }
 
-  async create(userId: string, input: CreateCategoryInputDto): Promise<Category> {
-    try {
-      const category = await this.prisma.category.create({
-        data: {
+  async create(
+    userId: string,
+    input: CreateCategoryInputDto,
+    db?: Prisma.TransactionClient,
+  ): Promise<Category> {
+    return withTx(this.prisma, db, async (tx) => {
+      try {
+        const category = await tx.category.create({
+          data: {
+            userId,
+            name: input.name,
+            kind: 'USER',
+            isSystem: false,
+            icon: input.icon ?? null,
+            color: input.color ?? null,
+            suggestedType: input.suggestedType,
+          },
+        });
+        await recordChange(tx, {
           userId,
-          name: input.name,
-          kind: 'USER',
-          isSystem: false,
-          icon: input.icon ?? null,
-          color: input.color ?? null,
-          suggestedType: input.suggestedType,
-        },
-      });
-      return toCategory(category);
-    } catch (error) {
-      if (isUniqueViolation(error)) {
-        throw errors.conflict('A category with this name already exists');
+          deviceId: null,
+          entityType: 'CATEGORY',
+          entityId: category.id,
+          kind: 'UPSERT',
+          version: category.version,
+        });
+        return toCategory(category);
+      } catch (error) {
+        if (isUniqueViolation(error)) {
+          throw errors.conflict('A category with this name already exists');
+        }
+        throw error;
       }
-      throw error;
-    }
+    });
   }
 
-  async update(userId: string, id: string, input: UpdateCategoryInputDto): Promise<Category> {
-    const category = await this.requireOwned(userId, id);
+  async update(
+    userId: string,
+    id: string,
+    input: UpdateCategoryInputDto,
+    db?: Prisma.TransactionClient,
+  ): Promise<Category> {
+    return withTx(this.prisma, db, async (tx) => {
+      const category = await this.requireOwned(tx, userId, id);
 
-    try {
-      const updated = await this.prisma.category.update({
-        where: { id: category.id },
-        data: {
-          ...(input.name !== undefined && { name: input.name }),
-          ...(input.icon !== undefined && { icon: input.icon }),
-          ...(input.color !== undefined && { color: input.color }),
-          ...(input.suggestedType !== undefined && { suggestedType: input.suggestedType }),
-        },
-      });
-      return toCategory(updated);
-    } catch (error) {
-      if (isUniqueViolation(error)) {
-        throw errors.conflict('A category with this name already exists');
+      try {
+        const updated = await tx.category.update({
+          where: { id: category.id },
+          data: {
+            ...(input.name !== undefined && { name: input.name }),
+            ...(input.icon !== undefined && { icon: input.icon }),
+            ...(input.color !== undefined && { color: input.color }),
+            ...(input.suggestedType !== undefined && { suggestedType: input.suggestedType }),
+            version: { increment: 1 },
+          },
+        });
+        await recordChange(tx, {
+          userId,
+          deviceId: null,
+          entityType: 'CATEGORY',
+          entityId: updated.id,
+          kind: 'UPSERT',
+          version: updated.version,
+        });
+        return toCategory(updated);
+      } catch (error) {
+        if (isUniqueViolation(error)) {
+          throw errors.conflict('A category with this name already exists');
+        }
+        throw error;
       }
-      throw error;
-    }
+    });
   }
 
   /**
    * Soft delete. Blocked while the category still has transactions — a
    * tombstoned category would leave them without a display name.
    */
-  async remove(userId: string, id: string): Promise<Category> {
-    const category = await this.requireOwned(userId, id);
+  async remove(
+    userId: string,
+    id: string,
+    db?: Prisma.TransactionClient,
+  ): Promise<Category> {
+    return withTx(this.prisma, db, async (tx) => {
+      const category = await this.requireOwned(tx, userId, id);
 
-    const inUse = await this.prisma.transaction.count({
-      where: { userId, categoryId: category.id, deletedAt: null },
-    });
-    if (inUse > 0) {
-      throw errors.conflict('Category still has transactions — move or delete them first');
-    }
+      const inUse = await tx.transaction.count({
+        where: { userId, categoryId: category.id, deletedAt: null },
+      });
+      if (inUse > 0) {
+        throw errors.conflict('Category still has transactions — move or delete them first');
+      }
 
-    const deleted = await this.prisma.category.update({
-      where: { id: category.id },
-      data: { deletedAt: new Date() },
+      const deleted = await tx.category.update({
+        where: { id: category.id },
+        data: { deletedAt: new Date(), version: { increment: 1 } },
+      });
+      await recordChange(tx, {
+        userId,
+        deviceId: null,
+        entityType: 'CATEGORY',
+        entityId: deleted.id,
+        kind: 'DELETE',
+        version: deleted.version,
+      });
+      return toCategory(deleted);
     });
-    return toCategory(deleted);
   }
 
   /** Shared system categories are visible but never mutable. */
-  private async requireOwned(userId: string, id: string): Promise<CategoryRecord> {
-    const category = await this.prisma.category.findUnique({ where: { id } });
+  private async requireOwned(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    id: string,
+  ): Promise<CategoryRecord> {
+    const category = await tx.category.findUnique({ where: { id } });
     if (!category || category.deletedAt) throw errors.notFound('Category not found');
     if (category.userId && category.userId !== userId) {
       // Another user's category — indistinguishable from "does not exist".

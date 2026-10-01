@@ -62,6 +62,7 @@ function systemCategory() {
 function ownCategory(overrides: Record<string, unknown> = {}) {
   return {
     id: 'own-1',
+    version: 1,
     userId: 'user-1',
     name: 'Coffee',
     kind: 'USER',
@@ -98,7 +99,12 @@ function transactionRecord(overrides: Record<string, unknown> = {}) {
 }
 
 describe('CategoriesService', () => {
-  let prisma: { category: CategoryMock; transaction: { count: Spy } };
+  let prisma: {
+    category: CategoryMock;
+    transaction: { count: Spy };
+    $transaction: Spy;
+    changeLog: { create: Spy };
+  };
   let service: CategoriesService;
 
   beforeEach(() => {
@@ -110,7 +116,12 @@ describe('CategoriesService', () => {
         update: vi.fn(),
       },
       transaction: { count: vi.fn() },
+      $transaction: vi.fn(),
+      changeLog: { create: vi.fn() },
     };
+    prisma.$transaction.mockImplementation(async (fn: unknown) =>
+      typeof fn === 'function' ? fn(prisma) : fn,
+    );
     service = new CategoriesService(prisma as never);
   });
 
@@ -191,13 +202,50 @@ describe('CategoriesService', () => {
     expect(deleted.id).toBe('own-1');
     expect(prisma.category.update.mock.calls[0]![0].data.deletedAt).toBeInstanceOf(Date);
   });
+
+  it('bumps the version and announces category mutations in the change feed', async () => {
+    prisma.category.create.mockResolvedValue(ownCategory({ version: 1 }));
+
+    await service.create('user-1', { name: 'Coffee', suggestedType: 'EXPENSE' } as never);
+
+    expect(prisma.changeLog.create).toHaveBeenLastCalledWith({
+      data: {
+        userId: 'user-1',
+        deviceId: null,
+        entityType: 'CATEGORY',
+        entityId: 'own-1',
+        kind: 'UPSERT',
+        version: 1,
+      },
+    });
+
+    prisma.category.findUnique.mockResolvedValue(ownCategory());
+    prisma.transaction.count.mockResolvedValue(0);
+    prisma.category.update.mockResolvedValue(ownCategory({ deletedAt: NOW, version: 2 }));
+
+    await service.remove('user-1', 'own-1');
+
+    expect(prisma.category.update.mock.calls[0]![0].data.version).toEqual({ increment: 1 });
+    expect(prisma.changeLog.create).toHaveBeenLastCalledWith({
+      data: {
+        userId: 'user-1',
+        deviceId: null,
+        entityType: 'CATEGORY',
+        entityId: 'own-1',
+        kind: 'DELETE',
+        version: 2,
+      },
+    });
+  });
 });
+
 
 describe('TransactionsService', () => {
   let prisma: {
     transaction: TransactionMock;
     category: { findFirst: Spy };
     $transaction: Spy;
+    changeLog: { create: Spy };
   };
   let users: { financeDefaults: Spy };
   let service: TransactionsService;
@@ -214,7 +262,11 @@ describe('TransactionsService', () => {
       },
       category: { findFirst: vi.fn() },
       $transaction: vi.fn(),
+      changeLog: { create: vi.fn() },
     };
+    prisma.$transaction.mockImplementation(async (fn: unknown) =>
+      typeof fn === 'function' ? fn(prisma) : fn,
+    );
     users = {
       financeDefaults: vi.fn().mockResolvedValue({
         timezone: 'Asia/Dhaka',
@@ -402,5 +454,70 @@ describe('TransactionsService', () => {
 
     expect(page.items).toEqual([]);
     expect(page.meta).toEqual({ page: 3, limit: 20, total: 0, totalPages: 0 });
+  });
+
+  it('announces a create in the change feed with the originating device', async () => {
+    prisma.category.findFirst.mockResolvedValue({ id: 'own-1' });
+    prisma.transaction.create.mockResolvedValue(transactionRecord({ deviceId: 'device-1' }));
+
+    await service.create('user-1', {
+      clientId: 'client-1',
+      deviceId: 'device-1',
+      type: 'EXPENSE',
+      amount: '125.50',
+      categoryId: 'own-1',
+      title: 'Lunch',
+      transactionDate: '2026-09-30',
+    } as never);
+
+    expect(prisma.changeLog.create).toHaveBeenCalledWith({
+      data: {
+        userId: 'user-1',
+        deviceId: 'device-1',
+        entityType: 'TRANSACTION',
+        entityId: 'tx-1',
+        kind: 'UPSERT',
+        version: 1,
+      },
+    });
+  });
+
+  it('records an update in the change feed after the version bump', async () => {
+    prisma.category.findFirst.mockResolvedValue({ id: 'own-1' });
+    prisma.transaction.updateMany.mockResolvedValue({ count: 1 });
+    prisma.transaction.findFirst.mockResolvedValue(transactionRecord({ version: 2 }));
+
+    await service.update('user-1', 'tx-1', { baseVersion: 1, title: 'New' } as never);
+
+    expect(prisma.changeLog.create).toHaveBeenCalledWith({
+      data: {
+        userId: 'user-1',
+        deviceId: null,
+        entityType: 'TRANSACTION',
+        entityId: 'tx-1',
+        kind: 'UPSERT',
+        version: 2,
+      },
+    });
+  });
+
+  it('announces a tombstone delete in the change feed', async () => {
+    prisma.transaction.updateMany.mockResolvedValue({ count: 1 });
+    prisma.transaction.findFirst.mockResolvedValue(
+      transactionRecord({ version: 2, deletedAt: NOW }),
+    );
+
+    await service.remove('user-1', 'tx-1');
+
+    expect(prisma.changeLog.create).toHaveBeenCalledWith({
+      data: {
+        userId: 'user-1',
+        deviceId: null,
+        entityType: 'TRANSACTION',
+        entityId: 'tx-1',
+        kind: 'DELETE',
+        version: 2,
+      },
+    });
   });
 });
