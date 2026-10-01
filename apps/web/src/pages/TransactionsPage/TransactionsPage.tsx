@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import type { Category, Paginated, Transaction } from '../shared/types';
-import TransactionRow from '../components/TransactionRow';
+import type { Category, Paginated, Transaction } from '../../shared/types';
+import TransactionRow from '../../components/TransactionRow';
 import {
   Button,
   Card,
@@ -12,12 +12,12 @@ import {
   Select,
   Spinner,
   TextInput,
-} from '../components/ui';
-import { API_ROUTES, apiFetch } from '../lib/api';
-import { queryString } from '../lib/query';
-import { useAsync } from '../lib/useAsync';
-import { useDebounced } from '../lib/useDebounced';
-import { ROUTES } from '../routes';
+} from '../../components/ui';
+import { API_ROUTES, apiFetch } from '../../lib/api';
+import { queryString } from '../../lib/query';
+import { useAsync } from '../../lib/useAsync';
+import { useDebounced } from '../../lib/useDebounced';
+import { ROUTES } from '../../routes';
 
 const PAGE_SIZE = 20;
 

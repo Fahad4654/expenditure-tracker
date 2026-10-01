@@ -1,11 +1,11 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { registerSchema, toFieldErrors } from '../shared/validation';
-import { useAuth } from '../auth/auth-context';
-import AuthShell from '../components/AuthShell';
-import { Button, ErrorBanner, Field, TextInput } from '../components/ui';
-import { bannerFor, indexByPath, parseFormError } from '../lib/errors';
-import { ROUTES } from '../routes';
+import { registerSchema, toFieldErrors } from '../../shared/validation';
+import { useAuth } from '../../auth/auth-context';
+import AuthShell from '../../components/AuthShell';
+import { Button, ErrorBanner, Field, TextInput } from '../../components/ui';
+import { bannerFor, indexByPath, parseFormError } from '../../lib/errors';
+import { ROUTES } from '../../routes';
 
 const PASSWORD_HINT = 'At least 8 characters, including a letter and a number.';
 

@@ -1,9 +1,9 @@
-import { STORAGE_KEYS } from '../shared/config';
-import type { AuthSession, UserProfile } from '../shared/types';
+import { STORAGE_KEYS } from '../../shared/config';
+import type { AuthSession, UserProfile } from '../../shared/types';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import AuthProvider from '../auth/AuthProvider';
+import AuthProvider from '../../auth/AuthProvider';
 import LoginPage from './LoginPage';
 
 function jsonResponse(body: unknown, status = 200): Response {

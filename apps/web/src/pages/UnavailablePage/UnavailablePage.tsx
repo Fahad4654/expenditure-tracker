@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
-import { PageHeader, Card, Button } from '../components/ui';
-import { ROUTES } from '../routes';
+import { PageHeader, Card, Button } from '../../components/ui';
+import { ROUTES } from '../../routes';
 
 const KNOWN: Record<string, { title: string; body: string }> = {
   [ROUTES.forgotPassword]: {

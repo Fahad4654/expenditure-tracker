@@ -1,12 +1,12 @@
 import { Link } from 'react-router-dom';
-import type { Category, Paginated, SummaryResponse, Transaction } from '../shared/types';
-import { useAuth } from '../auth/auth-context';
-import TransactionRow from '../components/TransactionRow';
-import { Button, Card, EmptyState, ErrorBanner, PageHeader, Spinner } from '../components/ui';
-import { API_ROUTES, apiFetch } from '../lib/api';
-import { money } from '../lib/format';
-import { useAsync } from '../lib/useAsync';
-import { ROUTES } from '../routes';
+import type { Category, Paginated, SummaryResponse, Transaction } from '../../shared/types';
+import { useAuth } from '../../auth/auth-context';
+import TransactionRow from '../../components/TransactionRow';
+import { Button, Card, EmptyState, ErrorBanner, PageHeader, Spinner } from '../../components/ui';
+import { API_ROUTES, apiFetch } from '../../lib/api';
+import { money } from '../../lib/format';
+import { useAsync } from '../../lib/useAsync';
+import { ROUTES } from '../../routes';
 
 interface DashboardData {
   today: SummaryResponse;

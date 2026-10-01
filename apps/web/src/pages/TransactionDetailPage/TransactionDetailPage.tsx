@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import type { Category, Transaction } from '../shared/types';
-import type { CreateTransactionInputDto } from '../shared/validation';
-import TransactionForm from '../components/TransactionForm';
-import NotFoundPage from './NotFoundPage';
-import { Button, Card, ErrorBanner, PageHeader, Spinner } from '../components/ui';
-import { API_ROUTES, apiFetch } from '../lib/api';
-import { bannerFor, parseFormError } from '../lib/errors';
-import { formatDay, formatInstant, money } from '../lib/format';
-import { useAsync } from '../lib/useAsync';
-import { ROUTES } from '../routes';
+import type { Category, Transaction } from '../../shared/types';
+import type { CreateTransactionInputDto } from '../../shared/validation';
+import TransactionForm from '../../components/TransactionForm';
+import NotFoundPage from '../NotFoundPage/NotFoundPage';
+import { Button, Card, ErrorBanner, PageHeader, Spinner } from '../../components/ui';
+import { API_ROUTES, apiFetch } from '../../lib/api';
+import { bannerFor, parseFormError } from '../../lib/errors';
+import { formatDay, formatInstant, money } from '../../lib/format';
+import { useAsync } from '../../lib/useAsync';
+import { ROUTES } from '../../routes';
 
 export default function TransactionDetailPage() {
   const { id = '' } = useParams();

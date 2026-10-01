@@ -1,8 +1,13 @@
 import { useMemo, useState } from 'react';
-import type { CategoryReport, DailyReport, MonthlyReport, SummaryResponse } from '../shared/types';
-import type { ShortPreset } from '../lib/format';
-import { Button, Card, ErrorBanner, PageHeader, Spinner } from '../components/ui';
-import { API_ROUTES, apiFetch } from '../lib/api';
+import type {
+  CategoryReport,
+  DailyReport,
+  MonthlyReport,
+  SummaryResponse,
+} from '../../shared/types';
+import type { ShortPreset } from '../../lib/format';
+import { Button, Card, ErrorBanner, PageHeader, Spinner } from '../../components/ui';
+import { API_ROUTES, apiFetch } from '../../lib/api';
 import {
   DEFAULT_TIMEZONE,
   daysBetween,
@@ -10,9 +15,9 @@ import {
   formatPercent,
   money,
   rangeFor,
-} from '../lib/format';
-import { useAsync } from '../lib/useAsync';
-import { useAuth } from '../auth/auth-context';
+} from '../../lib/format';
+import { useAsync } from '../../lib/useAsync';
+import { useAuth } from '../../auth/auth-context';
 
 const PRESETS: ReadonlyArray<{ value: ShortPreset; label: string }> = [
   { value: 'today', label: 'Today' },

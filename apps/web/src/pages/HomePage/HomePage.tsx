@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../auth/auth-context';
-import { API_BASE_URL } from '../lib/api';
-import { ROUTES } from '../routes';
+import { useAuth } from '../../auth/auth-context';
+import { API_BASE_URL } from '../../lib/api';
+import { ROUTES } from '../../routes';
 
 interface HealthPayload {
   status: string;

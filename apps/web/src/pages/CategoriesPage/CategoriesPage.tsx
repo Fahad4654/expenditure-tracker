@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
-import type { Category, TransactionTypeValue } from '../shared/types';
-import { createCategorySchema, toFieldErrors } from '../shared/validation';
+import type { Category, TransactionTypeValue } from '../../shared/types';
+import { createCategorySchema, toFieldErrors } from '../../shared/validation';
 import {
   Button,
   Card,
@@ -11,11 +11,11 @@ import {
   Select,
   Spinner,
   TextInput,
-} from '../components/ui';
-import { API_ROUTES, apiFetch } from '../lib/api';
-import { bannerFor, indexByPath, parseFormError } from '../lib/errors';
-import { useAsync } from '../lib/useAsync';
-import { ROUTES } from '../routes';
+} from '../../components/ui';
+import { API_ROUTES, apiFetch } from '../../lib/api';
+import { bannerFor, indexByPath, parseFormError } from '../../lib/errors';
+import { useAsync } from '../../lib/useAsync';
+import { ROUTES } from '../../routes';
 import { Link } from 'react-router-dom';
 
 const TYPE_OPTIONS: ReadonlyArray<{ value: TransactionTypeValue; label: string }> = [
