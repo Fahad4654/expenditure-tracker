@@ -1,23 +1,32 @@
+import 'package:expenditure_tracker/core/db/local_store.dart';
 import 'package:expenditure_tracker/features/transactions/transaction_form_page.dart';
+import 'package:expenditure_tracker/shared/models/transaction.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/fixtures.dart';
 import 'support/pump_app.dart';
 
+Future<void> _seedTwo(LocalStore store) async {
+  store.applyServerCategoryUpsert(categoryJson());
+  store.applyServerTransactionUpsert(
+    transactionJson(title: 'Lunch with Sam', amount: '250.00'),
+  );
+  store.applyServerTransactionUpsert(
+    transactionJson(
+      id: '55555555-5555-4555-8555-555555555555',
+      clientId: '55555555-5555-4555-8555-555555555556',
+      title: 'Monthly salary',
+      amount: '50000.00',
+      type: 'INCOME',
+      date: '2026-09-25',
+    ),
+  );
+}
+
 void main() {
-  testWidgets('lists transactions returned by the API', (tester) async {
-    final app = await pumpApp(tester, signedIn: true);
-    app.api.onGet('/api/v1/transactions', (_) => paginatedJson([
-          transactionJson(title: 'Lunch with Sam', amount: '250.00'),
-          transactionJson(
-            id: '55555555-5555-4555-8555-555555555555',
-            title: 'Monthly salary',
-            amount: '50000.00',
-            type: 'INCOME',
-            date: '2026-09-25',
-          ),
-        ], total: 2));
+  testWidgets('lists transactions from the local store', (tester) async {
+    await pumpApp(tester, signedIn: true, seed: _seedTwo);
 
     await tester.tap(find.text('Transactions'));
     await settle(tester, pumps: 8);
@@ -27,8 +36,8 @@ void main() {
     expect(find.text('2 transactions'), findsOneWidget);
   });
 
-  testWidgets('debounces search and sends it to the API', (tester) async {
-    final app = await pumpApp(tester, signedIn: true);
+  testWidgets('filters the list as search is typed', (tester) async {
+    await pumpApp(tester, signedIn: true, seed: _seedTwo);
 
     await tester.tap(find.text('Transactions'));
     await settle(tester, pumps: 8);
@@ -38,10 +47,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     await settle(tester);
 
-    final searchRequests = app.api.requestsWhere(
-      (r) => r.path.endsWith('/transactions') && r.query?['search'] == 'lunch',
-    );
-    expect(searchRequests, isNotEmpty);
+    expect(find.text('Lunch with Sam'), findsOneWidget);
+    expect(find.text('Monthly salary'), findsNothing);
+    expect(find.text('1 transaction'), findsOneWidget);
   });
 
   testWidgets('validates the add form before submitting', (tester) async {
@@ -58,7 +66,7 @@ void main() {
     expect(find.text('Amount is required'), findsOneWidget);
   });
 
-  testWidgets('creates a transaction with an idempotency client id',
+  testWidgets('creates a transaction locally and queues it for sync',
       (tester) async {
     final app = await pumpApp(tester, signedIn: true);
 
@@ -73,14 +81,31 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Add transaction'));
     await settle(tester, pumps: 8);
 
-    final create = app.api.requestsWhere((r) => r.method == 'POST' && r.path.endsWith('/transactions')).single;
-    final body = create.body! as Map<String, Object?>;
-    expect(body['amount'], '120.50');
-    expect(body['title'], 'Coffee');
-    expect(body['type'], 'EXPENSE');
-    expect(body['categoryId'], categoryId);
-    expect(body['clientId'], isNotNull);
-    expect(body['transactionDate'], matches(RegExp(r'^\d{4}-\d{2}-\d{2}$')));
     expect(find.byType(SnackBar), findsNothing);
+
+    final created = app.store
+        .listTransactions(const TransactionQuery(limit: 50))
+        .items
+        .single;
+    expect(created.amount, '120.50', reason: 'normalised on write');
+    expect(created.title, 'Coffee');
+    expect(created.type, TransactionType.expense);
+    expect(created.categoryId, categoryId);
+    expect(created.clientId, isNotEmpty);
+    expect(created.transactionDate, matches(RegExp(r'^\d{4}-\d{2}-\d{2}$')));
+    expect(created.syncStatus, 'PENDING');
+
+    final op = app.store.nextPushBatch().single;
+    expect(op.operation, 'CREATE');
+    expect(op.entityType, 'TRANSACTION');
+    expect(op.payload['amount'], '120.50');
+    expect(op.payload['clientId'], created.clientId);
+    expect(app.syncRequests, greaterThan(0));
+
+    // The write never went over the network — the queue pushes it later.
+    expect(
+      app.api.requestsWhere((r) => r.method == 'POST' && r.path.endsWith('/transactions')),
+      isEmpty,
+    );
   });
 }

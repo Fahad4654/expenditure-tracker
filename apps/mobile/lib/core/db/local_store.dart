@@ -282,6 +282,16 @@ class LocalStore {
     return rows.isEmpty ? null : _transactionFromRow(rows.first);
   }
 
+  /// Maps a `clientId` **or** a server id (what pages pass around after a
+  /// sync) to the local `client_id` key. `null` when nothing matches.
+  String? resolveClientId(String id) {
+    final rows = db.select(
+      'SELECT client_id FROM transactions WHERE client_id = ? OR server_id = ?',
+      [id, id],
+    );
+    return rows.isEmpty ? null : rows.first['client_id'] as String;
+  }
+
   /// Creates a local transaction and queues its `CREATE`. Returns the
   /// `clientId`.
   String createTransaction({
@@ -413,6 +423,9 @@ class LocalStore {
       }
       final status = _statusForOpenOps('TRANSACTION', clientId);
       final amount = normalizeAmount(payload['amount']! as String);
+      // `version` is absent from older REST shapes — the next CONFLICT result
+      // self-heals a defaulted value, so 1 is a safe floor.
+      final version = (payload['version'] as num?)?.toInt() ?? 1;
       db.execute(
         'INSERT INTO transactions (client_id, server_id, user_id, type, amount, amount_minor, '
         'currency, category_id, title, description, transaction_date, version, sync_status, '
@@ -436,7 +449,7 @@ class LocalStore {
           payload['title'],
           payload['description'],
           _dateOnly(payload['transactionDate']! as String),
-          (payload['version']! as num).toInt(),
+          version,
           status,
           payload['createdAt'],
           payload['updatedAt'],
@@ -485,7 +498,8 @@ class LocalStore {
           payload['color'],
           (payload['isSystem']! as bool) ? 1 : 0,
           payload['suggestedType'],
-          (payload['version']! as num).toInt(),
+          // REST category payloads omit `version` (see `toCategory`).
+          (payload['version'] as num?)?.toInt() ?? 1,
           status,
           payload['createdAt'],
           payload['updatedAt'],

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../../core/network/api_error.dart';
@@ -54,10 +56,25 @@ class AuthController extends ChangeNotifier {
       );
       _user = session.user;
       _status = AuthStatus.authenticated;
+      unawaited(authRepository.seedFromServer());
     } on ApiError catch (error) {
-      if (!error.isNetwork) await tokenStore.clear();
-      _user = null;
-      _status = AuthStatus.anonymous;
+      if (error.isNetwork) {
+        // Offline cold start: the local snapshot is enough to use the app.
+        final cached = authRepository.cachedUser;
+        if (cached != null) {
+          _user = cached;
+          _status = AuthStatus.authenticated;
+          notifyListeners();
+          return;
+        }
+        // No snapshot yet — keep the tokens so a later retry can succeed.
+        _user = null;
+        _status = AuthStatus.anonymous;
+      } else {
+        await tokenStore.clear();
+        _user = null;
+        _status = AuthStatus.anonymous;
+      }
     } catch (_) {
       _user = null;
       _status = AuthStatus.anonymous;
@@ -118,5 +135,6 @@ class AuthController extends ChangeNotifier {
     _user = session.user;
     _status = AuthStatus.authenticated;
     notifyListeners();
+    unawaited(authRepository.seedFromServer());
   }
 }

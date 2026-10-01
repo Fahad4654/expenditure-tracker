@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:expenditure_tracker/core/db/database.dart';
+import 'package:expenditure_tracker/core/db/local_store.dart';
 import 'package:expenditure_tracker/core/network/api_client.dart';
 import 'package:expenditure_tracker/core/network/api_error.dart';
 import 'package:expenditure_tracker/core/network/repositories.dart';
@@ -9,26 +11,36 @@ import 'package:expenditure_tracker/shared/models/transaction.dart';
 import 'package:expenditure_tracker/shared/utils/uuid.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/sqlite_setup.dart';
+
 /// Opt-in contract test against a running API:
 ///
 /// ```sh
 /// LIVE_API=1 flutter test test/live_api_smoke_test.dart
 /// ```
 ///
-/// Registers a throwaway user, exercises the repositories end to end (create,
-/// idempotent replay, list, report, profile, delete, logout) and then cleans up
-/// after itself. Skipped unless `LIVE_API=1`.
+/// Registers a throwaway user, exercises the *identity* endpoints live
+/// (register, me, profile update, logout/refresh-revocation) and the
+/// local-first data path end to end (REST bootstrap → SQLite reads, local
+/// writes + queue, local reports). Skipped unless `LIVE_API=1`.
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   test('live API round trip through the mobile repositories', () async {
     if (Platform.environment['LIVE_API'] != '1') {
       markTestSkipped('Set LIVE_API=1 to run against a live API.');
       return;
     }
+    ensureHostSqlite();
 
     final baseUrl = Platform.environment['LIVE_API_URL'] ?? 'http://localhost:4000';
     final tokenStore = TokenStore(InMemoryTokenBackend());
     final api = HttpApiClient(tokenStore: tokenStore, baseUrl: baseUrl);
-    final services = Services.fromApiClient(api);
+    final store = LocalStore(await AppDatabase.open(
+      path: '${Directory.systemTemp.path}/live_smoke_${DateTime.now().microsecondsSinceEpoch}.db',
+    ));
+    addTearDown(() => store.clearAll());
+    final services = Services(api: api, store: store);
 
     final email = 'smoke+${DateTime.now().microsecondsSinceEpoch}@example.com';
     final session = await services.auth.register(
@@ -45,10 +57,14 @@ void main() {
     final profile = await services.auth.me();
     expect(profile.id, session.user.id);
 
+    // REST bootstrap fills the empty store from the live API.
+    await services.auth.seedFromServer();
     final categories = await services.categories.list();
     expect(categories, isNotEmpty);
+    expect(store.getUser()?.id, profile.id);
     final category = categories.first;
 
+    // Local-first write: the row lands immediately with a queued operation.
     final clientId = generateUuidV4();
     final input = TransactionInput(
       clientId: clientId,
@@ -63,15 +79,13 @@ void main() {
     final created = await services.transactions.create(input);
     expect(created.amount, '123.45');
     expect(created.clientId, clientId);
-
-    // Replaying the same clientId must not create a second row.
-    final replay = await services.transactions.create(input);
-    expect(replay.id, created.id);
+    expect(created.syncStatus, 'PENDING');
+    expect(store.nextPushBatch(), hasLength(1));
 
     final list = await services.transactions.list(
       const TransactionQuery(limit: 100),
     );
-    expect(list.items.where((t) => t.id == created.id), hasLength(1));
+    expect(list.items.where((t) => t.clientId == clientId), hasLength(1));
 
     final summary = await services.reports.summary(
       preset: DateRangePreset.month,
@@ -88,17 +102,19 @@ void main() {
 
     final updated = await services.users.update(name: 'Smoke Test Updated');
     expect(updated.name, 'Smoke Test Updated');
+    expect(store.getUser()?.name, 'Smoke Test Updated');
 
     await services.transactions.delete(created.id);
     final afterDelete = await services.transactions.list(
       const TransactionQuery(limit: 100),
     );
-    expect(afterDelete.items.where((t) => t.id == created.id), isEmpty);
+    expect(afterDelete.items.where((t) => t.clientId == clientId), isEmpty);
 
     final revokedToken = tokenStore.refreshToken!;
     await services.auth.logout(revokedToken);
     await tokenStore.clear();
     expect(tokenStore.refreshToken, isNull);
+    expect(store.getUser(), isNull, reason: 'logout wipes local data');
 
     // A revoked refresh token must be rejected.
     await expectLater(

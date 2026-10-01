@@ -3,6 +3,7 @@ import 'package:expenditure_tracker/features/auth/auth_controller.dart';
 import 'package:expenditure_tracker/features/auth/login_page.dart';
 import 'package:expenditure_tracker/features/auth/register_page.dart';
 import 'package:expenditure_tracker/features/shell/shell_page.dart';
+import 'package:expenditure_tracker/shared/models/user.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -36,6 +37,29 @@ void main() {
     final login = app.api.requestsWhere((r) => r.path.endsWith('/auth/login')).single;
     expect(login.body, {'email': 'fahad@example.com', 'password': 'secret123'});
     expect(app.tokenStore.refreshToken, 'refresh-token');
+  });
+
+  testWidgets('offline cold start restores from the local snapshot',
+      (tester) async {
+    final api = FakeApiClient();
+    registerDefaultHandlers(api);
+    api.onPost(
+      '/api/v1/auth/refresh',
+      (_) => throw const ApiError(ApiErrorCodes.network, 'No connection.'),
+    );
+
+    final app = await pumpApp(tester, api: api, signedIn: true, seed: (store) async {
+      store.upsertUser(UserProfile.fromJson(userJson()));
+    });
+    await settle(tester);
+
+    expect(app.auth.status, AuthStatus.authenticated);
+    expect(app.auth.user?.email, 'fahad@example.com');
+    expect(
+      app.tokenStore.refreshToken,
+      'refresh-token',
+      reason: 'network failures keep the tokens for a later retry',
+    );
   });
 
   testWidgets('surfaces invalid credentials from the server', (tester) async {

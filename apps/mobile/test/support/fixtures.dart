@@ -55,16 +55,18 @@ Map<String, Object?> categoryJson({
 
 Map<String, Object?> transactionJson({
   String id = transactionId,
+  String clientId = '44444444-4444-4444-8444-444444444444',
   String title = 'Lunch with Sam',
   String amount = '250.00',
   String type = 'EXPENSE',
   String categoryIdValue = categoryId,
   String date = '2026-10-01',
   String? description,
+  int version = 1,
 }) =>
     {
       'id': id,
-      'clientId': '44444444-4444-4444-8444-444444444444',
+      'clientId': clientId,
       'deviceId': null,
       'userId': userId,
       'type': type,
@@ -74,7 +76,7 @@ Map<String, Object?> transactionJson({
       'title': title,
       'description': description,
       'transactionDate': date,
-      'version': 1,
+      'version': version,
       'createdAt': '2026-10-01T10:00:00.000Z',
       'updatedAt': '2026-10-01T10:00:00.000Z',
       'deletedAt': null,

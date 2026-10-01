@@ -3,209 +3,324 @@ import '../../shared/models/common.dart';
 import '../../shared/models/report.dart';
 import '../../shared/models/transaction.dart';
 import '../../shared/models/user.dart';
+import '../db/local_reports.dart';
+import '../db/local_store.dart';
 import 'api_client.dart';
+import 'api_error.dart';
 import 'api_routes.dart';
 
-/// Thin repositories over [ApiClient]: each owns one REST resource and the
-/// wire-to-model decoding for it.
+/// Auth + session persistence. Network for identity, [LocalStore] for the
+/// offline snapshot: every session entry point adopts the profile locally,
+/// and `seedFromServer` bootstraps an empty store after (re)connect.
 class AuthRepository {
-  AuthRepository(this._api);
+  AuthRepository(this._api, this._store);
 
   final ApiClient _api;
+  final LocalStore _store;
 
-  Future<AuthSession> login({required String email, required String password}) => _api.post(
-        ApiRoutes.login,
-        body: {'email': email.trim().toLowerCase(), 'password': password},
-        authenticated: false,
-        allowRefresh: false,
-        decode: AuthSession.fromJson,
-      );
+  /// Profile from the last successful session — what an offline cold start
+  /// restores from.
+  UserProfile? get cachedUser => _store.getUser();
+
+  Future<AuthSession> login({required String email, required String password}) async {
+    final session = await _api.post(
+      ApiRoutes.login,
+      body: {'email': email.trim().toLowerCase(), 'password': password},
+      authenticated: false,
+      allowRefresh: false,
+      decode: AuthSession.fromJson,
+    );
+    _adopt(session.user);
+    return session;
+  }
 
   Future<AuthSession> register({
     required String name,
     required String email,
     required String password,
-  }) =>
-      _api.post(
-        ApiRoutes.register,
-        body: {
-          'name': name.trim(),
-          'email': email.trim().toLowerCase(),
-          'password': password,
-        },
-        authenticated: false,
-        allowRefresh: false,
-        decode: AuthSession.fromJson,
-      );
+  }) async {
+    final session = await _api.post(
+      ApiRoutes.register,
+      body: {
+        'name': name.trim(),
+        'email': email.trim().toLowerCase(),
+        'password': password,
+      },
+      authenticated: false,
+      allowRefresh: false,
+      decode: AuthSession.fromJson,
+    );
+    _adopt(session.user);
+    return session;
+  }
 
   /// Mobile transport: the refresh token travels in the body, not a cookie.
-  Future<AuthSession> refresh(String refreshToken) => _api.post(
-        ApiRoutes.refresh,
-        body: {'refreshToken': refreshToken},
-        authenticated: false,
-        allowRefresh: false,
-        decode: AuthSession.fromJson,
-      );
+  Future<AuthSession> refresh(String refreshToken) async {
+    final session = await _api.post(
+      ApiRoutes.refresh,
+      body: {'refreshToken': refreshToken},
+      authenticated: false,
+      allowRefresh: false,
+      decode: AuthSession.fromJson,
+    );
+    _adopt(session.user);
+    return session;
+  }
 
-  Future<void> logout(String? refreshToken) => _api.post<void>(
+  /// Signs out remotely (best effort) and always wipes local data.
+  Future<void> logout(String? refreshToken) async {
+    try {
+      await _api.post<void>(
         ApiRoutes.logout,
         body: {if (refreshToken != null && refreshToken.isNotEmpty) 'refreshToken': refreshToken},
         authenticated: false,
         allowRefresh: false,
         decode: (_) {},
       );
-
-  Future<UserProfile> me() => _api.get(ApiRoutes.me, decode: UserProfile.fromJson);
-}
-
-class TransactionsRepository {
-  TransactionsRepository(this._api);
-
-  final ApiClient _api;
-
-  Future<Paginated<Transaction>> list(TransactionQuery query) => _api.get(
-        ApiRoutes.transactions,
-        query: query.toQuery(),
-        decode: (json) => Paginated.fromJson(json, Transaction.fromJson),
-      );
-
-  Future<Transaction> get(String id) =>
-      _api.get(ApiRoutes.transaction(id), decode: Transaction.fromJson);
-
-  Future<Transaction> create(TransactionInput input) => _api.post(
-        ApiRoutes.transactions,
-        body: input.toJson(),
-        decode: Transaction.fromJson,
-      );
-
-  Future<Transaction> update(String id, TransactionInput input) {
-    final body = <String, Object?>{...input.toJson()}..remove('clientId');
-    return _api.patch(ApiRoutes.transaction(id), body: body, decode: Transaction.fromJson);
+    } finally {
+      _store.clearAll();
+    }
   }
 
-  Future<Transaction> delete(String id) =>
-      _api.delete(ApiRoutes.transaction(id), decode: Transaction.fromJson);
+  Future<UserProfile> me() async {
+    try {
+      final profile = await _api.get(ApiRoutes.me, decode: UserProfile.fromJson);
+      _adopt(profile);
+      return profile;
+    } on ApiError catch (error) {
+      if (error.isNetwork) {
+        final cached = _store.getUser();
+        if (cached != null) return cached;
+      }
+      rethrow;
+    }
+  }
+
+  /// Clears data belonging to a *different* account before adopting a new
+  /// profile, then snapshots it for offline reads.
+  void _adopt(UserProfile user) {
+    final existing = _store.getUser();
+    if (existing != null && existing.id != user.id) {
+      _store.clearAll();
+    }
+    _store.upsertUser(user);
+  }
+
+  /// Fills an empty store from the REST API after login/restore — the first
+  /// paint before the sync engine runs. Every row upserts by the same keys
+  /// the pull path uses, so re-seeding can only converge.
+  Future<void> seedFromServer() async {
+    try {
+      final profile = await _api.get(ApiRoutes.me, decode: UserProfile.fromJson);
+      _adopt(profile);
+
+      if (_store.listCategories().isEmpty) {
+        final raw = await _api.get(ApiRoutes.categories, decode: _rawList);
+        for (final json in raw) {
+          _store.applyServerCategoryUpsert(json);
+        }
+      }
+
+      if (_store.listTransactions(TransactionQuery(page: 1, limit: 50)).meta.total == 0) {
+        var page = 1;
+        while (page <= 50) {
+          final items = await _api.get(
+            ApiRoutes.transactions,
+            query: TransactionQuery(page: page, limit: 50).toQuery(),
+            decode: _rawItems,
+          );
+          for (final json in items) {
+            _store.applyServerTransactionUpsert(json);
+          }
+          if (items.length < 50) break;
+          page += 1;
+        }
+      }
+    } on ApiError {
+      // Background bootstrap: offline or any API failure simply means the
+      // next successful start (or the sync engine) fills the store instead.
+    }
+  }
+}
+
+/// Local-first transactions: reads are SQL over SQLite, writes land in the
+/// store together with their queued sync operation.
+class TransactionsRepository {
+  TransactionsRepository(this._store, [this._requestSync]);
+
+  final LocalStore _store;
+  final void Function()? _requestSync;
+
+  Future<Paginated<Transaction>> list(TransactionQuery query) async =>
+      _store.listTransactions(query);
+
+  Future<Transaction> get(String id) async => _require(_store.resolveClientId(id));
+
+  Future<Transaction> create(TransactionInput input) async {
+    final clientId = _store.createTransaction(
+      userId: _store.getUser()?.id ?? 'local',
+      input: input,
+      currency: _store.getUser()?.defaultCurrency ?? 'BDT',
+    );
+    _requestSync?.call();
+    return _require(clientId);
+  }
+
+  Future<Transaction> update(String id, TransactionInput input) async {
+    final clientId = _store.resolveClientId(id);
+    if (clientId == null) throw _notFound;
+    _store.updateTransaction(clientId, input);
+    _requestSync?.call();
+    return _require(clientId);
+  }
+
+  Future<void> delete(String id) async {
+    final clientId = _store.resolveClientId(id);
+    if (clientId == null) throw _notFound;
+    _store.deleteTransaction(clientId);
+    _requestSync?.call();
+  }
+
+  Transaction _require(String? clientId) {
+    final row = clientId == null ? null : _store.getTransaction(clientId);
+    if (row == null) throw _notFound;
+    return row;
+  }
+
+  static const _notFound = ApiError(ApiErrorCodes.notFound, 'Transaction not found');
 }
 
 class CategoriesRepository {
-  CategoriesRepository(this._api);
+  CategoriesRepository(this._store, [this._requestSync]);
 
-  final ApiClient _api;
+  final LocalStore _store;
+  final void Function()? _requestSync;
 
-  Future<List<Category>> list() => _api.get(
-        ApiRoutes.categories,
-        decode: (json) => (json! as List<Object?>).map(Category.fromJson).toList(),
-      );
+  Future<List<Category>> list() async => _store.listCategories();
 
-  Future<Category> create(CategoryInput input) => _api.post(
-        ApiRoutes.categories,
-        body: input.toJson(),
-        decode: Category.fromJson,
-      );
+  Future<Category> create(CategoryInput input) async {
+    final id = _store.createCategory(
+      userId: _store.getUser()?.id ?? 'local',
+      name: input.name,
+      suggestedType: input.suggestedType,
+      icon: input.icon,
+      color: input.color,
+    );
+    _requestSync?.call();
+    return _require(id);
+  }
 
-  Future<Category> update(String id, CategoryInput input) => _api.patch(
-        ApiRoutes.category(id),
-        body: input.toJson(),
-        decode: Category.fromJson,
-      );
+  Future<Category> update(String id, CategoryInput input) async {
+    if (_store.getCategory(id) == null) throw _notFound;
+    _store.updateCategory(
+      id,
+      name: input.name,
+      suggestedType: input.suggestedType,
+      icon: input.icon,
+      color: input.color,
+    );
+    _requestSync?.call();
+    return _require(id);
+  }
 
-  Future<Category> delete(String id) =>
-      _api.delete(ApiRoutes.category(id), decode: Category.fromJson);
+  Future<void> delete(String id) async {
+    if (_store.getCategory(id) == null) throw _notFound;
+    _store.deleteCategory(id);
+    _requestSync?.call();
+  }
+
+  Category _require(String id) {
+    final row = _store.getCategory(id);
+    if (row == null) throw _notFound;
+    return row;
+  }
+
+  static const _notFound = ApiError(ApiErrorCodes.notFound, 'Category not found');
 }
 
+/// Report endpoints answered by local SQL — no network.
 class ReportsRepository {
-  ReportsRepository(this._api);
+  ReportsRepository(this._local);
 
-  final ApiClient _api;
+  final LocalReports _local;
 
-  Future<SummaryResponse> summary({
-    required DateRangePreset preset,
-    String? timezone,
-  }) =>
-      _api.get(
-        ApiRoutes.reportSummary,
-        query: {'preset': preset.wire, 'timezone': timezone},
-        decode: SummaryResponse.fromJson,
-      );
+  Future<SummaryResponse> summary({required DateRangePreset preset, String? timezone}) =>
+      _local.summary(preset: preset, timezone: timezone);
 
   Future<DailyReport> daily({
     required DateRangePreset preset,
     int limit = 30,
     String? timezone,
   }) =>
-      _api.get(
-        ApiRoutes.reportDaily,
-        query: {
-          'preset': preset.wire,
-          'limit': limit,
-          'timezone': timezone,
-        },
-        decode: DailyReport.fromJson,
-      );
+      _local.daily(preset: preset, limit: limit, timezone: timezone);
 
-  Future<MonthlyReport> monthly({required int year, String? timezone}) => _api.get(
-        ApiRoutes.reportMonthly,
-        query: {'year': year, 'timezone': timezone},
-        decode: MonthlyReport.fromJson,
-      );
+  Future<MonthlyReport> monthly({required int year, String? timezone}) =>
+      _local.monthly(year: year, timezone: timezone);
 
   Future<CategoryReport> categories({
     required DateRangePreset preset,
     required TransactionType type,
     String? timezone,
   }) =>
-      _api.get(
-        ApiRoutes.reportCategories,
-        query: {
-          'preset': preset.wire,
-          'type': type.wire,
-          'timezone': timezone,
-        },
-        decode: CategoryReport.fromJson,
-      );
+      _local.categories(preset: preset, type: type, timezone: timezone);
 }
 
+/// Profile reads/writes: network when reachable, snapshot fallback when not.
 class UsersRepository {
-  UsersRepository(this._api);
+  UsersRepository(this._api, this._store);
 
   final ApiClient _api;
+  final LocalStore _store;
 
-  Future<UserProfile> me() => _api.get(ApiRoutes.userMe, decode: UserProfile.fromJson);
+  Future<UserProfile> me() async {
+    try {
+      final profile = await _api.get(ApiRoutes.userMe, decode: UserProfile.fromJson);
+      _store.upsertUser(profile);
+      return profile;
+    } on ApiError catch (error) {
+      if (error.isNetwork) {
+        final cached = _store.getUser();
+        if (cached != null) return cached;
+      }
+      rethrow;
+    }
+  }
 
   Future<UserProfile> update({
     String? name,
     String? defaultCurrency,
     String? timezone,
-  }) =>
-      _api.patch(
-        ApiRoutes.userMe,
-        body: {
-          if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
-          if (defaultCurrency != null && defaultCurrency.isNotEmpty)
-            'defaultCurrency': defaultCurrency.toUpperCase(),
-          if (timezone != null && timezone.isNotEmpty) 'timezone': timezone,
-        },
-        decode: UserProfile.fromJson,
-      );
+  }) async {
+    final profile = await _api.patch(
+      ApiRoutes.userMe,
+      body: {
+        if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
+        if (defaultCurrency != null && defaultCurrency.isNotEmpty)
+          'defaultCurrency': defaultCurrency.toUpperCase(),
+        if (timezone != null && timezone.isNotEmpty) 'timezone': timezone,
+      },
+      decode: UserProfile.fromJson,
+    );
+    _store.upsertUser(profile);
+    return profile;
+  }
 }
 
 /// Bundle handed to every screen through [AppScope].
+///
+/// Identity (`auth`, `users`) and reports stay network-aware; transactions and
+/// categories are local-first over SQLite, with `requestSync` nudged after
+/// every write so the sync engine can push in the background.
 class Services {
-  const Services({
-    required this.auth,
-    required this.transactions,
-    required this.categories,
-    required this.reports,
-    required this.users,
-  });
-
-  factory Services.fromApiClient(ApiClient api) => Services(
-        auth: AuthRepository(api),
-        transactions: TransactionsRepository(api),
-        categories: CategoriesRepository(api),
-        reports: ReportsRepository(api),
-        users: UsersRepository(api),
-      );
+  Services({
+    required ApiClient api,
+    required LocalStore store,
+    void Function()? requestSync,
+  })  : auth = AuthRepository(api, store),
+        transactions = TransactionsRepository(store, requestSync),
+        categories = CategoriesRepository(store, requestSync),
+        reports = ReportsRepository(LocalReports(store)),
+        users = UsersRepository(api, store);
 
   final AuthRepository auth;
   final TransactionsRepository transactions;
@@ -213,3 +328,10 @@ class Services {
   final ReportsRepository reports;
   final UsersRepository users;
 }
+
+List<Map<String, Object?>> _rawList(Object? json) =>
+    (json! as List<Object?>).cast<Map<String, Object?>>();
+
+List<Map<String, Object?>> _rawItems(Object? json) =>
+    ((json! as Map<String, dynamic>)['items']! as List<Object?>)
+        .cast<Map<String, Object?>>();
