@@ -1,5 +1,5 @@
 import { Route, Routes } from 'react-router-dom';
-import AppLayout from './components/AppLayout';
+import AppLayout from './components/AppLayout/AppLayout';
 import AuthProvider from './auth/AuthProvider';
 import { GuestOnlyRoute, ProtectedRoute } from './auth/ProtectedRoute';
 import CategoriesPage from './pages/CategoriesPage/CategoriesPage';

@@ -1,13 +1,13 @@
 import { useState, type FormEvent } from 'react';
-import type { Category, Transaction, TransactionTypeValue } from '../shared/types';
+import type { Category, Transaction, TransactionTypeValue } from '../../shared/types';
 import {
   createTransactionSchema,
   toFieldErrors,
   type CreateTransactionInputDto,
-} from '../shared/validation';
-import { indexByPath } from '../lib/errors';
-import { DEFAULT_TIMEZONE, todayIn } from '../lib/format';
-import { Button, ErrorBanner, Field, Select, TextInput, inputClass, labelClass } from './ui';
+} from '../../shared/validation';
+import { indexByPath } from '../../lib/errors';
+import { DEFAULT_TIMEZONE, todayIn } from '../../lib/format';
+import { Button, ErrorBanner, Field, Select, TextInput, inputClass, labelClass } from '../ui';
 
 export interface TransactionFormValues {
   type: TransactionTypeValue;

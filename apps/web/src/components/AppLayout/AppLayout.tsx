@@ -1,8 +1,8 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { API_BASE_URL } from '../lib/api';
-import { useAuth } from '../auth/auth-context';
-import { ROUTES } from '../routes';
-import { Button, Spinner } from './ui';
+import { API_BASE_URL } from '../../lib/api';
+import { useAuth } from '../../auth/auth-context';
+import { ROUTES } from '../../routes';
+import { Button, Spinner } from '../ui';
 
 const NAV_LINKS = [
   { to: ROUTES.dashboard, label: 'Dashboard' },

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
-import type { Category, Transaction } from '../shared/types';
-import { formatDay, money } from '../lib/format';
-import { transactionPath } from '../routes';
+import type { Category, Transaction } from '../../shared/types';
+import { formatDay, money } from '../../lib/format';
+import { transactionPath } from '../../routes';
 
 const TYPE_STYLES: Record<Transaction['type'], string> = {
   EXPENSE: 'text-rose-400',

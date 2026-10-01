@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { ROUTES } from '../routes';
+import { ROUTES } from '../../routes';
 
 /** Centred card used by the sign-in / sign-up screens. */
 export default function AuthShell({
