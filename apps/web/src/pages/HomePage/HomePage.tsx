@@ -1,162 +1,189 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
+import { FullPageLoading } from '../../components/ui';
 import { useAuth } from '../../auth/auth-context';
-import { API_BASE_URL } from '../../lib/api';
+import { healthState, useLiveHealth } from '../../lib/health';
 import { ROUTES } from '../../routes';
+import ProductPreview from './ProductPreview';
+import {
+  FaqSection,
+  FeaturesSection,
+  FinalCtaSection,
+  HowItWorksSection,
+  MobileSection,
+  PricingSection,
+  ReportsSection,
+  SiteFooter,
+} from './HomeSections';
 
-interface HealthPayload {
-  status: string;
-  uptimeSeconds: number;
-  timestamp: string;
-}
-
-type HealthState =
-  { phase: 'loading' } | { phase: 'down' } | { phase: 'up'; payload: HealthPayload };
-
-const FEATURES = [
-  {
-    title: 'Fast transaction entry',
-    body: 'Add an expense in seconds — type, amount, category, title, date, save.',
-  },
-  {
-    title: 'Offline-first mobile',
-    body: 'The Flutter app writes to SQLite first and synchronises when you are back online.',
-  },
-  {
-    title: 'Idempotent sync',
-    body: 'Client-generated UUIDs and an operation log make replaying changes safe.',
-  },
-  {
-    title: 'Accurate money',
-    body: 'PostgreSQL Decimal(18,2) end to end — never floating point.',
-  },
+const NAV_ANCHORS = [
+  { href: '#features', label: 'Features' },
+  { href: '#how-it-works', label: 'How it works' },
+  { href: '#pricing', label: 'Pricing' },
+  { href: '#faq', label: 'FAQ' },
 ] as const;
 
-async function fetchApiHealth(): Promise<HealthState> {
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/health/live`, {
-      cache: 'no-store',
-      signal: AbortSignal.timeout(4000),
-    });
-    if (!response.ok) return { phase: 'down' };
-    const body = (await response.json()) as { ok: boolean; data: HealthPayload };
-    return body.ok ? { phase: 'up', payload: body.data } : { phase: 'down' };
-  } catch {
-    return { phase: 'down' };
-  }
+const TRUST_POINTS = ['Web + Mobile', 'Offline capable', 'Automatic sync', 'Secure'] as const;
+
+function CheckIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-3.5 w-3.5 shrink-0 text-emerald-400"
+      aria-hidden
+    >
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
+}
+
+/** Small `● All systems operational` pill linking to the dedicated /status page. */
+function StatusPill({ state }: { state: 'loading' | 'up' | 'down' }) {
+  const label =
+    state === 'up'
+      ? 'All systems operational'
+      : state === 'down'
+        ? 'Service disruption'
+        : 'Checking status…';
+  const dot =
+    state === 'up' ? 'bg-emerald-400' : state === 'down' ? 'bg-rose-400' : 'bg-amber-400';
+  return (
+    <Link
+      to={ROUTES.status}
+      className="inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900/80 px-3 py-1 text-xs text-slate-400 transition hover:border-slate-700 hover:text-slate-200"
+    >
+      <span className={`h-1.5 w-1.5 rounded-full ${dot}`} aria-hidden />
+      {label}
+    </Link>
+  );
+}
+
+function LandingNavbar() {
+  return (
+    <header className="sticky top-0 z-40 border-b border-slate-800/80 bg-slate-950/85 backdrop-blur">
+      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-3 px-6 py-4">
+        <Link to={ROUTES.home} className="flex items-center gap-2 font-semibold text-white">
+          <span aria-hidden className="text-emerald-400">
+            ৳
+          </span>
+          Expenditure Tracker
+        </Link>
+
+        <nav aria-label="Page sections" className="hidden items-center gap-6 text-sm md:flex">
+          {NAV_ANCHORS.map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              className="text-slate-400 transition hover:text-slate-200"
+            >
+              {item.label}
+            </a>
+          ))}
+        </nav>
+
+        <div className="flex items-center gap-2 text-sm">
+          <Link
+            to={ROUTES.login}
+            className="rounded-lg px-3 py-2 font-medium text-slate-300 transition hover:text-white"
+          >
+            Sign in
+          </Link>
+          <Link
+            to={ROUTES.register}
+            className="rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-slate-950 transition hover:bg-emerald-400"
+          >
+            Create account
+          </Link>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function Hero() {
+  const live = useLiveHealth();
+  const state = healthState(live);
+
+  return (
+    <section className="mx-auto w-full max-w-6xl px-6 pt-14 text-center sm:pt-20">
+      <h1 className="mx-auto max-w-3xl text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
+        Know where your money goes — on every device
+      </h1>
+      <p className="mx-auto mt-5 max-w-2xl leading-relaxed text-slate-400 sm:text-lg">
+        Log income and expenses in seconds, understand your spending with clear reports, and keep
+        everything synchronized across web and mobile — even when you are offline.
+      </p>
+
+      <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+        <Link
+          to={ROUTES.register}
+          className="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-6 py-3 text-base font-semibold text-slate-950 transition hover:bg-emerald-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
+        >
+          Start Tracking — Free
+        </Link>
+        <a
+          href="#how-it-works"
+          className="inline-flex items-center justify-center rounded-lg border border-slate-700 px-6 py-3 text-base font-medium text-slate-200 transition hover:border-slate-600 hover:bg-slate-800/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400"
+        >
+          See How It Works
+        </a>
+      </div>
+
+      <ul className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-slate-400">
+        {TRUST_POINTS.map((point) => (
+          <li key={point} className="inline-flex items-center gap-1.5">
+            <CheckIcon />
+            {point}
+          </li>
+        ))}
+      </ul>
+
+      <div className="mt-6 flex justify-center">
+        <StatusPill state={state} />
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Marketing landing page for signed-out visitors. An existing session is
+ * sent straight to the dashboard, so this page never shows marketing to a
+ * signed-in user.
+ */
+function LandingPage() {
+  return (
+    <div className="flex min-h-screen flex-col">
+      <LandingNavbar />
+
+      <main className="flex-1">
+        <Hero />
+
+        <div className="mt-14 sm:mt-16">
+          <ProductPreview />
+        </div>
+
+        <FeaturesSection />
+        <HowItWorksSection />
+        <MobileSection />
+        <ReportsSection />
+        <PricingSection />
+        <FaqSection />
+        <FinalCtaSection />
+      </main>
+
+      <SiteFooter />
+    </div>
+  );
 }
 
 export default function HomePage() {
   const { status } = useAuth();
-  const signedIn = status === 'authenticated';
-  const [health, setHealth] = useState<HealthState>({ phase: 'loading' });
 
-  useEffect(() => {
-    let active = true;
-    void fetchApiHealth().then((result) => {
-      if (active) setHealth(result);
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const isUp = health.phase === 'up';
-
-  return (
-    <main className="w-full px-6 py-14">
-      <header className="flex flex-col gap-3">
-        <span className="inline-flex w-fit items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-3 py-1 text-xs text-slate-300">
-          <span
-            className={`h-2 w-2 rounded-full ${
-              health.phase === 'loading' ? 'bg-amber-400' : isUp ? 'bg-emerald-400' : 'bg-rose-400'
-            }`}
-            aria-hidden
-          />
-          API {health.phase === 'loading' ? 'checking' : isUp ? 'connected' : 'unreachable'} ·{' '}
-          <code className="text-slate-400">{API_BASE_URL}</code>
-        </span>
-
-        <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">
-          Expenditure Tracker
-        </h1>
-        <p className="max-w-2xl text-slate-400">
-          A personal income and expense tracker with a React + Vite web app, a Flutter mobile app
-          and a single NestJS API — designed offline-first from day one.
-        </p>
-
-        <div className="flex flex-wrap gap-3 pt-2">
-          <a
-            href={`${API_BASE_URL}/docs`}
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-emerald-400"
-          >
-            API documentation
-          </a>
-          {signedIn ? (
-            <Link
-              to={ROUTES.dashboard}
-              className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 transition hover:bg-slate-800"
-            >
-              Open dashboard
-            </Link>
-          ) : (
-            <>
-              <Link
-                to={ROUTES.login}
-                className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 transition hover:bg-slate-800"
-              >
-                Sign in
-              </Link>
-              <Link
-                to={ROUTES.register}
-                className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 transition hover:bg-slate-800"
-              >
-                Create account
-              </Link>
-            </>
-          )}
-        </div>
-      </header>
-
-      <section className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {FEATURES.map((feature) => (
-          <article
-            key={feature.title}
-            className="rounded-xl border border-slate-800 bg-slate-900/60 p-5"
-          >
-            <h2 className="font-semibold text-white">{feature.title}</h2>
-            <p className="mt-1 text-sm leading-relaxed text-slate-400">{feature.body}</p>
-          </article>
-        ))}
-      </section>
-
-      <section className="mt-12 rounded-xl border border-slate-800 bg-slate-900/40 p-5">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
-          Service status
-        </h2>
-        <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
-          <div>
-            <dt className="text-slate-500">API</dt>
-            <dd className={isUp ? 'text-emerald-400' : 'text-rose-400'}>
-              {health.phase === 'loading' ? 'Checking…' : isUp ? 'Healthy' : 'Down'}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-slate-500">Uptime</dt>
-            <dd className="text-slate-200">
-              {health.phase === 'up' ? `${health.payload.uptimeSeconds}s` : '—'}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-slate-500">Server time</dt>
-            <dd className="text-slate-200">
-              {health.phase === 'up' ? new Date(health.payload.timestamp).toISOString() : '—'}
-            </dd>
-          </div>
-        </dl>
-      </section>
-    </main>
-  );
+  if (status === 'loading') return <FullPageLoading />;
+  if (status === 'authenticated') return <Navigate to={ROUTES.dashboard} replace />;
+  return <LandingPage />;
 }

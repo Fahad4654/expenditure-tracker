@@ -8,6 +8,7 @@ import HomePage from './pages/HomePage/HomePage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage/ForgotPasswordPage';
 import LoginPage from './pages/LoginPage/LoginPage';
 import NotFoundPage from './pages/NotFoundPage/NotFoundPage';
+import StatusPage from './pages/StatusPage/StatusPage';
 import ProfilePage from './pages/ProfilePage/ProfilePage';
 import RegisterPage from './pages/RegisterPage/RegisterPage';
 import ReportsPage from './pages/ReportsPage/ReportsPage';
@@ -20,16 +21,21 @@ import { ROUTES } from './routes';
 /**
  * Route table.
  *
- * One layout route owns the chrome (header/footer); inside it the public
- * landing page, the guest-only auth screens, the honest placeholders for
- * deferred email/SMS flows, and the protected application section hang.
+ * The marketing landing page sits outside the app chrome — it renders its own
+ * navbar and footer and redirects an existing session to the dashboard. Every
+ * other page hangs off one layout route: guest-only auth screens, the honest
+ * placeholders for deferred flows, the public status page, and the protected
+ * application section.
  */
 export default function App() {
   return (
     <AuthProvider>
       <Routes>
+        {/* The marketing landing page owns its own chrome (nav + footer). */}
+        <Route path={ROUTES.home} element={<HomePage />} />
+
         <Route element={<AppLayout />}>
-          <Route path={ROUTES.home} element={<HomePage />} />
+          <Route path={ROUTES.status} element={<StatusPage />} />
 
           <Route element={<GuestOnlyRoute />}>
             <Route path={ROUTES.login} element={<LoginPage />} />

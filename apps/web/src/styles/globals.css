@@ -10,6 +10,18 @@
   color-scheme: dark;
 }
 
+html {
+  /* In-page section links (Features, Pricing, …) clear the sticky nav. */
+  scroll-behavior: smooth;
+  scroll-padding-top: 4.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
 html,
 body,
 #root {

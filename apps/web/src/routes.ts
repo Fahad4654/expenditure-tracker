@@ -9,6 +9,9 @@
 export const ROUTES = {
   home: '/',
 
+  // Public
+  status: '/status',
+
   // Auth
   login: '/login',
   register: '/register',
