@@ -19,6 +19,8 @@ export interface AuthContextValue {
   user: UserProfile | null;
   login(input: LoginInput): Promise<AuthSession>;
   register(input: RegisterInput): Promise<AuthSession>;
+  /** Exchange a Firebase Google ID token for a local session. */
+  googleSignIn(idToken: string): Promise<AuthSession>;
   /** Consume the reset OTP, set the new password, start a fresh session. */
   resetPassword(input: ResetPasswordInput): Promise<AuthSession>;
   logout(): Promise<void>;

@@ -5,13 +5,12 @@ import {
   HttpCode,
   HttpStatus,
   Post,
-  Query,
   Req,
   Res,
   UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ApiOkResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { COOKIE_NAMES } from '../shared/config';
 import type { AuthSession, EmailOtpChallenge, UserProfile } from '../shared/types';
 import {
@@ -34,15 +33,7 @@ import { Public } from '../common/decorators/public.decorator';
 import { CookieCsrfGuard } from '../common/guards/cookie-csrf.guard';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { AuthService, AuthResult } from './auth.service';
-import {
-  GOOGLE_STATE_COOKIE,
-  clearAuthCookies,
-  clearGoogleStateCookie,
-  cookieDomainOrUndefined,
-  setAuthCookies,
-  setGoogleStateCookie,
-} from './cookies';
-import { GOOGLE_STATE_TTL_SECONDS, GoogleOauthService } from './google-oauth.service';
+import { clearAuthCookies, cookieDomainOrUndefined, setAuthCookies } from './cookies';
 import { ClientContext, ttlToSeconds } from './token.service';
 
 @ApiTags('auth')
@@ -54,7 +45,6 @@ export class AuthController {
 
   constructor(
     private readonly auth: AuthService,
-    private readonly googleOauth: GoogleOauthService,
     config: ConfigService,
   ) {
     this.refreshTtlSeconds = ttlToSeconds(config.get<string>('auth.refreshTtl') ?? '30d');
@@ -154,82 +144,6 @@ export class AuthController {
     const result = await this.auth.googleSignIn(body, contextOf(req));
     this.writeCookies(res, result);
     return result.session;
-  }
-
-  @Public()
-  @Get('google')
-  @ApiOperation({
-    summary: 'Start a Google sign-in (server-side OAuth redirect)',
-    description:
-      'Redirects the browser to the Google consent screen. The callback ' +
-      'exchanges the code, issues the session cookie and redirects back to ' +
-      '`redirect` (same-origin path only). Web only — the mobile app posts ' +
-      'an ID token to POST /auth/google instead.',
-  })
-  @ApiResponse({ status: 302, description: 'To Google, or back with ?google=unavailable' })
-  async googleStart(
-    @Query('redirect') redirect: string | undefined,
-    @Res() res: Response,
-  ): Promise<void> {
-    const dest = this.googleOauth.resolveRedirectTarget(redirect);
-    if (!this.googleOauth.configured) {
-      res.redirect(this.googleOauth.withGoogleParam(dest, 'unavailable'));
-      return;
-    }
-    const nonce = this.googleOauth.newNonce();
-    const state = await this.googleOauth.signState(nonce, dest);
-    setGoogleStateCookie(res, nonce, {
-      ttlSeconds: GOOGLE_STATE_TTL_SECONDS,
-      secure: this.cookieSecure,
-    });
-    res.redirect(this.googleOauth.buildAuthorizeUrl(state, nonce));
-  }
-
-  @Public()
-  @Get('google/callback')
-  @ApiOperation({
-    summary: 'Google OAuth callback — issues a session and redirects back',
-    description:
-      'Validates the signed state against its one-shot cookie, exchanges the ' +
-      'code for the Google identity, links the account and sets the session ' +
-      'cookie. Failures come back as ?google=denied (user cancelled) or ' +
-      '?google=failed instead of a raw error page.',
-  })
-  @ApiResponse({ status: 302, description: 'Back to the app; ?google=denied|failed on error' })
-  async googleCallback(
-    @Query() query: { code?: string; state?: string; error?: string },
-    @Req() req: Request,
-    @Res() res: Response,
-  ): Promise<void> {
-    const claims = await this.googleOauth.verifyState(query.state);
-    // The destination is only trusted when the signed state verifies; a
-    // tampered state always lands on the login page.
-    const dest = claims?.dest ?? this.googleOauth.resolveRedirectTarget(undefined);
-    clearGoogleStateCookie(res, { secure: this.cookieSecure });
-
-    const cookieNonce = req.cookies?.[GOOGLE_STATE_COOKIE];
-    if (!claims || !this.googleOauth.stateNonceMatches(cookieNonce, claims.nonce)) {
-      res.redirect(this.googleOauth.withGoogleParam(dest, 'failed'));
-      return;
-    }
-    // Google sends error=access_denied when the user hits "Cancel".
-    if (query.error) {
-      res.redirect(this.googleOauth.withGoogleParam(dest, 'denied'));
-      return;
-    }
-    if (!query.code) {
-      res.redirect(this.googleOauth.withGoogleParam(dest, 'failed'));
-      return;
-    }
-    const identity = await this.googleOauth.exchange(query.code);
-    if (!identity) {
-      res.redirect(this.googleOauth.withGoogleParam(dest, 'failed'));
-      return;
-    }
-
-    const result = await this.auth.signInWithGoogleIdentity(identity, contextOf(req));
-    this.writeCookies(res, result);
-    res.redirect(dest);
   }
 
   @Public()

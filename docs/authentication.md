@@ -131,12 +131,8 @@ may print the code; it is hard-disabled whenever `NODE_ENV=production`.
 
 ## 3. Google sign-in
 
-Two clients, one account model:
-
-- **Web** — server-side OAuth (authorization code flow). The browser only
-  follows redirects; no Google or Firebase SDK ships to the client.
-- **Mobile (Flutter)** — native Firebase sign-in; the app sends the resulting
-  **ID token** to the API:
+Clients sign in with Firebase Authentication (`signInWithPopup` on web,
+`GoogleProvider` in Flutter) and send the resulting **ID token** to the API:
 
 ```text
 POST /auth/google  { "idToken": "<Firebase ID token>" }  → session (200)
@@ -147,31 +143,6 @@ POST /auth/google  { "idToken": "<Firebase ID token>" }  → session (200)
   `FIREBASE_PROJECT_ID` for both `iss` and `aud` — no service-account key is
   needed server-side (`FIREBASE_JWKS_URL` is overridable for tests).
 - Missing/invalid/expired signature → `401 UNAUTHORIZED`.
-
-### Web flow (server-side code flow)
-
-```text
-GET /auth/google?redirect=/login
-  ├── missing GOOGLE_CLIENT_ID/SECRET ─▶ 302 …/login?google=unavailable
-  └── configured ─▶ HttpOnly state cookie + 302 to the Google consent screen
-        └── GET /auth/google/callback?code&state
-              ├── bad state / missing state cookie ─▶ 302 ?google=failed
-              ├── error=access_denied (cancelled)  ─▶ 302 ?google=denied
-              ├── code exchange + userinfo lookup
-              │    └── sub + verified email ─▶ link/create (flow below)
-              │        + refresh/CSRF cookies + 302 back to `redirect`
-              └── exchange failure ─▶ 302 ?google=failed (logged server-side)
-```
-
-- The `state` is a signed JWT (HS256 with `JWT_ACCESS_SECRET`, 10-minute TTL)
-  carrying the destination plus a one-shot nonce. The nonce must also be
-  present in an HttpOnly cookie scoped to `/api/v1/auth/google` — that binds
-  the callback to the tab which started it (CSRF) and makes `redirect`
-  trustworthy without trusting the query string.
-- `redirect` accepts only same-origin paths or absolute URLs on
-  `PUBLIC_WEB_URL` / `CORS_ORIGINS`; anything else falls back to `/login`.
-- Needs a Google Cloud **OAuth 2.0 client** whose authorized redirect URI
-  equals `GOOGLE_CALLBACK_URL` (see deployment.md).
 
 ### Account resolution (no duplicate users ever)
 

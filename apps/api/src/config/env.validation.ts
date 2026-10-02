@@ -58,14 +58,6 @@ const envSchema = z.object({
   SMTP_APP_PASSWORD: z.string().default(''),
   SMTP_FROM_EMAIL: z.string().default(''),
 
-  // --- Google OAuth (web sign-in: server-side authorization code flow) -------
-  GOOGLE_CLIENT_ID: z.string().default(''),
-  GOOGLE_CLIENT_SECRET: z.string().default(''),
-  GOOGLE_CALLBACK_URL: z
-    .string()
-    .url()
-    .default('http://localhost:4000/api/v1/auth/google/callback'),
-
   // --- Firebase (Google sign-in via ID-token verification) -------------------
   FIREBASE_PROJECT_ID: z.string().min(1).default('expenditure-tracker-9ff14'),
   FIREBASE_JWKS_URL: z
