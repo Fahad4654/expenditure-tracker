@@ -91,12 +91,12 @@ export default function ReportsPage() {
   const denseDaily = (daily.data?.points.length ?? 0) > 45;
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-6 py-10">
+    <main className="w-full px-6 py-10">
       <PageHeader
         title="Reports"
         subtitle={`${range.from} → ${range.to} · ${timeZone}`}
         actions={
-          <div className="flex gap-2" role="group" aria-label="Report period">
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Report period">
             {PRESETS.map((option) => (
               <Button
                 key={option.value}
@@ -139,7 +139,7 @@ export default function ReportsPage() {
       </section>
 
       <section className="mt-6 grid gap-6 lg:grid-cols-2">
-        <Card>
+        <Card className="min-w-0">
           <h2 className="mb-1 font-semibold text-white">Daily activity</h2>
           <p className="mb-4 text-sm text-slate-500">
             {denseDaily
@@ -155,7 +155,7 @@ export default function ReportsPage() {
           ) : null}
         </Card>
 
-        <Card>
+        <Card className="min-w-0">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h2 className="font-semibold text-white">Category breakdown</h2>
@@ -237,26 +237,31 @@ function DailyBars({ report, currency }: { report: DailyReport; currency: string
     ...report.points.map((point) => Math.max(Number(point.income), Number(point.expense))),
   );
   return (
-    <div
-      className="flex h-44 items-end gap-[3px]"
-      role="img"
-      aria-label="Daily income and expense chart"
-    >
-      {report.points.map((point) => (
-        <div key={point.date} className="group relative flex flex-1 flex-col justify-end gap-[2px]">
+    <div className="overflow-x-auto">
+      <div
+        className="flex h-44 min-w-[420px] items-end gap-[3px]"
+        role="img"
+        aria-label="Daily income and expense chart"
+      >
+        {report.points.map((point) => (
           <div
-            className="w-full rounded-t-sm bg-emerald-500/80"
-            style={{ height: `${(Number(point.income) / max) * 100}%` }}
-          />
-          <div
-            className="w-full rounded-t-sm bg-rose-500/80"
-            style={{ height: `${(Number(point.expense) / max) * 100}%` }}
-          />
-          <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 whitespace-nowrap rounded-md border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-200 shadow-lg group-hover:block">
-            {point.date} · +{money(point.income, currency)} / −{money(point.expense, currency)}
+            key={point.date}
+            className="group relative flex flex-1 flex-col justify-end gap-[2px]"
+          >
+            <div
+              className="w-full rounded-t-sm bg-emerald-500/80"
+              style={{ height: `${(Number(point.income) / max) * 100}%` }}
+            />
+            <div
+              className="w-full rounded-t-sm bg-rose-500/80"
+              style={{ height: `${(Number(point.expense) / max) * 100}%` }}
+            />
+            <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 whitespace-nowrap rounded-md border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-200 shadow-lg group-hover:block">
+              {point.date} · +{money(point.income, currency)} / −{money(point.expense, currency)}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
@@ -267,32 +272,34 @@ function MonthlyBars({ report, currency }: { report: MonthlyReport; currency: st
     ...report.points.map((point) => Math.max(Number(point.income), Number(point.expense))),
   );
   return (
-    <div
-      className="flex h-44 items-end gap-3"
-      role="img"
-      aria-label="Monthly income and expense chart"
-    >
-      {report.points.map((point) => (
-        <div
-          key={point.month}
-          className="group relative flex flex-1 flex-col items-center justify-end"
-        >
-          <div className="flex h-full w-full items-end gap-[2px]">
-            <div
-              className="w-1/2 rounded-t-sm bg-emerald-500/80"
-              style={{ height: `${(Number(point.income) / max) * 100}%` }}
-            />
-            <div
-              className="w-1/2 rounded-t-sm bg-rose-500/80"
-              style={{ height: `${(Number(point.expense) / max) * 100}%` }}
-            />
+    <div className="overflow-x-auto">
+      <div
+        className="flex h-44 min-w-[640px] items-end gap-3"
+        role="img"
+        aria-label="Monthly income and expense chart"
+      >
+        {report.points.map((point) => (
+          <div
+            key={point.month}
+            className="group relative flex flex-1 flex-col items-center justify-end"
+          >
+            <div className="flex h-full w-full items-end gap-[2px]">
+              <div
+                className="w-1/2 rounded-t-sm bg-emerald-500/80"
+                style={{ height: `${(Number(point.income) / max) * 100}%` }}
+              />
+              <div
+                className="w-1/2 rounded-t-sm bg-rose-500/80"
+                style={{ height: `${(Number(point.expense) / max) * 100}%` }}
+              />
+            </div>
+            <span className="mt-2 text-[11px] text-slate-500">{formatMonthLabel(point.month)}</span>
+            <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 whitespace-nowrap rounded-md border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-200 shadow-lg group-hover:block">
+              {point.month} · +{money(point.income, currency)} / −{money(point.expense, currency)}
+            </div>
           </div>
-          <span className="mt-2 text-[11px] text-slate-500">{formatMonthLabel(point.month)}</span>
-          <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 whitespace-nowrap rounded-md border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-200 shadow-lg group-hover:block">
-            {point.month} · +{money(point.income, currency)} / −{money(point.expense, currency)}
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }

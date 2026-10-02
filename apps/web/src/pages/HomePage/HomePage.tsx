@@ -64,7 +64,7 @@ export default function HomePage() {
   const isUp = health.phase === 'up';
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-6 py-14">
+    <main className="w-full px-6 py-14">
       <header className="flex flex-col gap-3">
         <span className="inline-flex w-fit items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-3 py-1 text-xs text-slate-300">
           <span
@@ -120,7 +120,7 @@ export default function HomePage() {
         </div>
       </header>
 
-      <section className="mt-14 grid gap-4 sm:grid-cols-2">
+      <section className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {FEATURES.map((feature) => (
           <article
             key={feature.title}

@@ -98,7 +98,7 @@ export default function CategoriesPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-6 py-10">
+    <main className="w-full px-6 py-10">
       <PageHeader
         title="Categories"
         subtitle="System categories are shared and read-only; yours are private to you."

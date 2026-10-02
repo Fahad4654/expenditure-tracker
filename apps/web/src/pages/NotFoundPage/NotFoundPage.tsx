@@ -3,7 +3,7 @@ import { ROUTES } from '../../routes';
 
 export default function NotFoundPage() {
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-col items-start gap-4 px-6 py-24">
+    <main className="flex w-full flex-col items-start gap-4 px-6 py-24">
       <p className="text-sm font-medium uppercase tracking-wide text-emerald-400">404</p>
       <h1 className="text-3xl font-bold text-white">Page not found</h1>
       <p className="max-w-md text-slate-400">

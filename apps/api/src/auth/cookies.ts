@@ -5,6 +5,13 @@ import type { Response } from 'express';
 /** Path the refresh cookie is scoped to — nothing outside auth can see it. */
 const REFRESH_COOKIE_PATH = `${API_PREFIX}/auth`;
 
+/**
+ * The CSRF half must be readable from any page (`document.cookie` hides
+ * cookies whose path is not a prefix of the document path), so it lives at
+ * the root while the refresh cookie stays scoped to the auth routes.
+ */
+const CSRF_COOKIE_PATH = '/';
+
 export interface AuthCookieOptions {
   refreshTtlSeconds: number;
   secure: boolean;
@@ -43,6 +50,7 @@ export function setAuthCookies(
 
   res.cookie(COOKIE_NAMES.csrfToken, csrfToken, {
     ...base,
+    path: CSRF_COOKIE_PATH,
     // Readable by the client so it can echo the value in `X-CSRF-Token`.
     httpOnly: false,
     maxAge: options.refreshTtlSeconds * 1000,
@@ -61,7 +69,11 @@ export function clearAuthCookies(
   };
 
   res.clearCookie(COOKIE_NAMES.refreshToken, { ...base, httpOnly: true });
-  res.clearCookie(COOKIE_NAMES.csrfToken, { ...base, httpOnly: false });
+  res.clearCookie(COOKIE_NAMES.csrfToken, {
+    ...base,
+    path: CSRF_COOKIE_PATH,
+    httpOnly: false,
+  });
 }
 
 /** `COOKIE_DOMAIN` is unusable as a cookie attribute when it is a loopback host. */

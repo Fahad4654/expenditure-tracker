@@ -29,7 +29,7 @@ export default function UnavailablePage() {
   };
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-6 py-14">
+    <main className="w-full px-6 py-14">
       <PageHeader title={entry.title} subtitle="Not available in this build" />
       <Card>
         <p className="text-sm leading-relaxed text-slate-400">{entry.body}</p>

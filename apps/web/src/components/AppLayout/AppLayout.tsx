@@ -28,7 +28,7 @@ export default function AppLayout() {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-3 px-6 py-4">
+        <div className="flex w-full flex-wrap items-center justify-between gap-3 px-6 py-4">
           <NavLink
             to={signedIn ? ROUTES.dashboard : ROUTES.home}
             className="flex items-center gap-2 font-semibold text-white"
@@ -40,7 +40,7 @@ export default function AppLayout() {
           </NavLink>
 
           {signedIn ? (
-            <nav className="flex items-center gap-1 text-sm">
+            <nav className="flex flex-wrap items-center justify-center gap-1 text-sm">
               {NAV_LINKS.map((link) => (
                 <NavLink
                   key={link.to}

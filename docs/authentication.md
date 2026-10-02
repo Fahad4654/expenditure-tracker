@@ -171,10 +171,10 @@ reuse of an already-rotated token ─▶ REVOKE THE WHOLE FAMILY + 401
 
 ### Cookie / CSRF (web)
 
-| Cookie        | Flags                                                            |
-| ------------- | ---------------------------------------------------------------- |
-| `exp_refresh` | `HttpOnly`, `SameSite=Lax`, `Secure` (prod), `Path=/api/v1/auth` |
-| `exp_csrf`    | readable by JS (double-submit), `SameSite=Lax`, `Secure` (prod)  |
+| Cookie        | Flags                                                                                                                    |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `exp_refresh` | `HttpOnly`, `SameSite=Lax`, `Secure` (prod), `Path=/api/v1/auth`                                                         |
+| `exp_csrf`    | readable by JS (double-submit), `SameSite=Lax`, `Secure` (prod), `Path=/` (any page must read it to echo `X-CSRF-Token`) |
 
 Mutating cookie-based endpoints (`/auth/refresh`, `/auth/logout`) require the
 `X-CSRF-Token` header to equal the `exp_csrf` cookie → `CSRF_INVALID` otherwise.

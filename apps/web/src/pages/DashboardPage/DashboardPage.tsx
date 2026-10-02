@@ -62,7 +62,7 @@ export default function DashboardPage() {
   const categoryMap = new Map((data?.categories ?? []).map((c) => [c.id, c]));
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-6 py-10">
+    <main className="w-full px-6 py-10">
       <PageHeader
         title={user ? `Hello, ${user.name.split(' ')[0]}` : 'Dashboard'}
         subtitle="Your money at a glance."
