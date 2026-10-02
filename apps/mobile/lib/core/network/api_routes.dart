@@ -7,6 +7,10 @@ abstract final class ApiRoutes {
 
   static const String register = '$prefix/auth/register';
   static const String login = '$prefix/auth/login';
+  static const String otpSend = '$prefix/auth/otp/send';
+  static const String forgotPassword = '$prefix/auth/forgot-password';
+  static const String resetPassword = '$prefix/auth/reset-password';
+  static const String google = '$prefix/auth/google';
   static const String logout = '$prefix/auth/logout';
   static const String refresh = '$prefix/auth/refresh';
   static const String me = '$prefix/auth/me';

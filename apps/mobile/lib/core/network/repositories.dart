@@ -1,4 +1,5 @@
 import '../../shared/models/category.dart';
+import '../../shared/models/otp_challenge.dart';
 import '../../shared/models/common.dart';
 import '../../shared/models/report.dart';
 import '../../shared/models/transaction.dart';
@@ -39,6 +40,7 @@ class AuthRepository {
     required String name,
     required String email,
     required String password,
+    required String code,
   }) async {
     final session = await _api.post(
       ApiRoutes.register,
@@ -46,7 +48,69 @@ class AuthRepository {
         'name': name.trim(),
         'email': email.trim().toLowerCase(),
         'password': password,
+        'code': code,
       },
+      authenticated: false,
+      allowRefresh: false,
+      decode: AuthSession.fromJson,
+    );
+    _adopt(session.user);
+    return session;
+  }
+
+  /// Sends a 6-digit email OTP; `devCode` arrives while mail delivery is off.
+  Future<EmailOtpChallenge> sendEmailOtp({
+    required String email,
+    required String purpose,
+  }) {
+    return _api.post(
+      ApiRoutes.otpSend,
+      body: {'email': email.trim().toLowerCase(), 'purpose': purpose},
+      authenticated: false,
+      allowRefresh: false,
+      decode: EmailOtpChallenge.fromJson,
+    );
+  }
+
+  /// Enumeration-safe: the server answers with the same challenge shape
+  /// whether or not an account exists for this email.
+  Future<EmailOtpChallenge> forgotPassword(String email) {
+    return _api.post(
+      ApiRoutes.forgotPassword,
+      body: {'email': email.trim().toLowerCase()},
+      authenticated: false,
+      allowRefresh: false,
+      decode: EmailOtpChallenge.fromJson,
+    );
+  }
+
+  /// Consumes the reset OTP, stores the new password and starts a session
+  /// (the server revokes every earlier refresh token first).
+  Future<AuthSession> resetPassword({
+    required String email,
+    required String code,
+    required String password,
+  }) async {
+    final session = await _api.post(
+      ApiRoutes.resetPassword,
+      body: {
+        'email': email.trim().toLowerCase(),
+        'code': code,
+        'password': password,
+      },
+      authenticated: false,
+      allowRefresh: false,
+      decode: AuthSession.fromJson,
+    );
+    _adopt(session.user);
+    return session;
+  }
+
+  /// Exchanges a Firebase Google ID token for a local session.
+  Future<AuthSession> googleSignIn(String idToken) async {
+    final session = await _api.post(
+      ApiRoutes.google,
+      body: {'idToken': idToken},
       authenticated: false,
       allowRefresh: false,
       decode: AuthSession.fromJson,

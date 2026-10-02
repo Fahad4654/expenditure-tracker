@@ -4,6 +4,8 @@ import '../../app_scope.dart';
 import '../../core/config/app_config.dart';
 import '../../core/network/api_error.dart';
 import '../../shared/widgets/error_banner.dart';
+import 'forgot_password_page.dart';
+import 'google_button.dart';
 import 'register_page.dart';
 
 final _emailRe = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
@@ -62,6 +64,12 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  void _openForgotPassword() {
+    Navigator.of(context).push(
+      MaterialPageRoute<bool>(builder: (_) => const ForgotPasswordPage()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -108,6 +116,30 @@ class _LoginPageState extends State<LoginPage> {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 28),
+                    GoogleButton(
+                      onIdToken: (idToken) =>
+                          AppScope.read(context).auth.googleSignIn(idToken),
+                      onError: (message) {
+                        if (mounted) setState(() => _error = message);
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        const Expanded(child: Divider()),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            'or',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.outline,
+                            ),
+                          ),
+                        ),
+                        const Expanded(child: Divider()),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
@@ -144,6 +176,13 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       validator: (value) =>
                           (value == null || value.isEmpty) ? 'Password is required' : null,
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: _submitting ? null : _openForgotPassword,
+                        child: const Text('Forgot password?'),
+                      ),
                     ),
                     if (_error != null) ...[
                       const SizedBox(height: 16),

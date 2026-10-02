@@ -48,10 +48,17 @@ void main() {
     final services = Services(api: api, store: store, sync: sync);
 
     final email = 'smoke+${DateTime.now().microsecondsSinceEpoch}@example.com';
+    final challenge = await services.auth.sendEmailOtp(
+      email: email,
+      purpose: 'REGISTER',
+    );
+    expect(challenge.devCode, isNotNull,
+        reason: 'MAIL_SEND=false exposes devCode outside production');
     final session = await services.auth.register(
       name: 'Smoke Test',
       email: email,
       password: 'password123',
+      code: challenge.devCode!,
     );
     await tokenStore.saveSession(
       accessToken: session.accessToken,

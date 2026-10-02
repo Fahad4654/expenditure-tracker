@@ -6,28 +6,29 @@ import '../../app_scope.dart';
 import '../../core/network/api_error.dart';
 import '../../shared/models/otp_challenge.dart';
 import '../../shared/widgets/error_banner.dart';
-import 'google_button.dart';
 
 final _emailRe = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
-class RegisterPage extends StatefulWidget {
-  const RegisterPage({super.key});
+/// Password reset: request an OTP by email, then set a new password.
+///
+/// The server answer is identical for unknown addresses, so this screen can
+/// never be used to probe for accounts.
+class ForgotPasswordPage extends StatefulWidget {
+  const ForgotPasswordPage({super.key});
 
   @override
-  State<RegisterPage> createState() => _RegisterPageState();
+  State<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
 }
 
-class _RegisterPageState extends State<RegisterPage> {
+class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _confirmController = TextEditingController();
   final _codeController = TextEditingController();
+  final _passwordController = TextEditingController();
 
   bool _obscurePassword = true;
-  bool _submitting = false;
   bool _sending = false;
+  bool _submitting = false;
   int _resendIn = 0;
   Timer? _resendTimer;
   EmailOtpChallenge? _challenge;
@@ -36,11 +37,9 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   void dispose() {
     _resendTimer?.cancel();
-    _nameController.dispose();
     _emailController.dispose();
-    _passwordController.dispose();
-    _confirmController.dispose();
     _codeController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
@@ -60,7 +59,7 @@ class _RegisterPageState extends State<RegisterPage> {
       final challenge = await AppScope.read(context)
           .services
           .auth
-          .sendEmailOtp(email: email, purpose: 'REGISTER');
+          .forgotPassword(email);
       if (!mounted) return;
       setState(() {
         _challenge = challenge;
@@ -105,11 +104,10 @@ class _RegisterPageState extends State<RegisterPage> {
     });
 
     try {
-      await auth.register(
-        name: _nameController.text,
+      await auth.resetPassword(
         email: _emailController.text,
-        password: _passwordController.text,
         code: _codeController.text.trim(),
+        password: _passwordController.text,
       );
       // Success: the root router swaps in the shell.
     } on ApiError catch (error) {
@@ -126,7 +124,7 @@ class _RegisterPageState extends State<RegisterPage> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Create account')),
+      appBar: AppBar(title: const Text('Reset password')),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -139,54 +137,13 @@ class _RegisterPageState extends State<RegisterPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      'Start tracking your income and expenses',
+                      'We’ll email you a 6-digit code — no reset links, no account probing.',
                       style: theme.textTheme.bodyLarge?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 24),
-                    GoogleButton(
-                      onIdToken: (idToken) =>
-                          AppScope.read(context).auth.googleSignIn(idToken),
-                      onError: (message) {
-                        if (mounted) setState(() => _error = message);
-                      },
-                      label: 'Sign up with Google',
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        const Expanded(child: Divider()),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: Text(
-                            'or',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.outline,
-                            ),
-                          ),
-                        ),
-                        const Expanded(child: Divider()),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _nameController,
-                      textInputAction: TextInputAction.next,
-                      textCapitalization: TextCapitalization.words,
-                      decoration: const InputDecoration(
-                        labelText: 'Name',
-                        prefixIcon: Icon(Icons.person_outline),
-                      ),
-                      validator: (value) {
-                        final text = value?.trim() ?? '';
-                        if (text.length < 2) return 'Name must be at least 2 characters';
-                        if (text.length > 80) return 'Name must be at most 80 characters';
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
@@ -205,60 +162,16 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
-                      controller: _passwordController,
-                      obscureText: _obscurePassword,
-                      textInputAction: TextInputAction.next,
-                      decoration: InputDecoration(
-                        labelText: 'Password',
-                        helperText: 'At least 8 characters, with a letter and a number',
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
-                          ),
-                          onPressed: () =>
-                              setState(() => _obscurePassword = !_obscurePassword),
-                        ),
-                      ),
-                      validator: (value) {
-                        final text = value ?? '';
-                        if (text.length < 8) return 'Use at least 8 characters';
-                        if (!text.contains(RegExp(r'[A-Za-z]'))) {
-                          return 'Add at least one letter';
-                        }
-                        if (!text.contains(RegExp(r'[0-9]'))) {
-                          return 'Add at least one number';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _confirmController,
-                      obscureText: _obscurePassword,
-                      textInputAction: TextInputAction.done,
-                      onFieldSubmitted: (_) => _submit(),
-                      decoration: const InputDecoration(
-                        labelText: 'Confirm password',
-                        prefixIcon: Icon(Icons.lock_outline),
-                      ),
-                      validator: (value) =>
-                          value != _passwordController.text ? 'Passwords do not match' : null,
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
                       controller: _codeController,
                       keyboardType: TextInputType.number,
                       autofillHints: const [AutofillHints.oneTimeCode],
-                      textInputAction: TextInputAction.done,
+                      textInputAction: TextInputAction.next,
                       maxLength: 6,
                       decoration: InputDecoration(
                         labelText: 'Verification code',
                         counterText: '',
                         helperText: _challenge == null
-                            ? 'Press “Send code” to get a code by email'
+                            ? 'Press “Send code” first'
                             : _challenge!.devCode != null
                                 ? 'Dev code: ${_challenge!.devCode} (mail delivery is off)'
                                 : 'Code sent to ${_challenge!.email} — expires in 10 minutes',
@@ -289,6 +202,38 @@ class _RegisterPageState extends State<RegisterPage> {
                                       : 'Resend code',
                             ),
                     ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _passwordController,
+                      obscureText: _obscurePassword,
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (_) => _submit(),
+                      decoration: InputDecoration(
+                        labelText: 'New password',
+                        helperText: 'At least 8 characters, with a letter and a number',
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                          ),
+                          onPressed: () =>
+                              setState(() => _obscurePassword = !_obscurePassword),
+                        ),
+                      ),
+                      validator: (value) {
+                        final text = value ?? '';
+                        if (text.length < 8) return 'Use at least 8 characters';
+                        if (!text.contains(RegExp(r'[A-Za-z]'))) {
+                          return 'Add at least one letter';
+                        }
+                        if (!text.contains(RegExp(r'[0-9]'))) {
+                          return 'Add at least one number';
+                        }
+                        return null;
+                      },
+                    ),
                     if (_error != null) ...[
                       const SizedBox(height: 16),
                       ErrorBanner(message: _error!),
@@ -302,12 +247,7 @@ class _RegisterPageState extends State<RegisterPage> {
                               height: 22,
                               child: CircularProgressIndicator(strokeWidth: 2.4),
                             )
-                          : const Text('Create account'),
-                    ),
-                    const SizedBox(height: 12),
-                    TextButton(
-                      onPressed: _submitting ? null : () => Navigator.of(context).pop(),
-                      child: const Text('I already have an account'),
+                          : const Text('Reset password'),
                     ),
                   ],
                 ),

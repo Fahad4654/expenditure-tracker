@@ -153,7 +153,15 @@ postgresql  127.0.0.1:5432     redis  127.0.0.1:6379 (optional, Phase 6)
 `JWT_REFRESH_TTL` (`30d`), `JWT_ISSUER`, `JWT_AUDIENCE`, `COOKIE_DOMAIN`,
 `DEFAULT_CURRENCY` (`BDT`), `DEFAULT_TIMEZONE` (`Asia/Dhaka`),
 `MAX_REQUEST_BODY_SIZE` (`100kb`), `LOG_LEVEL`, `OTP_*`,
-`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALLBACK_URL`.
+`MAIL_SEND` (default `false` — responses may carry `devCode` outside
+production while it is off), `SMTP_HOST`, `SMTP_PORT`, `SMTP_APP_PASSWORD`,
+`SMTP_FROM_EMAIL`, `FIREBASE_PROJECT_ID` (defaults to the project above),
+`FIREBASE_JWKS_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
+`GOOGLE_CALLBACK_URL`.
+
+Web bundle build-time: `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`,
+`VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID` (public Firebase web config
+— the "Continue with Google" button stays hidden without them).
 
 Configuration is validated with Zod at boot — the process refuses to start with
 an invalid or missing required value, and the message names the variable.

@@ -91,10 +91,33 @@ class AuthController extends ChangeNotifier {
     required String name,
     required String email,
     required String password,
+    required String code,
   }) async {
     final session = await authRepository.register(
       name: name,
       email: email,
+      password: password,
+      code: code,
+    );
+    await _applySession(session);
+  }
+
+  /// Exchanges a Firebase Google ID token for a local session.
+  Future<void> googleSignIn(String idToken) async {
+    final session = await authRepository.googleSignIn(idToken);
+    await _applySession(session);
+  }
+
+  /// Consumes the reset OTP, sets the new password and starts a fresh session
+  /// (every existing session is revoked server-side).
+  Future<void> resetPassword({
+    required String email,
+    required String code,
+    required String password,
+  }) async {
+    final session = await authRepository.resetPassword(
+      email: email,
+      code: code,
       password: password,
     );
     await _applySession(session);

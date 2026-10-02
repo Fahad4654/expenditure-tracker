@@ -31,6 +31,13 @@ Map<String, Object?> sessionJson({String? refreshToken}) => {
       'refreshToken': refreshToken ?? 'refresh-token',
     };
 
+Map<String, Object?> otpChallengeJson({String email = 'fahad@example.com'}) => {
+      'email': email,
+      'expiresAt': '2026-01-01T00:10:00.000Z',
+      'resendAfterSeconds': 60,
+      'devCode': '123456',
+    };
+
 Map<String, Object?> categoryJson({
   String id = categoryId,
   String name = 'Food',
@@ -161,6 +168,10 @@ void registerDefaultHandlers(FakeApiClient api) {
     'POST /api/v1/auth/register': (_) => sessionJson(),
     'POST /api/v1/auth/refresh': (_) => sessionJson(),
     'POST /api/v1/auth/logout': (_) => null,
+    'POST /api/v1/auth/otp/send': (_) => otpChallengeJson(),
+    'POST /api/v1/auth/forgot-password': (_) => otpChallengeJson(),
+    'POST /api/v1/auth/reset-password': (_) => sessionJson(),
+    'POST /api/v1/auth/google': (_) => sessionJson(),
     'GET /api/v1/auth/me': (_) => userJson(),
     'GET /api/v1/transactions': (_) => paginatedJson([]),
     'POST /api/v1/transactions': (_) => transactionJson(),

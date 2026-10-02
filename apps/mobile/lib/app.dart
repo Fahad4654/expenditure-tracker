@@ -47,13 +47,20 @@ class _ExpenditureAppState extends State<ExpenditureApp> with WidgetsBindingObse
     return AppScope(
       auth: widget.auth,
       services: widget.services,
-      child: MaterialApp(
-        title: AppConfig.appTitle,
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light(),
-        darkTheme: AppTheme.dark(),
-        themeMode: ThemeMode.system,
-        home: _RootRouter(auth: widget.auth),
+      // Keying the app by auth status resets the navigator whenever the
+      // session flips, so a screen pushed before signing in (register,
+      // password reset) cannot stay on top of the shell afterwards.
+      child: ListenableBuilder(
+        listenable: widget.auth,
+        builder: (context, _) => MaterialApp(
+          key: ValueKey<AuthStatus>(widget.auth.status),
+          title: AppConfig.appTitle,
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light(),
+          darkTheme: AppTheme.dark(),
+          themeMode: ThemeMode.system,
+          home: _RootRouter(auth: widget.auth),
+        ),
       ),
     );
   }
