@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../app_scope.dart';
@@ -16,7 +17,10 @@ import '../../shared/widgets/section_card.dart';
 
 /// Summary + daily/monthly trends + category breakdown.
 class ReportsPage extends StatefulWidget {
-  const ReportsPage({super.key});
+  const ReportsPage({super.key, this.refreshTick});
+
+  /// Bumped (by the shell) after a sync cycle so reports re-read SQLite.
+  final ValueListenable<int>? refreshTick;
 
   @override
   State<ReportsPage> createState() => _ReportsPageState();
@@ -37,6 +41,18 @@ class _ReportsPageState extends State<ReportsPage> {
   @override
   void initState() {
     super.initState();
+    widget.refreshTick?.addListener(_onTick);
+    _loadMain();
+    _loadMonthly();
+  }
+
+  @override
+  void dispose() {
+    widget.refreshTick?.removeListener(_onTick);
+    super.dispose();
+  }
+
+  void _onTick() {
     _loadMain();
     _loadMonthly();
   }

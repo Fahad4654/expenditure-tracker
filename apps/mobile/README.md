@@ -29,8 +29,23 @@ injection, auto-refresh replay), `core/storage` (`TokenStore` with a
 tests), Material 3 theming via `app_theme.dart` with an `AppPalette`
 `ThemeExtension` for income/expense colors.
 
-Offline (SQLite, sync queue, `/sync` protocol) is **Phase 5** — the contracts
-are unchanged, see "Offline-first contract" below.
+## Phase 5 status ✅ (offline-first)
+
+Offline is implemented on top of the unchanged contracts below:
+
+- **SQLite source of truth** — every screen reads local first; REST bootstrap
+  and sync apply authoritative rows into the same tables
+  (`core/db/local_store.dart`, migrations in `core/db/database.dart`).
+- **Sync queue** — mutations append to `sync_operations`; entity
+  `sync_status` (SYNCED / SYNCING / PENDING / FAILED) recomputes from open
+  operations.
+- **Sync engine** (`core/sync/sync_engine.dart`) — single-flight
+  push → apply → pull cycle against `POST /sync` + `GET /sync/changes`, with
+  exponential backoff + jitter, connectivity gating, app-resume and periodic
+  triggers, fresh-device bootstrap (no cursor on first pull), and
+  "Sync now" that waits for a full cycle.
+- **Status UI** — pending/failed chips on transaction tiles, a Sync card on
+  Profile (queue count, last sync time, manual sync).
 
 ## Configuration
 
@@ -60,8 +75,8 @@ lib/
 │   ├── config/app_config.dart    # compile-time configuration
 │   ├── theme/app_theme.dart      # Material 3 light/dark themes + AppPalette
 │   ├── network/                  # ApiClient, routes, errors, repositories
-│   ├── db/                       # Phase 5 — SQLite schema, DAOs, migrations
-│   ├── sync/                     # Phase 5 — queue, connectivity, retry/backoff
+│   ├── db/                       # SQLite schema, migrations, DAO (queue too)
+│   ├── sync/                     # sync engine, backoff, connectivity
 │   └── storage/token_store.dart   # secure token storage (backend abstraction)
 ├── features/
 │   ├── splash/                   # session restore → login or shell
@@ -80,7 +95,7 @@ lib/
 ```sh
 cd apps/mobile
 flutter analyze
-flutter test                              # 22 widget/unit tests, no network
+flutter test                              # 80 widget/unit tests, no network
 LIVE_API=1 flutter test test/live_api_smoke_test.dart   # needs API on :4000
 ```
 
@@ -98,5 +113,11 @@ JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 flutter build apk --debug
   (`operationId`) so replays are idempotent.
 - Connectivity changes trigger a push of pending operations with exponential
   backoff; conflicts resolve last-write-wins using the server `version`.
+
+Covered by `local_store_test.dart` (durability, queue),
+`local_reports_test.dart` (local SQL reports), `sync_engine_test.dart`
+(protocol: adoption, DUPLICATE/CONFLICT/REJECTED, backoff, bootstrap pull,
+connectivity gating, re-arm), `sync_ui_test.dart` (chips + Sync card) and the
+opt-in `LIVE_API=1` smoke (live push → queue drained → server id adopted).
 
 See `docs/synchronization.md` for the full protocol.

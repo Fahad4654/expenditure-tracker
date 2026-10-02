@@ -87,6 +87,30 @@ Map<String, Object?> paginatedJson(List<Map<String, Object?>> items, {int total 
       'meta': {'page': 1, 'limit': 20, 'total': total, 'totalPages': 1},
     };
 
+Map<String, Object?> syncResponseJson({
+  List<Map<String, Object?>> results = const [],
+  List<Map<String, Object?>> changes = const [],
+  String cursor = '0',
+}) =>
+    {
+      'results': results,
+      'changes': changes,
+      'cursor': cursor,
+      'serverTime': '2026-10-01T00:00:00.000Z',
+    };
+
+Map<String, Object?> syncChangesJson({
+  List<Map<String, Object?>> changes = const [],
+  String? cursor,
+  bool hasMore = false,
+}) =>
+    {
+      'changes': changes,
+      'cursor': cursor ?? '0',
+      'hasMore': hasMore,
+      'serverTime': '2026-10-01T00:00:00.000Z',
+    };
+
 Map<String, Object?> summaryJson({
   String income = '0.00',
   String expense = '0.00',
@@ -150,6 +174,11 @@ void registerDefaultHandlers(FakeApiClient api) {
     'GET /api/v1/reports/categories': (_) => categoryReportJson(),
     'GET /api/v1/users/me': (_) => userJson(),
     'PATCH /api/v1/users/me': (_) => userJson(),
+    // Empty happy-path sync: no results to apply, nothing to pull. Tests that
+    // exercise the protocol register their own handlers over these.
+    'POST /api/v1/sync': (_) => syncResponseJson(),
+    'GET /api/v1/sync/changes': (req) =>
+        syncChangesJson(cursor: req.query?['cursor'] as String?),
   };
   defaults.forEach((key, handler) {
     api.handlers.putIfAbsent(key, () => handler);

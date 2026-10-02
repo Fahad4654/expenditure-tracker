@@ -5,6 +5,7 @@ import '../../shared/models/transaction.dart';
 import '../../shared/models/user.dart';
 import '../db/local_reports.dart';
 import '../db/local_store.dart';
+import '../sync/sync_engine.dart';
 import 'api_client.dart';
 import 'api_error.dart';
 import 'api_routes.dart';
@@ -309,16 +310,16 @@ class UsersRepository {
 /// Bundle handed to every screen through [AppScope].
 ///
 /// Identity (`auth`, `users`) and reports stay network-aware; transactions and
-/// categories are local-first over SQLite, with `requestSync` nudged after
-/// every write so the sync engine can push in the background.
+/// categories are local-first over SQLite, with `sync.requestSync` nudged
+/// after every write so the sync engine can push in the background.
 class Services {
   Services({
     required ApiClient api,
     required LocalStore store,
-    void Function()? requestSync,
+    required this.sync,
   })  : auth = AuthRepository(api, store),
-        transactions = TransactionsRepository(store, requestSync),
-        categories = CategoriesRepository(store, requestSync),
+        transactions = TransactionsRepository(store, sync.requestSync),
+        categories = CategoriesRepository(store, sync.requestSync),
         reports = ReportsRepository(LocalReports(store)),
         users = UsersRepository(api, store);
 
@@ -327,6 +328,7 @@ class Services {
   final CategoriesRepository categories;
   final ReportsRepository reports;
   final UsersRepository users;
+  final SyncEngine sync;
 }
 
 List<Map<String, Object?>> _rawList(Object? json) =>

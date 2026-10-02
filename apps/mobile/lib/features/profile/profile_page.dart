@@ -1,6 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../app_scope.dart';
+import '../../core/sync/sync_engine.dart';
+import '../../shared/formatters.dart';
+import '../../shared/models/sync.dart';
 import '../../core/network/api_error.dart';
 import '../../shared/widgets/confirm_dialog.dart';
 import '../../shared/widgets/error_banner.dart';
@@ -325,6 +330,8 @@ class _ProfilePageState extends State<ProfilePage> {
                           ],
                         ),
                       ),
+                      const SizedBox(height: 12),
+                      _SyncCard(scope: AppScope.read(context)),
                       const SizedBox(height: 24),
                       FilledButton(
                         onPressed: _saving ? null : _save,
@@ -355,5 +362,72 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
       ),
     );
+  }
+}
+
+/// Sync state + manual trigger. Reads live from [SyncEngine] so queued and
+/// failed counts, the last sync time and in-flight status stay current.
+class _SyncCard extends StatelessWidget {
+  const _SyncCard({required this.scope});
+
+  final AppScope scope;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final sync = scope.sync;
+    return SectionCard(
+      title: 'Sync',
+      child: ListenableBuilder(
+        listenable: sync,
+        builder: (context, _) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                if (sync.isSyncing) ...[
+                  const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                Expanded(
+                  child: Text(
+                    _subtitle(sync),
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: sync.isSyncing || !sync.isOnline
+                  ? null
+                  : () => unawaited(sync.syncNow()),
+              icon: const Icon(Icons.sync_rounded, size: 18),
+              label: const Text('Sync now'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _subtitle(SyncEngine sync) {
+    if (!sync.isOnline) return 'Waiting for a connection';
+    if (sync.isSyncing) return 'Syncing…';
+    if (sync.status == kSyncStatusFailed) {
+      return sync.lastError ?? 'Some changes could not sync';
+    }
+    if (sync.pendingCount > 0) {
+      return '${sync.pendingCount} change(s) waiting to sync';
+    }
+    final last = sync.lastSyncAt;
+    if (last != null) {
+      return 'Up to date • last synced ${formatInstant(last.toIso8601String())}';
+    }
+    return 'Not synced yet';
   }
 }

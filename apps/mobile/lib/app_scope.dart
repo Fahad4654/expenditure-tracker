@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../features/auth/auth_controller.dart';
 import '../core/network/repositories.dart';
+import '../core/sync/sync_engine.dart';
 
 /// Access point for everything shared by the widget tree: the session
 /// controller and the resource repositories.
@@ -20,6 +21,7 @@ class AppScope extends InheritedWidget {
   CategoriesRepository get categories => services.categories;
   ReportsRepository get reports => services.reports;
   UsersRepository get users => services.users;
+  SyncEngine get sync => services.sync;
 
   /// Safe to call from `initState` (does not register a dependency).
   static AppScope read(BuildContext context) {

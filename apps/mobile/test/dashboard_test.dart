@@ -1,4 +1,5 @@
 import 'package:expenditure_tracker/core/db/local_store.dart';
+import 'package:expenditure_tracker/core/network/api_routes.dart';
 import 'package:expenditure_tracker/features/auth/auth_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -107,7 +108,11 @@ void main() {
     // dashboard from SQLite: today's expense grew by ৳40.00.
     expect(find.byType(SnackBar), findsNothing);
     expect(find.text('৳290.00'), findsOneWidget);
-    expect(app.syncRequests, greaterThan(0));
+    expect(
+      app.api.requestsWhere((r) => r.method == 'POST' && r.path == ApiRoutes.sync),
+      isNotEmpty,
+      reason: 'the local write nudged the sync engine',
+    );
     expect(
       app.store.nextPushBatch().map((op) => op.payload['title']),
       contains('Bus fare'),

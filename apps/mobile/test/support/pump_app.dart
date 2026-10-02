@@ -4,6 +4,7 @@ import 'package:expenditure_tracker/app.dart';
 import 'package:expenditure_tracker/core/db/local_store.dart';
 import 'package:expenditure_tracker/core/network/repositories.dart';
 import 'package:expenditure_tracker/core/storage/token_store.dart';
+import 'package:expenditure_tracker/core/sync/sync_engine.dart';
 import 'package:expenditure_tracker/core/timezone.dart';
 import 'package:expenditure_tracker/features/auth/auth_controller.dart';
 import 'package:flutter/widgets.dart';
@@ -42,6 +43,9 @@ class TestApp {
         refreshToken: 'refresh-token',
       );
     }
+    // Wire the (never-started: no timers, no connectivity plugin) engine to
+    // auth so restore/login kick a real cycle against the fake API.
+    app.sync.attachAuth(app.auth);
     return app;
   }
 
@@ -49,16 +53,12 @@ class TestApp {
   final TestStore _harness;
   final TokenStore tokenStore = TokenStore(InMemoryTokenBackend());
 
-  /// Times [Services.requestSync] was nudged after a local write.
-  int syncRequests = 0;
-
   LocalStore get store => _harness.store;
 
-  late final Services services = Services(
-    api: api,
-    store: store,
-    requestSync: () => syncRequests += 1,
-  );
+  late final SyncEngine sync =
+      SyncEngine(api: api, store: store, tokenStore: tokenStore);
+
+  late final Services services = Services(api: api, store: store, sync: sync);
 
   late final AuthController auth = AuthController(
     authRepository: services.auth,

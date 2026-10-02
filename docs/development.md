@@ -207,7 +207,17 @@ suite runs without infrastructure or secrets):
   summaries.
 - `apps/mobile/test/live_api_smoke_test.dart` — opt-in (`LIVE_API=1`) round
   trip through the real API: register → categories → create → idempotent
-  replay → reports → delete → logout → revoked refresh rejection.
+  replay → **sync push (queue drained, server id adopted, cursor stored)** →
+  reports → delete → logout → revoked refresh rejection.
+- `apps/mobile/test/local_store_test.dart` + `local_reports_test.dart` —
+  SQLite schema/migrations, local-first writes, queue + metadata durability
+  across reopen, local SQL report summaries/trends/categories.
+- `apps/mobile/test/sync_engine_test.dart` — the `POST /sync` +
+  `GET /sync/changes` protocol: adoption, `DUPLICATE`, `CONFLICT`,
+  partial `REJECTED`, network-failure backoff, cursor-less bootstrap pull +
+  paging, tombstones, connectivity gating, sign-in kick, `syncNow` re-arm.
+- `apps/mobile/test/sync_ui_test.dart` — pending/failed sync chips on
+  transaction tiles and the Profile sync card (queue count, "Sync now").
 - `apps/api/src/shared/types/money.spec.ts` + the web copy (`money.test.ts`)
   — decimal↔minor-unit round trips,
   exactness beyond `Number.MAX_SAFE_INTEGER`, formatting.
@@ -217,8 +227,7 @@ same routes against a live PostgreSQL — 55 checks covering envelopes, cookie
 flags, CSRF, rotation/reuse, cross-user 404s, idempotent creates and report
 totals.
 
-Remaining test debt: sync idempotency and conflict tests (Phase 5) and rate
-limiter tests (Phase 6).
+Remaining test debt: rate limiter tests (Phase 6).
 
 **Tests must not require secrets.** `vitest.config.mts` loads `apps/api/.env`
 if present, but nothing depends on it.
@@ -233,7 +242,7 @@ if present, but nothing depends on it.
 | **2 — Database + Backend**   | Prisma schema refinements, migrations, User/Category/Transaction, auth foundation, authorization, transaction & category CRUD, tests | ✅ **Done** |
 | **3 — Web application**      | Auth UI, dashboard, transactions, categories, reports, profile/settings                                                              | ✅ **Done** |
 | **4 — Mobile application**   | Flutter architecture, auth, transactions, dashboard, reports, categories, profile (online-first)                                   | ✅ **Done** |
-| **5 — Offline-first**        | Local persistence, sync queue, connectivity, `/sync`, retry, idempotency, conflicts, sync status UI                                  | ⬜          |
+| **5 — Offline-first**        | Local persistence, sync queue, connectivity, `/sync`, retry, idempotency, conflicts, sync status UI                                  | ✅ **Done** |
 | **6 — Production hardening** | Rate limits, headers, logging, monitoring, indexes, perf, backups, production deployment, CI/CD                                      | ⬜          |
 
 ### Delivered in Phase 1

@@ -237,12 +237,16 @@ A delete can therefore never be "lost" by a device missing the window.
 
 ```text
 lib/core/sync/
-├── sync_queue.dart        # SQLite-backed queue: enqueue, claim, acknowledge
-├── connectivity.dart      # connectivity_plus listener + app-resume triggers
+├── sync_config.dart       # mirrors the API SYNC_DEFAULTS (batch, pages, poll)
+├── connectivity.dart      # connectivity_plus listener + online test hook
 ├── sync_engine.dart       # orchestration: push → apply → pull
-├── backoff.dart           # exponential backoff with jitter
-└── sync_status.dart       # SYNCED | SYNCING | PENDING | FAILED
+└── backoff.dart           # exponential backoff with jitter
 ```
+
+The queue itself is part of the SQLite DAO (`core/db/local_store.dart`:
+enqueue on write, `nextPushBatch`, `completeOperations`, `rejectOperation`,
+`resetFailedOperations`); the status constants live in
+`lib/shared/models/sync.dart`.
 
 ### Triggers
 
@@ -324,3 +328,13 @@ All five support CRUD with no network.
 | Server returns 422 for one op                 | That op `REJECTED`, the rest `APPLIED`           |
 | Offline create while another device is online | Reports computed locally match server after sync |
 | Clock set 2 days in the past                  | Ordering unaffected (server `version` wins)      |
+
+**Coverage.** `apps/mobile/test/local_store_test.dart` (schema, queue
+durability across reopen), `sync_engine_test.dart` (adoption, `DUPLICATE`,
+`CONFLICT`, partial `REJECTED`, network-failure backoff, cursor-less
+bootstrap + paging, tombstones, connectivity gating, sign-in kick,
+`syncNow` re-arm), `sync_ui_test.dart` (pending/failed chips, Profile sync
+card), `local_reports_test.dart` (local reports match the contracts), and the
+opt-in `LIVE_API=1` `live_api_smoke_test.dart` (live push drains the queue,
+adopts the server id, stores the cursor). The API side is covered by
+`apps/api/test/sync.spec.ts`.

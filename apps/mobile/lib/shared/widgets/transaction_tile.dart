@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/category.dart';
+import '../models/sync.dart';
 import '../models/transaction.dart';
 import '../formatters.dart';
 import 'amount_text.dart';
@@ -28,6 +29,9 @@ class TransactionTile extends StatelessWidget {
     final fallbackType =
         transaction.type == TransactionType.income ? 'Income' : 'Expense';
     final meta = '${category?.name ?? fallbackType} • ${formatDay(transaction.transactionDate)}';
+    final syncStatus = transaction.syncStatus;
+    final pending = syncStatus == kSyncStatusPending;
+    final failed = syncStatus == kSyncStatusFailed;
 
     return Card(
       margin: EdgeInsets.zero,
@@ -55,13 +59,32 @@ class TransactionTile extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      meta,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            meta,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (pending || failed) ...[
+                          const SizedBox(width: 6),
+                          Tooltip(
+                            message: pending ? 'Pending sync' : 'Sync failed',
+                            child: Icon(
+                              pending ? Icons.schedule_send_outlined : Icons.sync_problem,
+                              size: 14,
+                              color: pending
+                                  ? theme.colorScheme.primary
+                                  : theme.colorScheme.error,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ],
                 ),

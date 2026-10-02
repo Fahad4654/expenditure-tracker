@@ -6,6 +6,7 @@ import 'package:expenditure_tracker/core/network/api_client.dart';
 import 'package:expenditure_tracker/core/network/api_error.dart';
 import 'package:expenditure_tracker/core/network/repositories.dart';
 import 'package:expenditure_tracker/core/storage/token_store.dart';
+import 'package:expenditure_tracker/core/sync/sync_engine.dart';
 import 'package:expenditure_tracker/shared/models/common.dart';
 import 'package:expenditure_tracker/shared/models/transaction.dart';
 import 'package:expenditure_tracker/shared/utils/uuid.dart';
@@ -25,6 +26,9 @@ import 'support/sqlite_setup.dart';
 /// writes + queue, local reports). Skipped unless `LIVE_API=1`.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  // flutter_test installs HttpClient overrides that answer 400 to every
+  // request; the live smoke needs real sockets, so restore the system ones.
+  HttpOverrides.global = null;
 
   test('live API round trip through the mobile repositories', () async {
     if (Platform.environment['LIVE_API'] != '1') {
@@ -40,7 +44,8 @@ void main() {
       path: '${Directory.systemTemp.path}/live_smoke_${DateTime.now().microsecondsSinceEpoch}.db',
     ));
     addTearDown(() => store.clearAll());
-    final services = Services(api: api, store: store);
+    final sync = SyncEngine(api: api, store: store, tokenStore: tokenStore);
+    final services = Services(api: api, store: store, sync: sync);
 
     final email = 'smoke+${DateTime.now().microsecondsSinceEpoch}@example.com';
     final session = await services.auth.register(
@@ -86,6 +91,18 @@ void main() {
       const TransactionQuery(limit: 100),
     );
     expect(list.items.where((t) => t.clientId == clientId), hasLength(1));
+
+    // The sync engine pushes the queued create and adopts the server id.
+    await sync.syncNow();
+    expect(store.nextPushBatch(), isEmpty, reason: 'the batch applied: lastError=${sync.lastError}');
+    expect(store.entitySyncStatus('TRANSACTION', clientId), 'SYNCED');
+    expect(store.cursor, isNotNull, reason: 'the pull stored its cursor');
+    final synced = store
+        .listTransactions(const TransactionQuery(limit: 100))
+        .items
+        .where((t) => t.clientId == clientId)
+        .first;
+    expect(synced.id, isNot(clientId), reason: 'server_id adopted after push');
 
     final summary = await services.reports.summary(
       preset: DateRangePreset.month,

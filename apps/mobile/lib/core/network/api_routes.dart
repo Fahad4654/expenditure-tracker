@@ -24,5 +24,8 @@ abstract final class ApiRoutes {
   static const String reportMonthly = '$prefix/reports/monthly';
   static const String reportCategories = '$prefix/reports/categories';
 
+  static const String sync = '$prefix/sync';
+  static const String syncChanges = '$prefix/sync/changes';
+
   static const String healthLive = '$prefix/health/live';
 }

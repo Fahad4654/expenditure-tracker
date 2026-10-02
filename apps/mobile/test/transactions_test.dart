@@ -1,4 +1,5 @@
 import 'package:expenditure_tracker/core/db/local_store.dart';
+import 'package:expenditure_tracker/core/network/api_routes.dart';
 import 'package:expenditure_tracker/features/transactions/transaction_form_page.dart';
 import 'package:expenditure_tracker/shared/models/transaction.dart';
 import 'package:flutter/material.dart';
@@ -100,7 +101,11 @@ void main() {
     expect(op.entityType, 'TRANSACTION');
     expect(op.payload['amount'], '120.50');
     expect(op.payload['clientId'], created.clientId);
-    expect(app.syncRequests, greaterThan(0));
+    expect(
+      app.api.requestsWhere((r) => r.method == 'POST' && r.path == ApiRoutes.sync),
+      isNotEmpty,
+      reason: 'the local write nudged the sync engine',
+    );
 
     // The write never went over the network — the queue pushes it later.
     expect(

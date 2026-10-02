@@ -3,6 +3,9 @@
 PostgreSQL 16 + Prisma 6. Migration lives in
 `apps/api/prisma/migrations/<timestamp>_init/`.
 
+The mobile app keeps its own offline copy in SQLite; that local schema and
+the `sync_operations` queue are documented in `docs/synchronization.md` §7.
+
 ---
 
 ## Conventions

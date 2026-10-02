@@ -11,6 +11,9 @@ const String kSyncStatusSynced = 'SYNCED';
 const String kSyncStatusPending = 'PENDING';
 const String kSyncStatusFailed = 'FAILED';
 
+/// Engine-level state: a batch is on the wire right now.
+const String kSyncStatusSyncing = 'SYNCING';
+
 /// Lifecycle of a `sync_operations` row.
 ///
 /// * `PENDING` — queued, picked up by the next push.

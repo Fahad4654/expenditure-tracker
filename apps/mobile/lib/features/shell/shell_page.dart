@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../app_scope.dart';
+import '../../core/sync/sync_engine.dart';
 import '../dashboard/dashboard_page.dart';
 import '../profile/profile_page.dart';
 import '../reports/reports_page.dart';
@@ -28,23 +30,34 @@ class _ShellPageState extends State<ShellPage> {
   final Set<int> _visited = {0};
   final ValueNotifier<int> _refreshTick = ValueNotifier<int>(0);
   int _index = 0;
+  late final SyncEngine _sync;
   late final List<Widget> _pages;
 
   @override
   void initState() {
     super.initState();
+    // Reload dashboard/transactions whenever a sync cycle finishes so fresh
+    // server state (and flipped sync chips) show up without a manual refresh.
+    _sync = AppScope.read(context).sync;
+    _sync.addListener(_onSyncChanged);
     _pages = [
       DashboardPage(refreshTick: _refreshTick),
       TransactionsPage(refreshTick: _refreshTick),
-      const ReportsPage(),
+      ReportsPage(refreshTick: _refreshTick),
       const ProfilePage(),
     ];
   }
 
   @override
   void dispose() {
+    _sync.removeListener(_onSyncChanged);
     _refreshTick.dispose();
     super.dispose();
+  }
+
+  void _onSyncChanged() {
+    if (_sync.isSyncing || !mounted) return;
+    _refreshTick.value++;
   }
 
   Future<void> _addTransaction() async {

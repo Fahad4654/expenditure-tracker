@@ -9,7 +9,7 @@ import 'features/auth/login_page.dart';
 import 'features/shell/shell_page.dart';
 import 'features/splash/splash_page.dart';
 
-class ExpenditureApp extends StatelessWidget {
+class ExpenditureApp extends StatefulWidget {
   const ExpenditureApp({
     super.key,
     required this.auth,
@@ -20,17 +20,40 @@ class ExpenditureApp extends StatelessWidget {
   final Services services;
 
   @override
+  State<ExpenditureApp> createState() => _ExpenditureAppState();
+}
+
+class _ExpenditureAppState extends State<ExpenditureApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Returning to the foreground is a sync trigger (docs §6).
+    if (state == AppLifecycleState.resumed) widget.services.sync.requestSync();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return AppScope(
-      auth: auth,
-      services: services,
+      auth: widget.auth,
+      services: widget.services,
       child: MaterialApp(
         title: AppConfig.appTitle,
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light(),
         darkTheme: AppTheme.dark(),
         themeMode: ThemeMode.system,
-        home: _RootRouter(auth: auth),
+        home: _RootRouter(auth: widget.auth),
       ),
     );
   }
