@@ -13,7 +13,6 @@ export const ROUTES = {
   login: '/login',
   register: '/register',
   forgotPassword: '/forgot-password',
-  verifyEmail: '/verify-email',
   verifyPhone: '/verify-phone',
 
   // App (protected in Phase 3)

@@ -1,5 +1,11 @@
 import { createContext, useContext } from 'react';
-import type { AuthSession, LoginInput, RegisterInput, UserProfile } from '../shared/types';
+import type {
+  AuthSession,
+  LoginInput,
+  RegisterInput,
+  ResetPasswordInput,
+  UserProfile,
+} from '../shared/types';
 
 /**
  * `loading` means a silent refresh is still in flight on first paint — the UI
@@ -13,6 +19,10 @@ export interface AuthContextValue {
   user: UserProfile | null;
   login(input: LoginInput): Promise<AuthSession>;
   register(input: RegisterInput): Promise<AuthSession>;
+  /** Exchange a Firebase Google ID token for a local session. */
+  googleSignIn(idToken: string): Promise<AuthSession>;
+  /** Consume the reset OTP, set the new password, start a fresh session. */
+  resetPassword(input: ResetPasswordInput): Promise<AuthSession>;
   logout(): Promise<void>;
   /** Swap in an updated profile after a settings save. */
   setUser(user: UserProfile): void;

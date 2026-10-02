@@ -6,7 +6,13 @@ import {
   setUnauthorizedHandler,
   storeAccessToken,
 } from '../lib/api';
-import type { AuthSession, LoginInput, RegisterInput, UserProfile } from '../shared/types';
+import type {
+  AuthSession,
+  LoginInput,
+  RegisterInput,
+  ResetPasswordInput,
+  UserProfile,
+} from '../shared/types';
 import { AuthContext, type AuthContextValue, type AuthStatus } from './auth-context';
 
 interface State {
@@ -71,6 +77,31 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     return session;
   }, []);
 
+  const googleSignIn = useCallback(async (idToken: string): Promise<AuthSession> => {
+    const session = await apiFetch<AuthSession>(API_ROUTES.auth.google, {
+      method: 'POST',
+      body: JSON.stringify({ idToken }),
+      skipAuthRetry: true,
+    });
+    storeAccessToken(session);
+    setState({ status: 'authenticated', user: session.user });
+    return session;
+  }, []);
+
+  const resetPassword = useCallback(
+    async (input: ResetPasswordInput): Promise<AuthSession> => {
+      const session = await apiFetch<AuthSession>(API_ROUTES.auth.resetPassword, {
+        method: 'POST',
+        body: JSON.stringify(input),
+        skipAuthRetry: true,
+      });
+      storeAccessToken(session);
+      setState({ status: 'authenticated', user: session.user });
+      return session;
+    },
+    [],
+  );
+
   const logout = useCallback(async () => {
     try {
       await apiFetch(API_ROUTES.auth.logout, { method: 'POST', skipAuthRetry: true });
@@ -99,8 +130,17 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ status: state.status, user: state.user, login, register, logout, setUser }),
-    [state.status, state.user, login, register, logout, setUser],
+    () => ({
+      status: state.status,
+      user: state.user,
+      login,
+      register,
+      googleSignIn,
+      resetPassword,
+      logout,
+      setUser,
+    }),
+    [state.status, state.user, login, register, googleSignIn, resetPassword, logout, setUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -5,6 +5,7 @@ import { GuestOnlyRoute, ProtectedRoute } from './auth/ProtectedRoute';
 import CategoriesPage from './pages/CategoriesPage/CategoriesPage';
 import DashboardPage from './pages/DashboardPage/DashboardPage';
 import HomePage from './pages/HomePage/HomePage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage/ForgotPasswordPage';
 import LoginPage from './pages/LoginPage/LoginPage';
 import NotFoundPage from './pages/NotFoundPage/NotFoundPage';
 import ProfilePage from './pages/ProfilePage/ProfilePage';
@@ -33,11 +34,10 @@ export default function App() {
           <Route element={<GuestOnlyRoute />}>
             <Route path={ROUTES.login} element={<LoginPage />} />
             <Route path={ROUTES.register} element={<RegisterPage />} />
+            <Route path={ROUTES.forgotPassword} element={<ForgotPasswordPage />} />
           </Route>
 
-          {/* Designed but not wired up: no mail/SMS provider yet. */}
-          <Route path={ROUTES.forgotPassword} element={<UnavailablePage />} />
-          <Route path={ROUTES.verifyEmail} element={<UnavailablePage />} />
+          {/* Designed but not wired up: no SMS provider yet. */}
           <Route path={ROUTES.verifyPhone} element={<UnavailablePage />} />
 
           <Route element={<ProtectedRoute />}>

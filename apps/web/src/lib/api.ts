@@ -19,6 +19,10 @@ const NO_RETRY_PATHS: ReadonlySet<string> = new Set<string>([
   API_ROUTES.auth.register,
   API_ROUTES.auth.refresh,
   API_ROUTES.auth.logout,
+  API_ROUTES.auth.otpSend,
+  API_ROUTES.auth.forgotPassword,
+  API_ROUTES.auth.resetPassword,
+  API_ROUTES.auth.google,
 ]);
 
 export class ApiError extends Error {

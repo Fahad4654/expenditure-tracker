@@ -89,3 +89,10 @@ export interface GoogleSignInInput {
   /** Firebase Authentication ID token from the client SDK. */
   idToken: string;
 }
+
+export interface ResetPasswordInput {
+  email: string;
+  /** Pre-issued `PASSWORD_RESET` email OTP. */
+  code: string;
+  password: string;
+}

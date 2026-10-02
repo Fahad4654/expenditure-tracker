@@ -3,14 +3,6 @@ import { PageHeader, Card, Button } from '../../components/ui';
 import { ROUTES } from '../../routes';
 
 const KNOWN: Record<string, { title: string; body: string }> = {
-  [ROUTES.forgotPassword]: {
-    title: 'Password reset',
-    body: 'Reset links are delivered by email, which needs an outbound mail provider. Until that is wired up, ask an admin to reset the password directly.',
-  },
-  [ROUTES.verifyEmail]: {
-    title: 'Verify your email',
-    body: 'Email verification codes are sent through a mail provider that has not been configured yet.',
-  },
   [ROUTES.verifyPhone]: {
     title: 'Verify your phone',
     body: 'Phone verification codes are sent by SMS, which needs a telephony provider that has not been configured yet.',

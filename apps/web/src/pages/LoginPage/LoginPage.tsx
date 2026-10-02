@@ -3,12 +3,13 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { loginSchema, toFieldErrors } from '../../shared/validation';
 import { useAuth } from '../../auth/auth-context';
 import AuthShell from '../../components/AuthShell/AuthShell';
+import GoogleButton from '../../components/GoogleButton/GoogleButton';
 import { Button, ErrorBanner, Field, TextInput } from '../../components/ui';
 import { bannerFor, indexByPath, parseFormError } from '../../lib/errors';
 import { ROUTES } from '../../routes';
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, googleSignIn } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const returnTo = (location.state as { from?: string } | null)?.from ?? ROUTES.dashboard;
@@ -41,6 +42,13 @@ export default function LoginPage() {
     }
   }
 
+  async function handleGoogle(idToken: string) {
+    setBanner(null);
+    setFields({});
+    await googleSignIn(idToken);
+    navigate(returnTo, { replace: true });
+  }
+
   return (
     <AuthShell
       title="Sign in"
@@ -59,6 +67,14 @@ export default function LoginPage() {
     >
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         <ErrorBanner>{banner}</ErrorBanner>
+
+        <GoogleButton onIdToken={handleGoogle} onError={setBanner} />
+
+        <div className="flex items-center gap-3 text-xs uppercase tracking-wide text-slate-500">
+          <span className="h-px flex-1 bg-slate-700" aria-hidden="true" />
+          or
+          <span className="h-px flex-1 bg-slate-700" aria-hidden="true" />
+        </div>
 
         <Field label="Email" htmlFor="email" error={fields.email}>
           <TextInput
