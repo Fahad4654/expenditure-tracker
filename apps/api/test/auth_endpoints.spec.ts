@@ -1,10 +1,12 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import cookieParser from 'cookie-parser';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthController } from '../src/auth/auth.controller';
 import { AuthService } from '../src/auth/auth.service';
+import { GoogleOauthService } from '../src/auth/google-oauth.service';
 import { GoogleTokenService } from '../src/auth/google-token.service';
 import { OtpService } from '../src/auth/otp.service';
 import { PasswordService } from '../src/auth/password.service';
@@ -13,7 +15,8 @@ import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter
 import { TransformInterceptor } from '../src/common/interceptors/transform.interceptor';
 import { MailerService } from '../src/mail/mailer.service';
 import { PrismaService } from '../src/prisma/prisma.module';
-import { COOKIE_NAMES } from '../src/shared/config';
+import { API_PREFIX, COOKIE_NAMES } from '../src/shared/config';
+import { GOOGLE_STATE_COOKIE } from '../src/auth/cookies';
 import { errors } from '../src/common/http/api-error';
 
 /**
@@ -36,6 +39,12 @@ describe('auth endpoints: email OTP + Google', () => {
     'auth.cookieDomain': undefined,
     'auth.login.maxFailedAttempts': 3,
     'auth.login.lockoutSeconds': 900,
+    'jwt.accessSecret': 'test-access-secret-with-at-least-32-characters',
+    'app.publicWebUrl': 'http://localhost:3000',
+    'app.corsOrigins': ['http://localhost:3000'],
+    'google.clientId': 'client-id.test',
+    'google.clientSecret': 'client-secret.test',
+    'google.callbackUrl': 'http://localhost:4000/api/v1/auth/google/callback',
     'finance.defaultCurrency': 'BDT',
     'finance.defaultTimezone': 'Asia/Dhaka',
   };
@@ -142,12 +151,14 @@ describe('auth endpoints: email OTP + Google', () => {
         { provide: TokenService, useValue: tokens },
         { provide: MailerService, useValue: mailer },
         { provide: GoogleTokenService, useValue: google },
+        GoogleOauthService,
         { provide: PrismaService, useValue: prisma },
         { provide: ConfigService, useValue: { get: (k: string) => CONFIG[k] } },
       ],
     }).compile();
 
     app = moduleRef.createNestApplication();
+    app.use(cookieParser());
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
     app.useGlobalFilters(new HttpExceptionFilter());
     app.useGlobalInterceptors(new TransformInterceptor());
@@ -155,6 +166,7 @@ describe('auth endpoints: email OTP + Google', () => {
   });
 
   afterEach(async () => {
+    vi.unstubAllGlobals();
     await app.close();
   });
 
@@ -416,6 +428,199 @@ describe('auth endpoints: email OTP + Google', () => {
 
       expect(res.body.error).toMatchObject({ code: 'UNAUTHORIZED' });
       expect(prisma.user.findFirst).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('GET /auth/google (browser OAuth flow)', () => {
+    /** Starts the flow and hands back the signed state + its one-shot cookie. */
+    async function startFlow() {
+      const res = await request(app.getHttpServer())
+        .get('/auth/google?redirect=/login')
+        .expect(302);
+      const setCookie = (res.headers['set-cookie'] ?? []) as unknown as string[];
+      const stateCookie = setCookie.find((c) => c.startsWith(`${GOOGLE_STATE_COOKIE}=`));
+      if (!stateCookie) throw new Error('state cookie missing from start response');
+      const state = new URL(res.headers.location as string).searchParams.get('state');
+      if (!state) throw new Error('state missing from start redirect');
+      return { state, cookie: stateCookie.split(';')[0]! };
+    }
+
+    /** Decodes (without verifying) the state payload — white-box assertions. */
+    function stateDest(state: string): string {
+      const payload = JSON.parse(
+        Buffer.from(state.split('.')[1]!, 'base64url').toString('utf8'),
+      ) as { dest: string };
+      return payload.dest;
+    }
+
+    it('redirects to Google with a signed state and a one-shot cookie', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/auth/google?redirect=/login')
+        .expect(302);
+
+      const url = new URL(res.headers.location as string);
+      expect(url.origin + url.pathname).toBe('https://accounts.google.com/o/oauth2/v2/auth');
+      const params = url.searchParams;
+      expect(params.get('client_id')).toBe('client-id.test');
+      expect(params.get('redirect_uri')).toBe(
+        'http://localhost:4000/api/v1/auth/google/callback',
+      );
+      expect(params.get('response_type')).toBe('code');
+      expect(params.get('scope')).toBe('openid email profile');
+      expect(params.get('prompt')).toBe('select_account');
+      expect(params.get('state')).toMatch(/^[A-Za-z0-9._-]+$/);
+      expect(params.get('nonce')).toMatch(/^[0-9a-f]{32}$/);
+
+      const setCookie = (res.headers['set-cookie'] as unknown as string[]).join(';');
+      expect(setCookie).toContain(`${GOOGLE_STATE_COOKIE}=`);
+      expect(setCookie).toContain(`Path=${API_PREFIX}/auth/google`);
+      expect(setCookie).toContain('HttpOnly');
+    });
+
+    it('bounces back with google=unavailable when credentials are missing', async () => {
+      const configuredId = CONFIG['google.clientId'];
+      CONFIG['google.clientId'] = '';
+      try {
+        const res = await request(app.getHttpServer())
+          .get('/auth/google?redirect=/register')
+          .expect(302);
+
+        expect(res.headers.location).toBe('http://localhost:3000/register?google=unavailable');
+        expect(res.headers['set-cookie']).toBeUndefined();
+      } finally {
+        CONFIG['google.clientId'] = configuredId;
+      }
+    });
+
+    it('never forwards a hostile redirect target to another host', async () => {
+      const hostiles = [
+        'https://evil.example/steal',
+        '//evil.example',
+        '/\\evil.example',
+        'javascript:alert(1)',
+        'nowhere',
+      ];
+      for (const hostile of hostiles) {
+        const res = await request(app.getHttpServer())
+          .get(`/auth/google?redirect=${encodeURIComponent(hostile)}`)
+          .expect(302);
+        const state = new URL(res.headers.location as string).searchParams.get('state')!;
+        expect(stateDest(state)).toBe('http://localhost:3000/login');
+      }
+    });
+
+    it('exchanges the code, links the account and lands on the page that started it', async () => {
+      const { state, cookie } = await startFlow();
+
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ access_token: 'google-access-token' }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            sub: 'oauth-sub-1',
+            email: 'bob@example.com',
+            email_verified: true,
+            name: 'Bob',
+            picture: 'https://example.com/bob.png',
+          }),
+        });
+      vi.stubGlobal('fetch', fetchMock);
+      prisma.user.findFirst.mockResolvedValue(null);
+      prisma.user.create.mockImplementation(async ({ data }: never) => userRecord(data));
+
+      const res = await request(app.getHttpServer())
+        .get(`/auth/google/callback?code=oauth-code-1&state=${encodeURIComponent(state)}`)
+        .set('Cookie', cookie)
+        .expect(302);
+
+      expect(res.headers.location).toBe('http://localhost:3000/login');
+      const setCookie = (res.headers['set-cookie'] as unknown as string[]);
+      expect(setCookie.join(';')).toContain(`${COOKIE_NAMES.refreshToken}=`);
+      expect(setCookie.join(';')).toContain(`${GOOGLE_STATE_COOKIE}=`);
+      expect(prisma.user.create.mock.calls[0]![0].data).toMatchObject({
+        email: 'bob@example.com',
+        googleId: 'oauth-sub-1',
+        emailVerified: true,
+      });
+
+      const [tokenUrl, tokenInit] = fetchMock.mock.calls[0]!;
+      expect(String(tokenUrl)).toBe('https://oauth2.googleapis.com/token');
+      expect(String(tokenInit.body)).toContain('grant_type=authorization_code');
+      expect(String(tokenInit.body)).toContain('code=oauth-code-1');
+      const [infoUrl, infoInit] = fetchMock.mock.calls[1]!;
+      expect(String(infoUrl)).toBe('https://openidconnect.googleapis.com/v1/userinfo');
+      expect((infoInit.headers as Record<string, string>).authorization).toBe(
+        'Bearer google-access-token',
+      );
+    });
+
+    it('rejects a callback without the state cookie', async () => {
+      const { state } = await startFlow();
+      const fetchMock = vi.fn();
+      vi.stubGlobal('fetch', fetchMock);
+
+      const res = await request(app.getHttpServer())
+        .get(`/auth/google/callback?code=oauth-code-1&state=${encodeURIComponent(state)}`)
+        .expect(302);
+
+      expect(res.headers.location).toBe('http://localhost:3000/login?google=failed');
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(prisma.user.create).not.toHaveBeenCalled();
+      const setCookie = ((res.headers['set-cookie'] ?? []) as unknown as string[]).join(';');
+      expect(setCookie).not.toContain(`${COOKIE_NAMES.refreshToken}=`);
+    });
+
+    it('rejects a tampered state', async () => {
+      const { state, cookie } = await startFlow();
+      const tampered = `${state.slice(0, -1)}${state.endsWith('A') ? 'B' : 'A'}`;
+      const fetchMock = vi.fn();
+      vi.stubGlobal('fetch', fetchMock);
+
+      const res = await request(app.getHttpServer())
+        .get(`/auth/google/callback?code=oauth-code-1&state=${encodeURIComponent(tampered)}`)
+        .set('Cookie', cookie)
+        .expect(302);
+
+      expect(res.headers.location).toBe('http://localhost:3000/login?google=failed');
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(prisma.user.create).not.toHaveBeenCalled();
+    });
+
+    it("surfaces Google's denial as google=denied without touching the exchange", async () => {
+      const { state, cookie } = await startFlow();
+      const fetchMock = vi.fn();
+      vi.stubGlobal('fetch', fetchMock);
+
+      const res = await request(app.getHttpServer())
+        .get(`/auth/google/callback?error=access_denied&state=${encodeURIComponent(state)}`)
+        .set('Cookie', cookie)
+        .expect(302);
+
+      expect(res.headers.location).toBe('http://localhost:3000/login?google=denied');
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(prisma.user.findFirst).not.toHaveBeenCalled();
+    });
+
+    it('reports google=failed when Google rejects the code', async () => {
+      const { state, cookie } = await startFlow();
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValueOnce({ ok: false, status: 400, json: async () => ({}) }),
+      );
+
+      const res = await request(app.getHttpServer())
+        .get(`/auth/google/callback?code=bad-code&state=${encodeURIComponent(state)}`)
+        .set('Cookie', cookie)
+        .expect(302);
+
+      expect(res.headers.location).toBe('http://localhost:3000/login?google=failed');
+      expect(prisma.user.create).not.toHaveBeenCalled();
+      const setCookie = ((res.headers['set-cookie'] ?? []) as unknown as string[]).join(';');
+      expect(setCookie).not.toContain(`${COOKIE_NAMES.refreshToken}=`);
     });
   });
 });

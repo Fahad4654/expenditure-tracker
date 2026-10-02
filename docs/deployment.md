@@ -159,23 +159,27 @@ production while it is off), `SMTP_HOST`, `SMTP_PORT`, `SMTP_APP_PASSWORD`,
 `FIREBASE_JWKS_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
 `GOOGLE_CALLBACK_URL`.
 
-Web bundle build-time: `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`,
-`VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID` (public Firebase web config
-— the "Continue with Google" button stays hidden without them).
-
 Configuration is validated with Zod at boot — the process refuses to start with
 an invalid or missing required value, and the message names the variable.
 
 **Never commit `.env`.** Only `apps/api/.env.example` and
 `apps/web/.env.example` are tracked.
 
-### Google OAuth in production
+### Google sign-in
+
+Web sign-in is the server-side OAuth code flow (`GET /auth/google` →
+`/auth/google/callback`); the mobile app verifies its own Firebase ID token
+against `POST /auth/google`. For the web flow, create a Google Cloud **OAuth
+2.0 client** and register:
 
 ```text
 Authorized redirect URI:  https://api.example.com/api/v1/auth/google/callback
+Local development:        http://localhost:4000/api/v1/auth/google/callback
 ```
 
-`GOOGLE_CALLBACK_URL` must match exactly.
+`GOOGLE_CALLBACK_URL` must match one of them exactly. Without
+`GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` the button simply bounces back with
+`?google=unavailable` — nothing else breaks.
 
 ---
 

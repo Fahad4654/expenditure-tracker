@@ -11,7 +11,7 @@ import { errors } from '../common/http/api-error';
 import { PrismaService } from '../prisma/prisma.module';
 import { toUserProfile } from '../users/user.mapper';
 import { newCsrfToken } from './cookies';
-import { GoogleTokenService } from './google-token.service';
+import { GoogleTokenService, type GoogleIdentity } from './google-token.service';
 import { OtpService } from './otp.service';
 import { PasswordService } from './password.service';
 import { ClientContext, TokenService } from './token.service';
@@ -126,13 +126,25 @@ export class AuthService {
   }
 
   /**
-   * Google sign-in: verifies the Firebase ID token, then links (or creates)
-   * the local account. An existing email + password account simply gains the
-   * `googleId` — no duplicate row.
+   * Google sign-in from a Firebase ID token (the mobile app's native flow).
+   * Verifies the token, then links (or creates) the local account via the
+   * shared {@link signInWithGoogleIdentity}.
    */
   async googleSignIn(input: GoogleSignInInputDto, context: ClientContext): Promise<AuthResult> {
     const identity = await this.googleTokens.verify(input.idToken);
+    return this.signInWithGoogleIdentity(identity, context);
+  }
 
+  /**
+   * Links (or creates) the local account for a verified Google identity —
+   * shared by the mobile ID-token path and the web OAuth code flow. An
+   * existing email + password account simply gains the `googleId`, so there
+   * is never a duplicate row.
+   */
+  async signInWithGoogleIdentity(
+    identity: GoogleIdentity,
+    context: ClientContext,
+  ): Promise<AuthResult> {
     let user = await this.prisma.user.findFirst({
       where: { OR: [{ googleId: identity.sub }, { email: identity.email }], deletedAt: null },
     });

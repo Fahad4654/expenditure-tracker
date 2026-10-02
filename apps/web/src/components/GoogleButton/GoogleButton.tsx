@@ -1,47 +1,22 @@
-import { useState } from 'react';
-import { googleAuthConfigured, googleAuthErrorMessage, isPopupDismissal, signInWithGoogle } from '../../lib/firebase';
+import { googleOauthStartUrl } from '../../auth/google-notice';
 import { Button } from '../ui';
 
 /**
- * "Continue with Google" — hidden until the Firebase web config is provided
- * via `VITE_FIREBASE_*` env vars. The resulting Firebase ID token is handed
- * to `onIdToken`, which exchanges it for a local session.
+ * "Continue with Google" — hands the browser to the API's server-side OAuth
+ * entry point (`GET /auth/google`). The backend owns the whole flow: consent
+ * screen, code exchange, account linking and the session cookie. The page the
+ * visit started from is passed as `redirect` and validated server-side, so
+ * the button is just a link — no Google or Firebase SDK ships to the browser.
  */
-export default function GoogleButton({
-  onIdToken,
-  onError,
-  label = 'Continue with Google',
-}: {
-  onIdToken: (idToken: string) => Promise<void>;
-  onError: (message: string) => void;
-  label?: string;
-}) {
-  const [pending, setPending] = useState(false);
-
-  if (!googleAuthConfigured) return null;
-
-  async function handleClick() {
-    setPending(true);
-    try {
-      const idToken = await signInWithGoogle();
-      await onIdToken(idToken);
-    } catch (error) {
-      if (!isPopupDismissal(error)) onError(googleAuthErrorMessage(error));
-    } finally {
-      setPending(false);
-    }
+export default function GoogleButton({ label = 'Continue with Google' }: { label?: string }) {
+  function handleClick() {
+    window.location.assign(googleOauthStartUrl(window.location.pathname, window.location.search));
   }
 
   return (
-    <Button
-      type="button"
-      variant="secondary"
-      className="w-full"
-      onClick={handleClick}
-      disabled={pending}
-    >
+    <Button type="button" variant="secondary" className="w-full" onClick={handleClick}>
       <GoogleGlyph />
-      {pending ? 'Connecting…' : label}
+      {label}
     </Button>
   );
 }
@@ -64,7 +39,7 @@ function GoogleGlyph() {
       />
       <path
         fill="#EA4335"
-        d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.9 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58Z"
+        d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.93 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58Z"
       />
     </svg>
   );

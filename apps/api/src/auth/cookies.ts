@@ -19,6 +19,36 @@ export interface AuthCookieOptions {
   domain?: string;
 }
 
+/**
+ * One-shot OAuth state cookie binding the Google callback to the browser that
+ * started it. Scoped to the start route and its `/callback` child only.
+ */
+export const GOOGLE_STATE_COOKIE = 'google_oauth_state';
+const GOOGLE_STATE_COOKIE_PATH = `${API_PREFIX}/auth/google`;
+
+export function setGoogleStateCookie(
+  res: Response,
+  nonce: string,
+  options: { ttlSeconds: number; secure: boolean },
+): void {
+  res.cookie(GOOGLE_STATE_COOKIE, nonce, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: options.secure,
+    path: GOOGLE_STATE_COOKIE_PATH,
+    maxAge: options.ttlSeconds * 1000,
+  });
+}
+
+export function clearGoogleStateCookie(res: Response, options: { secure: boolean }): void {
+  res.clearCookie(GOOGLE_STATE_COOKIE, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: options.secure,
+    path: GOOGLE_STATE_COOKIE_PATH,
+  });
+}
+
 export function newCsrfToken(): string {
   return randomBytes(32).toString('hex');
 }

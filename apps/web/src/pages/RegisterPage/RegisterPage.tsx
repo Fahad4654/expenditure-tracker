@@ -7,13 +7,14 @@ import type { EmailOtpChallenge } from '../../shared/types';
 import AuthShell from '../../components/AuthShell/AuthShell';
 import GoogleButton from '../../components/GoogleButton/GoogleButton';
 import { Button, ErrorBanner, Field, TextInput } from '../../components/ui';
+import { useGoogleAuthNotice } from '../../auth/google-notice';
 import { bannerFor, indexByPath, parseFormError } from '../../lib/errors';
 import { ROUTES } from '../../routes';
 
 const PASSWORD_HINT = 'At least 8 characters, including a letter and a number.';
 
 export default function RegisterPage() {
-  const { register, googleSignIn } = useAuth();
+  const { register } = useAuth();
   const navigate = useNavigate();
 
   const [values, setValues] = useState({ name: '', email: '', password: '', code: '' });
@@ -24,6 +25,8 @@ export default function RegisterPage() {
   const [challenge, setChallenge] = useState<EmailOtpChallenge | null>(null);
   const [sending, setSending] = useState(false);
   const [resendIn, setResendIn] = useState(0);
+
+  useGoogleAuthNotice(setBanner);
 
   // Counts the resend cooldown down once a second while the page is open.
   useEffect(() => {
@@ -77,13 +80,6 @@ export default function RegisterPage() {
     }
   }
 
-  async function handleGoogle(idToken: string) {
-    setBanner(null);
-    setFields({});
-    await googleSignIn(idToken);
-    navigate(ROUTES.dashboard, { replace: true });
-  }
-
   function update(key: keyof typeof values) {
     return (event: { target: { value: string } }) =>
       setValues((prev) => ({ ...prev, [key]: event.target.value }));
@@ -109,11 +105,7 @@ export default function RegisterPage() {
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         <ErrorBanner>{banner}</ErrorBanner>
 
-        <GoogleButton
-          onIdToken={handleGoogle}
-          onError={setBanner}
-          label="Sign up with Google"
-        />
+        <GoogleButton label="Sign up with Google" />
 
         <div className="flex items-center gap-3 text-xs uppercase tracking-wide text-slate-500">
           <span className="h-px flex-1 bg-slate-700" aria-hidden="true" />

@@ -151,8 +151,8 @@ Two env files, one per app — neither is ever committed:
 
 | File            | Loaded by                              | Contents                                                                  |
 | --------------- | -------------------------------------- | ------------------------------------------------------------------------- |
-| `apps/api/.env` | `loadApiEnv()` in `config/load-env.ts` | API config, `DATABASE_URL`, JWT secrets, OTP settings, SMTP, Firebase      |
-| `apps/web/.env` | Vite (default `envDir`)                | `VITE_API_URL`, `VITE_FIREBASE_*` (Google sign-in), `WEB_PORT` — no secrets |
+| `apps/api/.env` | `loadApiEnv()` in `config/load-env.ts` | API config, `DATABASE_URL`, JWT secrets, OTP, SMTP, Google/Firebase          |
+| `apps/web/.env` | Vite (default `envDir`)                | `VITE_API_URL`, `WEB_PORT` — never anything secret                           |
 
 For the API, variables already in `process.env` (shell/CI) always win;
 `process.loadEnvFile` never overwrites existing keys, so secrets injected
@@ -160,10 +160,12 @@ through the environment are safe. The path is resolved relative to the config
 module, so the file is found no matter which directory the process starts
 from.
 
-Only `VITE_*` keys are inlined into the client bundle — `VITE_API_URL` and
-the `VITE_FIREBASE_*` set (public Firebase web config; the Google button hides
-itself while they are unset) — and none of them may hold a secret. `WEB_PORT`
-sets the dev/preview port. The web `build` script pins `NODE_ENV=production` so a local build always
+Only `VITE_*` keys are inlined into the client bundle — `VITE_API_URL` is
+the only one, and it must never hold a secret. Google sign-in on the web needs
+no client-side config at all: the button simply opens the API's
+`GET /auth/google`, which stays quiet until `GOOGLE_CLIENT_ID` /
+`GOOGLE_CLIENT_SECRET` are set in `apps/api/.env`. `WEB_PORT` sets the
+dev/preview port. The web `build` script pins `NODE_ENV=production` so a local build always
 ships React's production build.
 
 ---

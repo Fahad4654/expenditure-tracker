@@ -86,7 +86,9 @@ curl http://localhost:4000/api/v1/health/ready
 | `POST` | `/auth/otp/send`    | `{ email, purpose }` → OTP challenge (`devCode` outside production, mail off) |
 | `POST` | `/auth/register`    | `{ name, email, password, code }` → session, 201 (`code` = email OTP)         |
 | `POST` | `/auth/login`       | `{ email, password }` → session, 200                                          |
-| `POST` | `/auth/google`      | `{ idToken }` (Firebase) → session, 200                                       |
+| `POST` | `/auth/google`      | `{ idToken }` (Firebase, mobile) → session, 200                               |
+| `GET`  | `/auth/google`      | Start web Google sign-in: 302 to Google (`?redirect=` = same-origin path)    |
+| `GET`  | `/auth/google/callback` | OAuth callback: session cookies + 302 back (`?google=denied\|failed` on error) |
 | `POST` | `/auth/forgot-password` | `{ email }` → OTP challenge (same shape for unknown emails)               |
 | `POST` | `/auth/reset-password`  | `{ email, code, password }` → session, 200 (revokes all prior sessions)   |
 | `POST` | `/auth/refresh`     | Rotate refresh token (cookie + `X-CSRF-Token`, or `refreshToken` in the body) |

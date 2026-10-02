@@ -5,11 +5,12 @@ import { useAuth } from '../../auth/auth-context';
 import AuthShell from '../../components/AuthShell/AuthShell';
 import GoogleButton from '../../components/GoogleButton/GoogleButton';
 import { Button, ErrorBanner, Field, TextInput } from '../../components/ui';
+import { useGoogleAuthNotice } from '../../auth/google-notice';
 import { bannerFor, indexByPath, parseFormError } from '../../lib/errors';
 import { ROUTES } from '../../routes';
 
 export default function LoginPage() {
-  const { login, googleSignIn } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const returnTo = (location.state as { from?: string } | null)?.from ?? ROUTES.dashboard;
@@ -18,6 +19,8 @@ export default function LoginPage() {
   const [fields, setFields] = useState<Record<string, string>>({});
   const [banner, setBanner] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useGoogleAuthNotice(setBanner);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -42,13 +45,6 @@ export default function LoginPage() {
     }
   }
 
-  async function handleGoogle(idToken: string) {
-    setBanner(null);
-    setFields({});
-    await googleSignIn(idToken);
-    navigate(returnTo, { replace: true });
-  }
-
   return (
     <AuthShell
       title="Sign in"
@@ -68,7 +64,7 @@ export default function LoginPage() {
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         <ErrorBanner>{banner}</ErrorBanner>
 
-        <GoogleButton onIdToken={handleGoogle} onError={setBanner} />
+        <GoogleButton />
 
         <div className="flex items-center gap-3 text-xs uppercase tracking-wide text-slate-500">
           <span className="h-px flex-1 bg-slate-700" aria-hidden="true" />

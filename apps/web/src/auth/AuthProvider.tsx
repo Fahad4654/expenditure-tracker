@@ -77,17 +77,6 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     return session;
   }, []);
 
-  const googleSignIn = useCallback(async (idToken: string): Promise<AuthSession> => {
-    const session = await apiFetch<AuthSession>(API_ROUTES.auth.google, {
-      method: 'POST',
-      body: JSON.stringify({ idToken }),
-      skipAuthRetry: true,
-    });
-    storeAccessToken(session);
-    setState({ status: 'authenticated', user: session.user });
-    return session;
-  }, []);
-
   const resetPassword = useCallback(
     async (input: ResetPasswordInput): Promise<AuthSession> => {
       const session = await apiFetch<AuthSession>(API_ROUTES.auth.resetPassword, {
@@ -135,12 +124,11 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       user: state.user,
       login,
       register,
-      googleSignIn,
       resetPassword,
       logout,
       setUser,
     }),
-    [state.status, state.user, login, register, googleSignIn, resetPassword, logout, setUser],
+    [state.status, state.user, login, register, resetPassword, logout, setUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
