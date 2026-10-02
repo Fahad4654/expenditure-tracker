@@ -12,6 +12,7 @@ export const API_ROUTES = {
     refresh: `${API_PREFIX}/auth/refresh`,
     me: `${API_PREFIX}/auth/me`,
     sendOtp: `${API_PREFIX}/auth/send-otp`,
+    otpSend: `${API_PREFIX}/auth/otp/send`,
     verifyOtp: `${API_PREFIX}/auth/verify-otp`,
     forgotPassword: `${API_PREFIX}/auth/forgot-password`,
     resetPassword: `${API_PREFIX}/auth/reset-password`,

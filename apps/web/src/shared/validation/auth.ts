@@ -8,10 +8,15 @@ export const passwordSchema = z
   .regex(/[A-Za-z]/, 'Password must contain a letter')
   .regex(/[0-9]/, 'Password must contain a number');
 
+/** 6-digit email verification code (registration / password reset). */
+export const emailCodeSchema = z.string().regex(/^\d{6}$/, 'Verification code must be 6 digits');
+
 export const registerSchema = z.object({
   name: z.string().trim().min(2).max(80),
   email: z.email().max(254).toLowerCase(),
   password: passwordSchema,
+  /** Pre-verified via `POST /auth/otp/send` with purpose `REGISTER`. */
+  code: emailCodeSchema,
 });
 
 export const loginSchema = z.object({
@@ -28,8 +33,23 @@ export const verifyOtpSchema = z.object({
   code: z.string().regex(/^\d{4,10}$/, 'OTP code must be 4–10 digits'),
 });
 
+export const sendEmailOtpSchema = z.object({
+  email: z.email().max(254).toLowerCase(),
+  purpose: z.enum(['REGISTER', 'PASSWORD_RESET']),
+});
+
 export const forgotPasswordSchema = z.object({
   email: z.email().max(254).toLowerCase(),
+});
+
+export const resetPasswordSchema = z.object({
+  email: z.email().max(254).toLowerCase(),
+  code: emailCodeSchema,
+  password: passwordSchema,
+});
+
+export const googleSignInSchema = z.object({
+  idToken: z.string().min(20).max(8192),
 });
 
 export const refreshSchema = z.object({
@@ -39,5 +59,8 @@ export const refreshSchema = z.object({
 
 export type RegisterInputDto = z.infer<typeof registerSchema>;
 export type LoginInputDto = z.infer<typeof loginSchema>;
+export type SendEmailOtpInputDto = z.infer<typeof sendEmailOtpSchema>;
+export type ResetPasswordInputDto = z.infer<typeof resetPasswordSchema>;
+export type GoogleSignInInputDto = z.infer<typeof googleSignInSchema>;
 export type SendOtpInputDto = z.infer<typeof sendOtpSchema>;
 export type VerifyOtpInputDto = z.infer<typeof verifyOtpSchema>;

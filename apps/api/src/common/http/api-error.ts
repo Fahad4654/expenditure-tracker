@@ -46,6 +46,15 @@ export const errors = {
 
   conflict: (message: string) => apiError(HttpStatus.CONFLICT, 'CONFLICT', message),
 
+  otpInvalid: (message = 'Verification code is invalid') =>
+    apiError(HttpStatus.BAD_REQUEST, 'OTP_INVALID', message),
+
+  otpExpired: (message = 'Verification code has expired') =>
+    apiError(HttpStatus.BAD_REQUEST, 'OTP_EXPIRED', message),
+
+  otpTooManyAttempts: (message = 'Too many wrong attempts — request a new code') =>
+    apiError(HttpStatus.BAD_REQUEST, 'OTP_TOO_MANY_ATTEMPTS', message),
+
   accountLocked: (message = 'Account temporarily locked') =>
     apiError(HttpStatus.TOO_MANY_REQUESTS, 'ACCOUNT_LOCKED', message),
 

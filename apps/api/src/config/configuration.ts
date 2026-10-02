@@ -50,6 +50,24 @@ export const configuration = () => ({
     defaultCurrency: process.env.DEFAULT_CURRENCY ?? 'BDT',
     defaultTimezone: process.env.DEFAULT_TIMEZONE ?? 'Asia/Dhaka',
   },
+  mail: {
+    // MAIL_SEND=false suppresses delivery (dev/test); responses then carry a
+    // `devCode` outside production so flows stay completable.
+    send: ['1', 'true', 'yes', 'on'].includes(
+      (process.env.MAIL_SEND ?? 'false').trim().toLowerCase(),
+    ),
+    host: optionalEnv('SMTP_HOST', 'smtp.gmail.com'),
+    port: Number(optionalEnv('SMTP_PORT', '587')),
+    appPassword: optionalEnv('SMTP_APP_PASSWORD', ''),
+    fromEmail: optionalEnv('SMTP_FROM_EMAIL', ''),
+  },
+  firebase: {
+    projectId: optionalEnv('FIREBASE_PROJECT_ID', 'expenditure-tracker-9ff14'),
+    jwksUrl: optionalEnv(
+      'FIREBASE_JWKS_URL',
+      'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com',
+    ),
+  },
 });
 
 export type AppConfig = ReturnType<typeof configuration>;

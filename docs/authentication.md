@@ -18,24 +18,61 @@ Three sign-in methods, one identity table. Every path converges on the same
 
 ## 1. Email + password
 
+### Email OTP (registration & password reset)
+
+```jsonc
+POST /auth/otp/send
+{ "email": "ayesha@example.com", "purpose": "REGISTER" }   // or PASSWORD_RESET
+→ { "email", "expiresAt", "resendAfterSeconds", "devCode"? }
+```
+
+1. 6-digit code, Argon2-hashed at rest (`OtpCode` row), TTL 10 minutes,
+   max 5 attempts, resend cooldown 60 seconds (`429 RATE_LIMITED`); a resend
+   deletes the previous unconsumed code for that email + purpose.
+2. Delivery is SMTP via `MailerService`. While `MAIL_SEND=false` **and**
+   `NODE_ENV != production` the response carries `devCode` so local flows can
+   complete without a mail server; production never emits it.
+3. Verification (`OtpService.consumeEmailOtp`) runs inside the caller's
+   transaction: newest unconsumed code only → expired → attempt budget →
+   Argon2 compare → consume. Codes are single-use.
+
 ### Registration
 
 ```jsonc
 POST /auth/register
-{ "name": "Ayesha Rahman", "email": "ayesha@example.com", "password": "…" }
+{ "name": "Ayesha Rahman", "email": "ayesha@example.com", "password": "…", "code": "483920" }
 ```
 
 1. Validate with `registerSchema` (`src/shared/validation`): name 2–80 chars,
-   valid email, password 8–72 chars containing a letter **and** a number.
+   valid email, password 8–72 chars containing a letter **and** a number,
+   6-digit `code`.
 2. Normalise email to lower case.
 3. If the email exists → `409 CONFLICT` (constant-ish time: always run a hash
    operation before comparing so timing does not leak existence).
 4. Hash with **Argon2id** (`ARGON2_MEMORY_COST=65536`, `ARGON2_TIME_COST=3`)
    or bcrypt (cost 12) — never plain text, never reversible.
-5. Create the user with `defaultCurrency`/`timezone` defaults.
+5. In one transaction: consume the REGISTER OTP, then create the user with
+   `defaultCurrency`/`timezone` defaults and `emailVerified=true` (the code
+   *is* the verification; a failed insert rolls the consume back).
 6. Return the token pair so the user can use the app immediately.
-   Email-verification delivery is deferred with the other out-of-band channels;
-   `emailVerified` stays `false` until then.
+
+### Password reset
+
+```jsonc
+POST /auth/forgot-password
+{ "email": "ayesha@example.com" }
+→ { "email", "expiresAt", "resendAfterSeconds", "devCode"? }   // same shape for unknown emails
+
+POST /auth/reset-password
+{ "email": "ayesha@example.com", "code": "483920", "password": "…" }
+→ session (200)
+```
+
+- `forgot-password` is enumeration-safe: unknown emails get the same challenge
+  shape with no side effects.
+- `reset-password` consumes the OTP, stores the new Argon2 hash, clears the
+  lockout counters, **revokes every refresh token the user owns**, then issues
+  a fresh session.
 
 ### Login
 
@@ -94,15 +131,18 @@ may print the code; it is hard-disabled whenever `NODE_ENV=production`.
 
 ## 3. Google sign-in
 
+Clients sign in with Firebase Authentication (`signInWithPopup` on web,
+`GoogleProvider` in Flutter) and send the resulting **ID token** to the API:
+
 ```text
-GET  /auth/google                  → redirect to Google (state + PKCE)
-GET  /auth/google/callback?code&state → validate, then issue tokens
+POST /auth/google  { "idToken": "<Firebase ID token>" }  → session (200)
 ```
 
-- `state` is a random, short-lived, single-use value stored in a cookie;
-  mismatch → `CSRF_INVALID`.
-- The server exchanges `code` for tokens and fetches the profile with Google's
-  `id_token` (signature and `aud` verified).
+- `GoogleTokenService` verifies the token against Google's public JWKS
+  (`securetoken@system.gserviceaccount.com`), pinned to
+  `FIREBASE_PROJECT_ID` for both `iss` and `aud` — no service-account key is
+  needed server-side (`FIREBASE_JWKS_URL` is overridable for tests).
+- Missing/invalid/expired signature → `401 UNAUTHORIZED`.
 
 ### Account resolution (no duplicate users ever)
 
@@ -123,7 +163,9 @@ google.sub known?
 
 Guarantees:
 
-- **Existing account + Google login** → the same `User` row is used.
+- **Existing account + Google login** → the same `User` row is used; an
+  existing email+password row gains `googleId` on first Google login (linked,
+  never duplicated).
 - **Repeat Google logins** → matched on `googleId` (unique), so always the same row.
 - **Email conflicts** → never silently overwrite or merge; `409 CONFLICT`.
 - **No duplicate users** → `googleId` and `email` are both `UNIQUE`.

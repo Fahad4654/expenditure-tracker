@@ -12,13 +12,20 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { COOKIE_NAMES } from '../shared/config';
-import type { AuthSession, UserProfile } from '../shared/types';
+import type { AuthSession, EmailOtpChallenge, UserProfile } from '../shared/types';
 import {
+  forgotPasswordSchema,
+  googleSignInSchema,
   loginSchema,
   refreshSchema,
   registerSchema,
+  resetPasswordSchema,
+  sendEmailOtpSchema,
+  type GoogleSignInInputDto,
   type LoginInputDto,
   type RegisterInputDto,
+  type ResetPasswordInputDto,
+  type SendEmailOtpInputDto,
 } from '../shared/validation';
 import type { Request, Response } from 'express';
 import { CurrentUser, type AuthenticatedUser } from '../common/decorators/current-user.decorator';
@@ -70,6 +77,71 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<AuthSession> {
     const result = await this.auth.login(body, contextOf(req));
+    this.writeCookies(res, result);
+    return result.session;
+  }
+
+  @Public()
+  @Post('otp/send')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Send a 6-digit email OTP (registration or password reset)',
+    description:
+      'Delivers the code by email. With `MAIL_SEND=false` outside production ' +
+      'the response carries `devCode` so dev/test flows can complete.',
+  })
+  @ApiOkResponse({ description: 'Challenge issued (expires in 10 minutes)' })
+  sendOtp(
+    @Body(new ZodValidationPipe(sendEmailOtpSchema)) body: SendEmailOtpInputDto,
+  ): Promise<EmailOtpChallenge> {
+    return this.auth.sendEmailOtp(body);
+  }
+
+  @Public()
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Start password reset — emails an OTP to the account' })
+  @ApiOkResponse({ description: 'Challenge issued (same shape even for unknown emails)' })
+  forgotPassword(
+    @Body(new ZodValidationPipe(forgotPasswordSchema)) body: { email: string },
+  ): Promise<EmailOtpChallenge> {
+    return this.auth.forgotPassword(body);
+  }
+
+  @Public()
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Consume the reset OTP, set a new password, start a session',
+    description: 'Revokes every existing refresh token before issuing the new one.',
+  })
+  @ApiOkResponse({ description: 'Session issued' })
+  async resetPassword(
+    @Body(new ZodValidationPipe(resetPasswordSchema)) body: ResetPasswordInputDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthSession> {
+    const result = await this.auth.resetPassword(body, contextOf(req));
+    this.writeCookies(res, result);
+    return result.session;
+  }
+
+  @Public()
+  @Post('google')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Sign in with Google (Firebase ID token)',
+    description:
+      'Verifies the Firebase Authentication ID token, links the local account ' +
+      'by email, and issues the usual session.',
+  })
+  @ApiOkResponse({ description: 'Session issued' })
+  async google(
+    @Body(new ZodValidationPipe(googleSignInSchema)) body: GoogleSignInInputDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthSession> {
+    const result = await this.auth.googleSignIn(body, contextOf(req));
     this.writeCookies(res, result);
     return result.session;
   }

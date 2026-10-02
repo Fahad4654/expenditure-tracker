@@ -44,6 +44,7 @@ enum OtpPurpose {
   LOGIN
   REGISTER
   VERIFY_PHONE
+  PASSWORD_RESET
 }
 
 enum UserTokenKind {
@@ -142,8 +143,10 @@ model RefreshToken {
 model OtpCode {
   id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userId      String?    @db.Uuid
-  /// E.164 phone number the code was sent to.
-  phone       String
+  /// E.164 phone number the code was sent to (phone OTP).
+  phone       String?
+  /// Email address the code was sent to (email OTP).
+  email       String?
   /// Argon2 hash of the code. Raw codes are never stored or logged.
   codeHash    String
   purpose     OtpPurpose
@@ -156,6 +159,7 @@ model OtpCode {
   user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([phone, purpose, createdAt])
+  @@index([email, purpose, createdAt])
   @@index([expiresAt])
 }
 

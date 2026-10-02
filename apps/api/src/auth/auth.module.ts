@@ -3,8 +3,11 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { GoogleTokenService } from './google-token.service';
+import { OtpService } from './otp.service';
 import { PasswordService } from './password.service';
 import { TokenService } from './token.service';
+import { MailerService } from '../mail/mailer.service';
 
 /**
  * Authentication + the application-wide auth guard.
@@ -19,6 +22,9 @@ import { TokenService } from './token.service';
     AuthService,
     PasswordService,
     TokenService,
+    OtpService,
+    MailerService,
+    GoogleTokenService,
     JwtAuthGuard,
     { provide: APP_GUARD, useExisting: JwtAuthGuard },
   ],

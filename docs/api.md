@@ -81,13 +81,17 @@ curl http://localhost:4000/api/v1/health/ready
 
 ### Auth
 
-| Method | Path             | Description                                                                   |
-| ------ | ---------------- | ----------------------------------------------------------------------------- |
-| `POST` | `/auth/register` | `{ name, email, password }` → session, 201                                    |
-| `POST` | `/auth/login`    | `{ email, password }` → session, 200                                          |
-| `POST` | `/auth/refresh`  | Rotate refresh token (cookie + `X-CSRF-Token`, or `refreshToken` in the body) |
-| `POST` | `/auth/logout`   | Revoke refresh token family, clear cookies, 200                               |
-| `GET`  | `/auth/me`       | Current profile (bearer)                                                      |
+| Method | Path                | Description                                                                   |
+| ------ | ------------------- | ----------------------------------------------------------------------------- |
+| `POST` | `/auth/otp/send`    | `{ email, purpose }` → OTP challenge (`devCode` outside production, mail off) |
+| `POST` | `/auth/register`    | `{ name, email, password, code }` → session, 201 (`code` = email OTP)         |
+| `POST` | `/auth/login`       | `{ email, password }` → session, 200                                          |
+| `POST` | `/auth/google`      | `{ idToken }` (Firebase) → session, 200                                       |
+| `POST` | `/auth/forgot-password` | `{ email }` → OTP challenge (same shape for unknown emails)               |
+| `POST` | `/auth/reset-password`  | `{ email, code, password }` → session, 200 (revokes all prior sessions)   |
+| `POST` | `/auth/refresh`     | Rotate refresh token (cookie + `X-CSRF-Token`, or `refreshToken` in the body) |
+| `POST` | `/auth/logout`      | Revoke refresh token family, clear cookies, 200                               |
+| `GET`  | `/auth/me`          | Current profile (bearer)                                                      |
 
 A session is `{ user, accessToken, expiresIn, refreshToken }`. `expiresIn` is
 in seconds. Failures: `409 CONFLICT` (email taken), `401 INVALID_CREDENTIALS`
@@ -95,21 +99,24 @@ in seconds. Failures: `409 CONFLICT` (email taken), `401 INVALID_CREDENTIALS`
 (`LOGIN_MAX_FAILED_ATTEMPTS` reached within `LOGIN_LOCKOUT_SECONDS`),
 `401 REFRESH_TOKEN_INVALID` (revoked/expired/replayed — a replay revokes the
 whole family), `403 CSRF_INVALID` (cookie used without a matching
-`X-CSRF-Token`).
+`X-CSRF-Token`), `400 OTP_INVALID` / `400 OTP_EXPIRED` /
+`400 OTP_TOO_MANY_ATTEMPTS` (email OTP verification), `429 RATE_LIMITED`
+(OTP resend cooldown), `401 UNAUTHORIZED` (bad Firebase ID token).
+
+Email OTP rules: 6-digit code, Argon2-hashed at rest, TTL 10 minutes, 5
+attempts, resend cooldown 60 seconds (a resend invalidates the previous code).
+Registration verifies the code **inside** the create-user transaction; reset
+revokes every refresh token before issuing the new session.
 
 ### Deferred auth endpoints
 
 Designed in [authentication.md](authentication.md), not yet routed — they need
-an SMS provider, OAuth credentials or email delivery.
+an SMS provider.
 
-| Method | Path                    | Description                 |
-| ------ | ----------------------- | --------------------------- |
-| `POST` | `/auth/send-otp`        | `{ phone }` → OTP challenge |
-| `POST` | `/auth/verify-otp`      | `{ phone, code }` → tokens  |
-| `GET`  | `/auth/google`          | Start Google OAuth          |
-| `GET`  | `/auth/google/callback` | OAuth callback              |
-| `POST` | `/auth/forgot-password` | Start password reset        |
-| `POST` | `/auth/reset-password`  | Complete password reset     |
+| Method | Path               | Description                 |
+| ------ | ------------------ | --------------------------- |
+| `POST` | `/auth/send-otp`   | `{ phone }` → OTP challenge |
+| `POST` | `/auth/verify-otp` | `{ phone, code }` → tokens  |
 
 ### Users
 

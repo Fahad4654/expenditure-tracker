@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "826567490549",
+    "project_id": "expenditure-tracker-9ff14",
+    "storage_bucket": "expenditure-tracker-9ff14.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:826567490549:android:df70f128850f59bf1cbebc",
+        "android_client_info": {
+          "package_name": "com.kaife.expendituretracker"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDU4ZsK6FpYe3LKl2SK679n4c6tJhSOamo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

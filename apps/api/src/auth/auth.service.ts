@@ -1,11 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { AuthSession, UserProfile } from '../shared/types';
-import type { LoginInputDto, RegisterInputDto } from '../shared/validation';
+import type { AuthSession, EmailOtpChallenge, UserProfile } from '../shared/types';
+import type {
+  GoogleSignInInputDto,
+  LoginInputDto,
+  RegisterInputDto,
+  ResetPasswordInputDto,
+} from '../shared/validation';
 import { errors } from '../common/http/api-error';
 import { PrismaService } from '../prisma/prisma.module';
 import { toUserProfile } from '../users/user.mapper';
 import { newCsrfToken } from './cookies';
+import { GoogleTokenService } from './google-token.service';
+import { OtpService } from './otp.service';
 import { PasswordService } from './password.service';
 import { ClientContext, TokenService } from './token.service';
 
@@ -33,6 +40,8 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly passwords: PasswordService,
     private readonly tokens: TokenService,
+    private readonly otps: OtpService,
+    private readonly googleTokens: GoogleTokenService,
     config: ConfigService,
   ) {
     this.maxFailedAttempts = config.get<number>('auth.login.maxFailedAttempts') ?? 10;
@@ -52,15 +61,111 @@ export class AuthService {
     });
     if (existing) throw errors.conflict('An account with this email already exists');
 
-    const user = await this.prisma.user.create({
-      data: {
-        name: input.name,
-        email: input.email,
-        passwordHash,
-        defaultCurrency: this.defaultCurrency,
-        timezone: this.defaultTimezone,
-      },
+    // The 6-digit code (purpose REGISTER) is consumed atomically with the
+    // insert — a failed registration never burns the code.
+    const user = await this.prisma.$transaction(async (tx) => {
+      await this.otps.consumeEmailOtp(tx, input.email, 'REGISTER', input.code);
+      return tx.user.create({
+        data: {
+          name: input.name,
+          email: input.email,
+          passwordHash,
+          emailVerified: true,
+          defaultCurrency: this.defaultCurrency,
+          timezone: this.defaultTimezone,
+        },
+      });
     });
+
+    return this.issueSession(user.id, context, toUserProfile(user));
+  }
+
+  /** Sends (or re-sends) the 6-digit email OTP for registration/reset. */
+  async sendEmailOtp(input: { email: string; purpose: 'REGISTER' | 'PASSWORD_RESET' }): Promise<EmailOtpChallenge> {
+    return this.otps.sendEmailOtp(input.email, input.purpose);
+  }
+
+  /**
+   * Starts password reset. Always answers with the same challenge shape, so
+   * probing for an account is impossible; only a real account gets a code.
+   */
+  async forgotPassword(input: { email: string }): Promise<EmailOtpChallenge> {
+    const user = await this.prisma.user.findFirst({
+      where: { email: input.email, deletedAt: null },
+      select: { id: true },
+    });
+    if (!user) {
+      return {
+        email: input.email,
+        expiresAt: new Date(Date.now() + 10 * 60_000).toISOString(),
+        resendAfterSeconds: 60,
+      };
+    }
+    return this.otps.sendEmailOtp(input.email, 'PASSWORD_RESET');
+  }
+
+  /** Consumes the reset OTP, sets the new password and starts a fresh session. */
+  async resetPassword(input: ResetPasswordInputDto, context: ClientContext): Promise<AuthResult> {
+    const passwordHash = await this.passwords.hash(input.password);
+
+    const user = await this.prisma.$transaction(async (tx) => {
+      const found = await tx.user.findFirst({
+        where: { email: input.email, deletedAt: null },
+      });
+      if (!found) throw errors.otpInvalid();
+      await this.otps.consumeEmailOtp(tx, input.email, 'PASSWORD_RESET', input.code);
+      return tx.user.update({
+        where: { id: found.id },
+        data: { passwordHash, failedLogins: 0, lockedUntil: null },
+      });
+    });
+
+    // A password change invalidates every existing session on every device.
+    await this.tokens.revokeAllFamiliesForUser(user.id);
+    return this.issueSession(user.id, context, toUserProfile(user));
+  }
+
+  /**
+   * Google sign-in: verifies the Firebase ID token, then links (or creates)
+   * the local account. An existing email + password account simply gains the
+   * `googleId` — no duplicate row.
+   */
+  async googleSignIn(input: GoogleSignInInputDto, context: ClientContext): Promise<AuthResult> {
+    const identity = await this.googleTokens.verify(input.idToken);
+
+    let user = await this.prisma.user.findFirst({
+      where: { OR: [{ googleId: identity.sub }, { email: identity.email }], deletedAt: null },
+    });
+
+    if (user && user.googleId === identity.sub) {
+      // Returning Google user — refresh profile bits that may have changed.
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          ...(identity.picture ? { avatarUrl: identity.picture } : {}),
+          ...(identity.name ? { name: identity.name } : {}),
+          emailVerified: user.emailVerified || identity.emailVerified,
+        },
+      });
+    } else if (user) {
+      // Email/password account linking its first Google identity.
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: { googleId: identity.sub, emailVerified: true },
+      });
+    } else {
+      user = await this.prisma.user.create({
+        data: {
+          name: identity.name ?? identity.email.split('@')[0] ?? 'User',
+          email: identity.email,
+          googleId: identity.sub,
+          avatarUrl: identity.picture,
+          emailVerified: identity.emailVerified,
+          defaultCurrency: this.defaultCurrency,
+          timezone: this.defaultTimezone,
+        },
+      });
+    }
 
     return this.issueSession(user.id, context, toUserProfile(user));
   }

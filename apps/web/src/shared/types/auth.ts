@@ -48,6 +48,8 @@ export interface RegisterInput {
   name: string;
   email: string;
   password: string;
+  /** Pre-verified 6-digit email OTP (purpose `REGISTER`). */
+  code: string;
 }
 
 export interface LoginInput {
@@ -70,4 +72,20 @@ export interface OtpChallenge {
   expiresAt: IsoDateTime;
   /** Seconds remaining until the code can be resent. */
   resendAfterSeconds: number;
+}
+
+/**
+ * Challenge returned by `POST /auth/otp/send` and `POST /auth/forgot-password`.
+ * `devCode` only appears outside production while `MAIL_SEND=false`.
+ */
+export interface EmailOtpChallenge {
+  email: string;
+  expiresAt: IsoDateTime;
+  resendAfterSeconds: number;
+  devCode?: string;
+}
+
+export interface GoogleSignInInput {
+  /** Firebase Authentication ID token from the client SDK. */
+  idToken: string;
 }

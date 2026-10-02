@@ -68,14 +68,28 @@ function tokensMock() {
 }
 
 function prismaMock() {
-  return {
+  const prisma = {
     user: {
       findUnique: vi.fn(),
       findFirst: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
     },
+    $transaction: undefined as unknown as ReturnType<typeof vi.fn>,
   };
+  prisma.$transaction = vi.fn(async (fn: (tx: unknown) => unknown) => fn(prisma));
+  return prisma;
+}
+
+function otpsMock() {
+  return {
+    sendEmailOtp: vi.fn(),
+    consumeEmailOtp: vi.fn().mockResolvedValue(undefined),
+  };
+}
+
+function googleMock() {
+  return { verify: vi.fn() };
 }
 
 async function expectRejection(promise: Promise<unknown>, status: number, code: string) {
@@ -94,15 +108,19 @@ const CONTEXT = { userAgent: 'vitest', ip: '127.0.0.1' };
 describe('AuthService.register', () => {
   let prisma: ReturnType<typeof prismaMock>;
   let tokens: ReturnType<typeof tokensMock>;
+  let otps: ReturnType<typeof otpsMock>;
   let auth: AuthService;
 
   beforeEach(async () => {
     prisma = prismaMock();
     tokens = tokensMock();
+    otps = otpsMock();
     auth = new AuthService(
       prisma as never,
       passwords,
       tokens as unknown as TokenService,
+      otps as never,
+      googleMock() as never,
       { get: (key: string) => CONFIG[key] } as never,
     );
   });
@@ -113,10 +131,11 @@ describe('AuthService.register', () => {
     prisma.user.create.mockResolvedValue(userRecord({ passwordHash: hash }));
 
     const result = await auth.register(
-      { name: 'Alice', email: 'alice@example.com', password: PASSWORD } as never,
+      { name: 'Alice', email: 'alice@example.com', password: PASSWORD, code: '123456' } as never,
       CONTEXT,
     );
 
+    expect(otps.consumeEmailOtp).toHaveBeenCalledWith(expect.anything(), 'alice@example.com', 'REGISTER', '123456');
     expect(result.session).toMatchObject({ accessToken: 'access-1', expiresIn: 900 });
     expect(result.session.user).toMatchObject({ email: 'alice@example.com' });
     expect(result.csrfToken).toBeTruthy();
@@ -133,7 +152,7 @@ describe('AuthService.register', () => {
     prisma.user.create.mockImplementation(async ({ data }: never) => userRecord(data));
 
     await auth.register(
-      { name: 'A', email: 'a@example.com', password: PASSWORD } as never,
+      { name: 'A', email: 'a@example.com', password: PASSWORD, code: '123456' } as never,
       CONTEXT,
     );
 
@@ -147,7 +166,7 @@ describe('AuthService.register', () => {
 
     await expectRejection(
       auth.register(
-        { name: 'A', email: 'taken@example.com', password: PASSWORD } as never,
+        { name: 'A', email: 'taken@example.com', password: PASSWORD, code: '123456' } as never,
         CONTEXT,
       ),
       409,
@@ -170,6 +189,8 @@ describe('AuthService.login', () => {
       prisma as never,
       passwords,
       tokens as unknown as TokenService,
+      otpsMock() as never,
+      googleMock() as never,
       { get: (key: string) => CONFIG[key] } as never,
     );
     hash = await passwords.hash(PASSWORD);
@@ -283,6 +304,8 @@ describe('AuthService.refresh', () => {
       prisma as never,
       passwords,
       tokens as unknown as TokenService,
+      otpsMock() as never,
+      googleMock() as never,
       { get: (key: string) => CONFIG[key] } as never,
     );
   });
@@ -373,6 +396,8 @@ describe('AuthService.logout', () => {
       prismaMock() as never,
       passwords,
       tokens as unknown as TokenService,
+      otpsMock() as never,
+      googleMock() as never,
       { get: (key: string) => CONFIG[key] } as never,
     );
 
@@ -388,6 +413,8 @@ describe('AuthService.logout', () => {
       prismaMock() as never,
       passwords,
       tokens as unknown as TokenService,
+      otpsMock() as never,
+      googleMock() as never,
       { get: (key: string) => CONFIG[key] } as never,
     );
 

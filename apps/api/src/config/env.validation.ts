@@ -50,6 +50,20 @@ const envSchema = z.object({
 
   MAX_REQUEST_BODY_SIZE: z.string().min(1).default('100kb'),
   LOG_LEVEL: z.string().default('debug'),
+
+  // --- Mail (OTP delivery) ---------------------------------------------------
+  MAIL_SEND: booleanish.default(false),
+  SMTP_HOST: z.string().min(1).default('smtp.gmail.com'),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(587),
+  SMTP_APP_PASSWORD: z.string().default(''),
+  SMTP_FROM_EMAIL: z.string().default(''),
+
+  // --- Firebase (Google sign-in via ID-token verification) -------------------
+  FIREBASE_PROJECT_ID: z.string().min(1).default('expenditure-tracker-9ff14'),
+  FIREBASE_JWKS_URL: z
+    .string()
+    .url()
+    .default('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'),
 });
 
 export type Env = z.infer<typeof envSchema>;

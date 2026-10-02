@@ -55,3 +55,7 @@ apps/mobile/ios/.symlinks/
 .turbo/
 .cache/
 *.eslintcache
+
+# Firebase Admin SDK service-account keys — never commit these.
+firebase-adminsdk-*.json
+*serviceAccount*.json

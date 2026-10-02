@@ -214,6 +214,14 @@ export class TokenService {
     });
   }
 
+  /** Revokes every live refresh token a user holds (password change/reset). */
+  async revokeAllFamiliesForUser(userId: string): Promise<void> {
+    await this.prisma.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+  }
+
   async revokeById(id: string): Promise<void> {
     await this.prisma.refreshToken.updateMany({
       where: { id, revokedAt: null },
