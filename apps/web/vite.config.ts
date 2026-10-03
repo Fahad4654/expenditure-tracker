@@ -14,16 +14,31 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, import.meta.dirname, '');
   const webPort = Number(process.env.WEB_PORT ?? env.WEB_PORT) || 3000;
 
+  // Same-origin API proxy (used when `VITE_API_URL` is empty — see api.ts).
+  // The session refresh cookie is SameSite=Lax: if the page and the API are
+  // different origins (e.g. phone on the LAN address, API on localhost), the
+  // cookie is treated as third-party, never stored/sent, and every session
+  // dies with the 15-minute access token. Proxying keeps one origin on any
+  // host — desktop, phone over LAN, or adb reverse.
+  const apiTarget = env.API_PROXY_TARGET || 'http://localhost:4000';
+  const apiProxy = {
+    '/api': { target: apiTarget },
+    // Swagger UI (`/docs` and its assets, plus `/docs-json`).
+    '/docs': { target: apiTarget },
+  };
+
   return {
     plugins: [react(), tailwindcss()],
     server: {
       host: true,
       port: webPort,
+      proxy: apiProxy,
     },
     preview: {
       host: true,
       // Preview keeps its own default; an exported WEB_PORT still overrides.
       port: Number(process.env.WEB_PORT) || 4173,
+      proxy: apiProxy,
     },
     build: {
       outDir: 'dist',

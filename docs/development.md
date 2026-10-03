@@ -152,7 +152,7 @@ Two env files, one per app — neither is ever committed:
 | File            | Loaded by                              | Contents                                                                  |
 | --------------- | -------------------------------------- | ------------------------------------------------------------------------- |
 | `apps/api/.env` | `loadApiEnv()` in `config/load-env.ts` | API config, `DATABASE_URL`, JWT secrets, OTP settings, SMTP, Firebase      |
-| `apps/web/.env` | Vite (default `envDir`)                | `VITE_API_URL`, `VITE_FIREBASE_*` (Google sign-in), `WEB_PORT` — no secrets |
+| `apps/web/.env` | Vite (default `envDir`)                | `VITE_API_URL` (empty = same-origin proxy), `VITE_FIREBASE_*` (Google sign-in), `WEB_PORT` — no secrets |
 
 For the API, variables already in `process.env` (shell/CI) always win;
 `process.loadEnvFile` never overwrites existing keys, so secrets injected
@@ -354,6 +354,7 @@ if present, but nothing depends on it.
 | Prisma `P1012` schema validation error                                    | `cd apps/api && npm run db:validate`                                               |
 | Migration `P3018` (type mismatch)                                         | Fix the schema, delete `apps/api/prisma/migrations/*`, re-run `npm run db:migrate` |
 | "applied to the database but missing from the local migrations directory" | `cd apps/api && npm run db:reset`                                                  |
-| Web cannot reach the API                                                  | Check `VITE_API_URL` and `CORS_ORIGINS`                                            |
+| Web cannot reach the API                                                  | Keep `VITE_API_URL=` (empty, proxied by Vite); if absolute, check `CORS_ORIGINS`  |
+| Signed out after ~15 min of inactivity                                    | The refresh cookie was cross-origin — keep `VITE_API_URL=` empty so `/api` is proxied same-origin (a phone on the LAN address + an absolute `localhost` API URL drops the `SameSite=Lax` cookie) |
 | Port already in use                                                       | `API_PORT` in `apps/api/.env`, `WEB_PORT` in `apps/web/.env`                       |
 | Mobile sees connection refused on Android                                 | Use `http://10.0.2.2:4000`, not `localhost`                                        |
