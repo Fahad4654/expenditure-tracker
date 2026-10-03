@@ -234,55 +234,72 @@ function SummaryCard({
 }
 
 function DailyBars({ report, currency }: { report: DailyReport; currency: string }) {
+  const [hoveredDate, setHoveredDate] = useState<string | null>(null);
+
   const max = Math.max(
     1,
     ...report.points.map((point) => Math.max(Number(point.income), Number(point.expense))),
   );
+
+  const activePoint = useMemo(
+    () => report.points.find((p) => p.date === hoveredDate) ?? null,
+    [report.points, hoveredDate],
+  );
+
   return (
-    <div className="relative pt-8">
-      <div className="touch-scroll-x pb-2">
+    <div className="mt-2 flex flex-col gap-2">
+      {/* Active info bar above chart */}
+      <div className="flex min-h-[28px] items-center justify-between rounded-lg bg-slate-900/90 px-3 py-1 text-xs border border-slate-800">
+        {activePoint ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-semibold text-slate-200">{activePoint.date}</span>
+            <span className="text-slate-600">·</span>
+            <span className="font-medium text-emerald-400">+{money(activePoint.income, currency)}</span>
+            <span className="text-slate-600">·</span>
+            <span className="font-medium text-rose-400">−{money(activePoint.expense, currency)}</span>
+          </div>
+        ) : (
+          <span className="text-slate-500 italic">Hover or tap a bar for details</span>
+        )}
+      </div>
+
+      {/* Chart container */}
+      <div className="touch-scroll-x pt-2 pb-1">
         <div
-          className="daily-chart-inner flex h-48 items-end gap-1.5 pb-2"
+          className="daily-chart-inner flex h-44 items-end gap-1.5 pb-1"
           role="img"
           aria-label="Daily income and expense chart"
         >
-          {report.points.map((point, index) => {
+          {report.points.map((point) => {
             const incHeight = (Number(point.income) / max) * 100;
             const expHeight = (Number(point.expense) / max) * 100;
-            const totalCount = report.points.length;
-
-            const alignClass =
-              index < 4
-                ? 'left-0 translate-x-0'
-                : index > totalCount - 5
-                  ? 'right-0 translate-x-0'
-                  : 'left-1/2 -translate-x-1/2';
+            const isHovered = hoveredDate === point.date;
 
             return (
               <div
                 key={point.date}
-                className="group relative flex h-full flex-1 flex-col items-center justify-end"
+                onMouseEnter={() => setHoveredDate(point.date)}
+                onMouseLeave={() => setHoveredDate(null)}
+                onClick={() => setHoveredDate((prev) => (prev === point.date ? null : point.date))}
+                className={`group relative flex h-full flex-1 flex-col items-center justify-end cursor-pointer rounded-t-md transition-colors ${
+                  isHovered ? 'bg-slate-800/40' : ''
+                }`}
               >
-                <div
-                  className={`pointer-events-none absolute -top-7 z-30 hidden whitespace-nowrap rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs text-slate-100 shadow-xl group-hover:block ${alignClass}`}
-                >
-                  <span className="font-semibold text-slate-300">{point.date}: </span>
-                  <span className="text-emerald-400">+{money(point.income, currency)}</span>
-                  <span className="text-slate-500"> / </span>
-                  <span className="text-rose-400">−{money(point.expense, currency)}</span>
-                </div>
-
                 <div className="flex h-[calc(100%-20px)] w-full items-end gap-[2px] border-b border-slate-800/80 pb-0.5">
                   <div
-                    className="w-1/2 rounded-t-sm bg-emerald-500/80 transition-all group-hover:bg-emerald-400"
+                    className={`w-1/2 rounded-t-sm transition-all ${
+                      isHovered ? 'bg-emerald-400 shadow-md shadow-emerald-500/20' : 'bg-emerald-500/80 group-hover:bg-emerald-400'
+                    }`}
                     style={{ height: `${incHeight}%` }}
                   />
                   <div
-                    className="w-1/2 rounded-t-sm bg-rose-500/80 transition-all group-hover:bg-rose-400"
+                    className={`w-1/2 rounded-t-sm transition-all ${
+                      isHovered ? 'bg-rose-400 shadow-md shadow-rose-500/20' : 'bg-rose-500/80 group-hover:bg-rose-400'
+                    }`}
                     style={{ height: `${expHeight}%` }}
                   />
                 </div>
-                <span className="mt-1 text-[10px] font-mono text-slate-500">
+                <span className={`mt-1 text-[10px] font-mono transition-colors ${isHovered ? 'text-emerald-400 font-bold' : 'text-slate-500'}`}>
                   {point.date.slice(-2)}
                 </span>
               </div>
@@ -295,55 +312,72 @@ function DailyBars({ report, currency }: { report: DailyReport; currency: string
 }
 
 function MonthlyBars({ report, currency }: { report: MonthlyReport; currency: string }) {
+  const [hoveredMonth, setHoveredMonth] = useState<string | null>(null);
+
   const max = Math.max(
     1,
     ...report.points.map((point) => Math.max(Number(point.income), Number(point.expense))),
   );
+
+  const activePoint = useMemo(
+    () => report.points.find((p) => p.month === hoveredMonth) ?? null,
+    [report.points, hoveredMonth],
+  );
+
   return (
-    <div className="relative pt-8">
-      <div className="touch-scroll-x pb-2">
+    <div className="mt-2 flex flex-col gap-2">
+      {/* Active info bar above chart */}
+      <div className="flex min-h-[28px] items-center justify-between rounded-lg bg-slate-900/90 px-3 py-1 text-xs border border-slate-800">
+        {activePoint ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-semibold text-slate-200">{formatMonthLabel(activePoint.month)}</span>
+            <span className="text-slate-600">·</span>
+            <span className="font-medium text-emerald-400">+{money(activePoint.income, currency)}</span>
+            <span className="text-slate-600">·</span>
+            <span className="font-medium text-rose-400">−{money(activePoint.expense, currency)}</span>
+          </div>
+        ) : (
+          <span className="text-slate-500 italic">Hover or tap a bar for details</span>
+        )}
+      </div>
+
+      {/* Chart container */}
+      <div className="touch-scroll-x pt-2 pb-1">
         <div
-          className="monthly-chart-inner flex h-52 items-end gap-3 pb-2"
+          className="monthly-chart-inner flex h-48 items-end gap-3 pb-1"
           role="img"
           aria-label="Monthly income and expense chart"
         >
-          {report.points.map((point, index) => {
+          {report.points.map((point) => {
             const incHeight = (Number(point.income) / max) * 100;
             const expHeight = (Number(point.expense) / max) * 100;
-            const totalCount = report.points.length;
-
-            const alignClass =
-              index < 2
-                ? 'left-0 translate-x-0'
-                : index > totalCount - 3
-                  ? 'right-0 translate-x-0'
-                  : 'left-1/2 -translate-x-1/2';
+            const isHovered = hoveredMonth === point.month;
 
             return (
               <div
                 key={point.month}
-                className="group relative flex h-full flex-1 flex-col items-center justify-end"
+                onMouseEnter={() => setHoveredMonth(point.month)}
+                onMouseLeave={() => setHoveredMonth(null)}
+                onClick={() => setHoveredMonth((prev) => (prev === point.month ? null : point.month))}
+                className={`group relative flex h-full flex-1 flex-col items-center justify-end cursor-pointer rounded-t-md transition-colors ${
+                  isHovered ? 'bg-slate-800/40' : ''
+                }`}
               >
-                <div
-                  className={`pointer-events-none absolute -top-7 z-30 hidden whitespace-nowrap rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs text-slate-100 shadow-xl group-hover:block ${alignClass}`}
-                >
-                  <span className="font-semibold text-slate-300">{point.month}: </span>
-                  <span className="text-emerald-400">+{money(point.income, currency)}</span>
-                  <span className="text-slate-500"> / </span>
-                  <span className="text-rose-400">−{money(point.expense, currency)}</span>
-                </div>
-
                 <div className="flex h-[calc(100%-24px)] w-full items-end gap-1 border-b border-slate-800/80 pb-0.5">
                   <div
-                    className="w-1/2 rounded-t-md bg-emerald-500/80 transition-all group-hover:bg-emerald-400"
+                    className={`w-1/2 rounded-t-md transition-all ${
+                      isHovered ? 'bg-emerald-400 shadow-md shadow-emerald-500/20' : 'bg-emerald-500/80 group-hover:bg-emerald-400'
+                    }`}
                     style={{ height: `${incHeight}%` }}
                   />
                   <div
-                    className="w-1/2 rounded-t-md bg-rose-500/80 transition-all group-hover:bg-rose-400"
+                    className={`w-1/2 rounded-t-md transition-all ${
+                      isHovered ? 'bg-rose-400 shadow-md shadow-rose-500/20' : 'bg-rose-500/80 group-hover:bg-rose-400'
+                    }`}
                     style={{ height: `${expHeight}%` }}
                   />
                 </div>
-                <span className="mt-1.5 text-xs font-medium text-slate-400">
+                <span className={`mt-1.5 text-xs font-medium transition-colors ${isHovered ? 'text-emerald-400 font-bold' : 'text-slate-400'}`}>
                   {formatMonthLabel(point.month)}
                 </span>
               </div>
