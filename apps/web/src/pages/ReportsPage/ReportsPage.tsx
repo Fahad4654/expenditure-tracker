@@ -239,42 +239,56 @@ function DailyBars({ report, currency }: { report: DailyReport; currency: string
     ...report.points.map((point) => Math.max(Number(point.income), Number(point.expense))),
   );
   return (
-    <div className="touch-scroll-x pt-6">
-      <div
-        className="daily-chart-inner flex h-48 items-end gap-1.5 pb-2"
-        role="img"
-        aria-label="Daily income and expense chart"
-      >
-        {report.points.map((point) => {
-          const incHeight = (Number(point.income) / max) * 100;
-          const expHeight = (Number(point.expense) / max) * 100;
+    <div className="relative pt-8">
+      <div className="touch-scroll-x pb-2">
+        <div
+          className="daily-chart-inner flex h-48 items-end gap-1.5 pb-2"
+          role="img"
+          aria-label="Daily income and expense chart"
+        >
+          {report.points.map((point, index) => {
+            const incHeight = (Number(point.income) / max) * 100;
+            const expHeight = (Number(point.expense) / max) * 100;
+            const totalCount = report.points.length;
 
-          return (
-            <div
-              key={point.date}
-              className="group relative flex h-full flex-1 flex-col items-center justify-end"
-            >
-              <div className="flex h-[calc(100%-20px)] w-full items-end gap-[2px] border-b border-slate-800/80 pb-0.5">
+            const alignClass =
+              index < 4
+                ? 'left-0 translate-x-0'
+                : index > totalCount - 5
+                  ? 'right-0 translate-x-0'
+                  : 'left-1/2 -translate-x-1/2';
+
+            return (
+              <div
+                key={point.date}
+                className="group relative flex h-full flex-1 flex-col items-center justify-end"
+              >
                 <div
-                  className="w-1/2 rounded-t-sm bg-emerald-500/80 transition-all group-hover:bg-emerald-400"
-                  style={{ height: `${incHeight}%` }}
-                />
-                <div
-                  className="w-1/2 rounded-t-sm bg-rose-500/80 transition-all group-hover:bg-rose-400"
-                  style={{ height: `${expHeight}%` }}
-                />
+                  className={`pointer-events-none absolute -top-7 z-30 hidden whitespace-nowrap rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs text-slate-100 shadow-xl group-hover:block ${alignClass}`}
+                >
+                  <span className="font-semibold text-slate-300">{point.date}: </span>
+                  <span className="text-emerald-400">+{money(point.income, currency)}</span>
+                  <span className="text-slate-500"> / </span>
+                  <span className="text-rose-400">−{money(point.expense, currency)}</span>
+                </div>
+
+                <div className="flex h-[calc(100%-20px)] w-full items-end gap-[2px] border-b border-slate-800/80 pb-0.5">
+                  <div
+                    className="w-1/2 rounded-t-sm bg-emerald-500/80 transition-all group-hover:bg-emerald-400"
+                    style={{ height: `${incHeight}%` }}
+                  />
+                  <div
+                    className="w-1/2 rounded-t-sm bg-rose-500/80 transition-all group-hover:bg-rose-400"
+                    style={{ height: `${expHeight}%` }}
+                  />
+                </div>
+                <span className="mt-1 text-[10px] font-mono text-slate-500">
+                  {point.date.slice(-2)}
+                </span>
               </div>
-              <span className="mt-1 text-[10px] font-mono text-slate-500">
-                {point.date.slice(-2)}
-              </span>
-              <div className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-slate-100 shadow-xl group-hover:block">
-                <p className="font-semibold text-slate-300">{point.date}</p>
-                <p className="mt-0.5 text-emerald-400">Income: +{money(point.income, currency)}</p>
-                <p className="text-rose-400">Expense: −{money(point.expense, currency)}</p>
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -286,42 +300,56 @@ function MonthlyBars({ report, currency }: { report: MonthlyReport; currency: st
     ...report.points.map((point) => Math.max(Number(point.income), Number(point.expense))),
   );
   return (
-    <div className="touch-scroll-x pt-6">
-      <div
-        className="monthly-chart-inner flex h-52 items-end gap-3 pb-2"
-        role="img"
-        aria-label="Monthly income and expense chart"
-      >
-        {report.points.map((point) => {
-          const incHeight = (Number(point.income) / max) * 100;
-          const expHeight = (Number(point.expense) / max) * 100;
+    <div className="relative pt-8">
+      <div className="touch-scroll-x pb-2">
+        <div
+          className="monthly-chart-inner flex h-52 items-end gap-3 pb-2"
+          role="img"
+          aria-label="Monthly income and expense chart"
+        >
+          {report.points.map((point, index) => {
+            const incHeight = (Number(point.income) / max) * 100;
+            const expHeight = (Number(point.expense) / max) * 100;
+            const totalCount = report.points.length;
 
-          return (
-            <div
-              key={point.month}
-              className="group relative flex h-full flex-1 flex-col items-center justify-end"
-            >
-              <div className="flex h-[calc(100%-24px)] w-full items-end gap-1 border-b border-slate-800/80 pb-0.5">
+            const alignClass =
+              index < 2
+                ? 'left-0 translate-x-0'
+                : index > totalCount - 3
+                  ? 'right-0 translate-x-0'
+                  : 'left-1/2 -translate-x-1/2';
+
+            return (
+              <div
+                key={point.month}
+                className="group relative flex h-full flex-1 flex-col items-center justify-end"
+              >
                 <div
-                  className="w-1/2 rounded-t-md bg-emerald-500/80 transition-all group-hover:bg-emerald-400"
-                  style={{ height: `${incHeight}%` }}
-                />
-                <div
-                  className="w-1/2 rounded-t-md bg-rose-500/80 transition-all group-hover:bg-rose-400"
-                  style={{ height: `${expHeight}%` }}
-                />
+                  className={`pointer-events-none absolute -top-7 z-30 hidden whitespace-nowrap rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs text-slate-100 shadow-xl group-hover:block ${alignClass}`}
+                >
+                  <span className="font-semibold text-slate-300">{point.month}: </span>
+                  <span className="text-emerald-400">+{money(point.income, currency)}</span>
+                  <span className="text-slate-500"> / </span>
+                  <span className="text-rose-400">−{money(point.expense, currency)}</span>
+                </div>
+
+                <div className="flex h-[calc(100%-24px)] w-full items-end gap-1 border-b border-slate-800/80 pb-0.5">
+                  <div
+                    className="w-1/2 rounded-t-md bg-emerald-500/80 transition-all group-hover:bg-emerald-400"
+                    style={{ height: `${incHeight}%` }}
+                  />
+                  <div
+                    className="w-1/2 rounded-t-md bg-rose-500/80 transition-all group-hover:bg-rose-400"
+                    style={{ height: `${expHeight}%` }}
+                  />
+                </div>
+                <span className="mt-1.5 text-xs font-medium text-slate-400">
+                  {formatMonthLabel(point.month)}
+                </span>
               </div>
-              <span className="mt-1.5 text-xs font-medium text-slate-400">
-                {formatMonthLabel(point.month)}
-              </span>
-              <div className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100 shadow-xl group-hover:block">
-                <p className="font-semibold text-slate-200">{point.month}</p>
-                <p className="mt-0.5 text-emerald-400">Income: +{money(point.income, currency)}</p>
-                <p className="text-rose-400">Expense: −{money(point.expense, currency)}</p>
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );
