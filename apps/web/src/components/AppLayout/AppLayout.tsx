@@ -39,36 +39,15 @@ export default function AppLayout() {
           <button
             type="button"
             aria-label="Close menu"
-            className="absolute inset-0 bg-slate-950/80 backdrop-blur-md transition-opacity"
+            className="absolute inset-0 bg-slate-950/80 backdrop-blur-md"
             onClick={() => setDrawerOpen(false)}
           />
           <div className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col border-r border-slate-800/80 bg-slate-950 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800/80 px-4 py-3">
-              <span className="flex items-center gap-2 font-semibold text-white">
-                <span aria-hidden className="text-emerald-400">৳</span>
-                Expenditure Tracker
-              </span>
-              <button
-                type="button"
-                aria-label="Close menu"
-                className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-200"
-                onClick={() => setDrawerOpen(false)}
-              >
-                <svg
-                  aria-hidden
-                  viewBox="0 0 24 24"
-                  className="h-5 w-5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                >
-                  <path d="M6 6l12 12M18 6L6 18" />
-                </svg>
-              </button>
-            </div>
             <div className="min-h-0 flex-1 overflow-y-auto">
-              <Sidebar onNavigate={() => setDrawerOpen(false)} />
+              <Sidebar
+                onNavigate={() => setDrawerOpen(false)}
+                onClose={() => setDrawerOpen(false)}
+              />
             </div>
           </div>
         </div>
