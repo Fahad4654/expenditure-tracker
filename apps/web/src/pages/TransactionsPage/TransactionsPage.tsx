@@ -49,6 +49,13 @@ export default function TransactionsPage() {
   const [preset, setPreset] = useState('');
   const [sort, setSort] = useState('transactionDate|desc');
   const [page, setPage] = useState(1);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+
+  const activeFilterCount =
+    (type ? 1 : 0) +
+    (categoryId ? 1 : 0) +
+    (preset ? 1 : 0) +
+    (sort !== 'transactionDate|desc' ? 1 : 0);
 
   const debouncedSearch = useDebounced(search);
 
@@ -110,85 +117,184 @@ export default function TransactionsPage() {
       />
 
       <Card className="mb-6">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Field label="Search" htmlFor="tx-search">
+        {/* Mobile top filter bar: Search input + Filter toggle button */}
+        <div className="flex sm:hidden items-center gap-2">
+          <div className="flex-1 min-w-0">
             <TextInput
-              id="tx-search"
+              id="tx-search-mobile"
               type="search"
-              placeholder="Title or description"
+              placeholder="Search title or description..."
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value);
                 setPage(1);
               }}
             />
-          </Field>
-
-          <Field label="Type" htmlFor="tx-type">
-            <Select
-              id="tx-type"
-              value={type}
-              onChange={(event) => {
-                setType(event.target.value);
-                setPage(1);
-              }}
-            >
-              {TYPE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
-          </Field>
-
-          <Field label="Category" htmlFor="tx-category">
-            <Select
-              id="tx-category"
-              value={categoryId}
-              onChange={(event) => {
-                setCategoryId(event.target.value);
-                setPage(1);
-              }}
-            >
-              <option value="">All categories</option>
-              {(categories.data ?? []).map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-
-          <Field label="Period" htmlFor="tx-preset">
-            <Select
-              id="tx-preset"
-              value={preset}
-              onChange={(event) => {
-                setPreset(event.target.value);
-                setPage(1);
-              }}
-            >
-              {PRESET_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
-          </Field>
+          </div>
+          <Button
+            type="button"
+            variant={showMobileFilters || activeFilterCount > 0 ? 'primary' : 'secondary'}
+            className="shrink-0 flex items-center gap-1.5 px-3 py-2 text-xs min-h-[44px]"
+            onClick={() => setShowMobileFilters((v) => !v)}
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+              />
+            </svg>
+            <span>Filter</span>
+            {activeFilterCount > 0 ? (
+              <span className="rounded-full bg-slate-950 px-1.5 py-0.5 text-[10px] font-bold text-emerald-400">
+                {activeFilterCount}
+              </span>
+            ) : null}
+          </Button>
         </div>
 
-        <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="w-full sm:w-48">
-            <Field label="Sort" htmlFor="tx-sort">
-              <Select
-                id="tx-sort"
-                value={sort}
+        {/* Active filter pills on mobile when collapsed */}
+        {!showMobileFilters && activeFilterCount > 0 ? (
+          <div className="flex sm:hidden flex-wrap items-center gap-1.5 mt-2.5">
+            {type ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2.5 py-0.5 text-xs text-slate-200 border border-slate-700">
+                {TYPE_OPTIONS.find((o) => o.value === type)?.label}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setType('');
+                    setPage(1);
+                  }}
+                  className="text-slate-400 hover:text-white font-bold ml-0.5"
+                >
+                  ×
+                </button>
+              </span>
+            ) : null}
+            {categoryId ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2.5 py-0.5 text-xs text-slate-200 border border-slate-700">
+                {categoryMap.get(categoryId)?.name ?? 'Category'}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCategoryId('');
+                    setPage(1);
+                  }}
+                  className="text-slate-400 hover:text-white font-bold ml-0.5"
+                >
+                  ×
+                </button>
+              </span>
+            ) : null}
+            {preset ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2.5 py-0.5 text-xs text-slate-200 border border-slate-700">
+                {PRESET_OPTIONS.find((o) => o.value === preset)?.label}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPreset('');
+                    setPage(1);
+                  }}
+                  className="text-slate-400 hover:text-white font-bold ml-0.5"
+                >
+                  ×
+                </button>
+              </span>
+            ) : null}
+            {sort !== 'transactionDate|desc' ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2.5 py-0.5 text-xs text-slate-200 border border-slate-700">
+                {SORT_OPTIONS.find((o) => o.value === sort)?.label}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSort('transactionDate|desc');
+                    setPage(1);
+                  }}
+                  className="text-slate-400 hover:text-white font-bold ml-0.5"
+                >
+                  ×
+                </button>
+              </span>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => {
+                setSearch('');
+                setType('');
+                setCategoryId('');
+                setPreset('');
+                setSort('transactionDate|desc');
+                setPage(1);
+              }}
+              className="text-xs text-emerald-400 hover:underline ml-1 font-medium"
+            >
+              Clear all
+            </button>
+          </div>
+        ) : null}
+
+        {/* Filters panel (Collapsible on mobile, always visible on desktop) */}
+        <div className={`mt-4 sm:mt-0 ${showMobileFilters ? 'block' : 'hidden sm:block'}`}>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Field label="Search" htmlFor="tx-search" className="hidden sm:block">
+              <TextInput
+                id="tx-search"
+                type="search"
+                placeholder="Title or description"
+                value={search}
                 onChange={(event) => {
-                  setSort(event.target.value);
+                  setSearch(event.target.value);
+                  setPage(1);
+                }}
+              />
+            </Field>
+
+            <Field label="Type" htmlFor="tx-type">
+              <Select
+                id="tx-type"
+                value={type}
+                onChange={(event) => {
+                  setType(event.target.value);
                   setPage(1);
                 }}
               >
-                {SORT_OPTIONS.map((option) => (
+                {TYPE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+
+            <Field label="Category" htmlFor="tx-category">
+              <Select
+                id="tx-category"
+                value={categoryId}
+                onChange={(event) => {
+                  setCategoryId(event.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="">All categories</option>
+                {(categories.data ?? []).map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+
+            <Field label="Period" htmlFor="tx-preset">
+              <Select
+                id="tx-preset"
+                value={preset}
+                onChange={(event) => {
+                  setPreset(event.target.value);
+                  setPage(1);
+                }}
+              >
+                {PRESET_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
@@ -197,21 +303,43 @@ export default function TransactionsPage() {
             </Field>
           </div>
 
-          {hasFilters ? (
-            <Button
-              variant="ghost"
-              className="self-end"
-              onClick={() => {
-                setSearch('');
-                setType('');
-                setCategoryId('');
-                setPreset('');
-                setPage(1);
-              }}
-            >
-              Clear filters
-            </Button>
-          ) : null}
+          <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-t border-slate-800/80 pt-4 sm:border-0 sm:pt-0">
+            <div className="w-full sm:w-48">
+              <Field label="Sort" htmlFor="tx-sort">
+                <Select
+                  id="tx-sort"
+                  value={sort}
+                  onChange={(event) => {
+                    setSort(event.target.value);
+                    setPage(1);
+                  }}
+                >
+                  {SORT_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
+
+            {hasFilters || sort !== 'transactionDate|desc' ? (
+              <Button
+                variant="ghost"
+                className="self-end text-xs sm:text-sm"
+                onClick={() => {
+                  setSearch('');
+                  setType('');
+                  setCategoryId('');
+                  setPreset('');
+                  setSort('transactionDate|desc');
+                  setPage(1);
+                }}
+              >
+                Clear all filters
+              </Button>
+            ) : null}
+          </div>
         </div>
       </Card>
 

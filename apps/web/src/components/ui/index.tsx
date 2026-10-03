@@ -47,15 +47,17 @@ export function Field({
   error,
   hint,
   children,
+  className = '',
 }: {
   label: string;
   htmlFor: string;
   error?: string | null;
   hint?: ReactNode;
   children: ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="w-full">
+    <div className={`w-full ${className}`}>
       <label htmlFor={htmlFor} className={labelClass}>
         {label}
       </label>
