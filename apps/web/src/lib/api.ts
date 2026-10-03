@@ -3,18 +3,13 @@ import type { ApiErrorCode, ApiResponse, AuthSession } from '../shared/types';
 import { queryString, type QueryValue } from './query';
 
 /**
- * Base URL for API calls:
- *  - `VITE_API_URL` unset  → `http://localhost:4000` (plain absolute default);
- *  - `VITE_API_URL=` (empty) → same origin — requests go to `/api/...` on
- *    whatever host serves the app and the Vite dev/preview server proxies
- *    them to the API (`vite.config.ts`). Same origin keeps the SameSite=Lax
- *    refresh cookie first-party on every device (phone over a LAN address,
- *    adb reverse, desktop), so silent refresh works and sessions survive
- *    the 15-minute access-token expiry;
- *  - any other value       → used as an absolute cross-origin base.
+ * Base URL of the API as seen by the browser (`VITE_API_URL`), with a
+ * localhost default for unconfigured dev. Must be **same-site** as the page
+ * origin (same host — ports may differ): the refresh cookie is SameSite=Lax,
+ * so a cross-site URL drops it and every session dies with the 15-minute
+ * access token.
  */
-export const API_BASE_URL =
-  import.meta.env.VITE_API_URL === undefined ? 'http://localhost:4000' : import.meta.env.VITE_API_URL;
+export const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
 
 /** Error codes that mean "the access token is no longer usable". */
 const AUTH_FAILURE_CODES: ReadonlySet<ApiErrorCode> = new Set<ApiErrorCode>([

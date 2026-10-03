@@ -126,7 +126,7 @@ export default function AppLayout() {
             target="_blank"
             rel="noreferrer"
           >
-            {API_BASE_URL || window.location.origin}/docs
+            {API_BASE_URL}/docs
           </a>
         </footer>
 
