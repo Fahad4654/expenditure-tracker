@@ -173,26 +173,26 @@ function Hero() {
         everything synchronized across web and mobile — even when you are offline.
       </p>
 
-      <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+      <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
         <Link
           to={ROUTES.register}
-          className="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-6 py-3 text-base font-semibold text-slate-950 transition hover:bg-emerald-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
+          className="w-full sm:w-auto inline-flex items-center justify-center rounded-xl bg-emerald-500 px-6 py-3.5 text-base font-semibold text-slate-950 transition hover:bg-emerald-400 shadow-lg shadow-emerald-500/20"
         >
           Start Tracking — Free
         </Link>
         <a
           href="#how-it-works"
-          className="inline-flex items-center justify-center rounded-lg border border-slate-700 px-6 py-3 text-base font-medium text-slate-200 transition hover:border-slate-600 hover:bg-slate-800/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400"
+          className="w-full sm:w-auto inline-flex items-center justify-center rounded-xl border border-slate-700 bg-slate-900/60 px-6 py-3.5 text-base font-medium text-slate-200 transition hover:border-slate-600 hover:bg-slate-800"
         >
           See How It Works
         </a>
       </div>
 
-      <ul className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-slate-400">
+      <ul className="mt-8 grid grid-cols-2 gap-y-3 gap-x-4 max-w-[320px] mx-auto text-left sm:max-w-none sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-x-6 sm:gap-y-2 text-xs sm:text-sm text-slate-400">
         {TRUST_POINTS.map((point) => (
-          <li key={point} className="inline-flex items-center gap-1.5">
+          <li key={point} className="inline-flex items-center gap-1.5 whitespace-nowrap">
             <CheckIcon />
-            {point}
+            <span>{point}</span>
           </li>
         ))}
       </ul>

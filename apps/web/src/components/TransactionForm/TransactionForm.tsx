@@ -112,12 +112,12 @@ export default function TransactionForm({
                 type="button"
                 aria-pressed={active}
                 onClick={() => update('type', option.value)}
-                className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+                className={`flex-1 min-h-[44px] rounded-xl text-sm font-semibold transition-all duration-200 active:scale-[0.98] ${
                   active
                     ? option.value === 'INCOME'
-                      ? 'bg-emerald-500 text-slate-950'
-                      : 'bg-rose-500 text-white'
-                    : 'border border-slate-700 text-slate-300 hover:bg-slate-800'
+                      ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                      : 'bg-rose-500 text-white shadow-md shadow-rose-500/20'
+                    : 'border border-slate-700/80 text-slate-300 hover:bg-slate-800 hover:border-slate-600'
                 }`}
               >
                 {option.label}
@@ -197,8 +197,8 @@ export default function TransactionForm({
         />
       </Field>
 
-      <div className="flex gap-3">
-        <Button type="submit" disabled={submitting || visibleCategories.length === 0}>
+      <div className="flex gap-3 pt-1">
+        <Button type="submit" className="w-full sm:w-auto" disabled={submitting || visibleCategories.length === 0}>
           {submitting ? 'Saving…' : initialValue ? 'Save changes' : 'Add transaction'}
         </Button>
       </div>

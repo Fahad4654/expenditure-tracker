@@ -27,22 +27,25 @@ export default function TransactionRow({
     <li>
       <Link
         to={transactionPath(transaction.id)}
-        className="flex items-center justify-between gap-4 px-4 py-3 transition hover:bg-slate-800/60"
+        className="flex min-h-[56px] items-center justify-between gap-3 px-4 py-3.5 transition hover:bg-slate-800/60 active:bg-slate-800/80"
       >
-        <div className="min-w-0">
-          <p className="truncate font-medium text-slate-100">{transaction.title}</p>
-          <p className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-medium text-slate-100 leading-snug">{transaction.title}</p>
+          <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
             <span>{formatDay(transaction.transactionDate, { weekday: true })}</span>
             {category ? (
-              <span
-                className="rounded-full px-2 py-0.5"
-                style={{
-                  backgroundColor: category.color ? `${category.color}22` : undefined,
-                  color: category.color ?? '#94a3b8',
-                }}
-              >
-                {category.name}
-              </span>
+              <>
+                <span aria-hidden className="text-slate-700">·</span>
+                <span
+                  className="rounded-full px-2 py-0.5 font-medium"
+                  style={{
+                    backgroundColor: category.color ? `${category.color}22` : 'rgba(100,116,139,0.12)',
+                    color: category.color ?? '#94a3b8',
+                  }}
+                >
+                  {category.name}
+                </span>
+              </>
             ) : null}
           </p>
         </div>

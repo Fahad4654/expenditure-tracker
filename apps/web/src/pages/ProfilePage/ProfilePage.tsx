@@ -177,7 +177,7 @@ export default function ProfilePage() {
           </Field>
 
           <div className="flex gap-3 sm:col-span-2">
-            <Button type="submit" disabled={submitting}>
+            <Button type="submit" className="w-full sm:w-auto" disabled={submitting}>
               {submitting ? 'Saving…' : 'Save changes'}
             </Button>
           </div>
@@ -205,7 +205,7 @@ export default function ProfilePage() {
           </div>
         </dl>
 
-        <p className="mt-5 rounded-lg bg-slate-900 px-4 py-3 text-xs leading-relaxed text-slate-500">
+        <p className="mt-5 rounded-lg bg-slate-900 px-4 py-3 text-xs leading-relaxed text-slate-500 break-words">
           Email/phone verification, password reset, and OAuth sign-in are deferred until mail and
           SMS providers are configured — see <code>docs/authentication.md</code>.
         </p>

@@ -177,27 +177,30 @@ export default function TransactionsPage() {
           </Field>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-          <Field label="Sort" htmlFor="tx-sort">
-            <Select
-              id="tx-sort"
-              value={sort}
-              onChange={(event) => {
-                setSort(event.target.value);
-                setPage(1);
-              }}
-            >
-              {SORT_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
-          </Field>
+        <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="w-full sm:w-48">
+            <Field label="Sort" htmlFor="tx-sort">
+              <Select
+                id="tx-sort"
+                value={sort}
+                onChange={(event) => {
+                  setSort(event.target.value);
+                  setPage(1);
+                }}
+              >
+                {SORT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
 
           {hasFilters ? (
             <Button
               variant="ghost"
+              className="self-end"
               onClick={() => {
                 setSearch('');
                 setType('');
@@ -214,7 +217,7 @@ export default function TransactionsPage() {
 
       <ErrorBanner>
         {list.error ? (
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <span>{list.error.message}</span>
             <Button variant="secondary" onClick={list.reload}>
               Retry
@@ -237,8 +240,8 @@ export default function TransactionsPage() {
           }
         />
       ) : list.data ? (
-        <Card className="!p-0">
-          <ul className="divide-y divide-slate-800">
+        <Card className="!p-0 overflow-hidden">
+          <ul className="divide-y divide-slate-800/80">
             {list.data.items.map((transaction) => (
               <TransactionRow
                 key={transaction.id}
@@ -249,15 +252,15 @@ export default function TransactionsPage() {
           </ul>
 
           {meta && meta.totalPages > 1 ? (
-            <div className="flex items-center justify-between border-t border-slate-800 px-5 py-4 text-sm">
+            <div className="flex items-center justify-between border-t border-slate-800/80 px-4 sm:px-5 py-4 text-sm">
               <Button
                 variant="secondary"
                 disabled={meta.page <= 1}
                 onClick={() => setPage((p) => p - 1)}
               >
-                Previous
+                ← Prev
               </Button>
-              <span className="text-slate-400">
+              <span className="text-slate-400 text-xs sm:text-sm">
                 Page {meta.page} of {meta.totalPages}
               </span>
               <Button
@@ -265,7 +268,7 @@ export default function TransactionsPage() {
                 disabled={meta.page >= meta.totalPages}
                 onClick={() => setPage((p) => p + 1)}
               >
-                Next
+                Next →
               </Button>
             </div>
           ) : null}

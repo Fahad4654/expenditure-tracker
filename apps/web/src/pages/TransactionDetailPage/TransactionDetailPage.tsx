@@ -173,16 +173,16 @@ export default function TransactionDetailPage() {
             </dl>
 
             {confirmingDelete ? (
-              <div className="rounded-lg border border-rose-900 bg-rose-950/50 p-4">
+              <div className="rounded-xl border border-rose-900 bg-rose-950/50 p-4">
                 <p className="text-sm text-rose-200">
                   Delete “{transaction.title}”? This leaves a tombstone so other devices see the
                   removal.
                 </p>
-                <div className="mt-3 flex gap-2">
-                  <Button variant="danger" onClick={() => void handleDelete()}>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button variant="danger" className="flex-1 sm:flex-none" onClick={() => void handleDelete()}>
                     Yes, delete
                   </Button>
-                  <Button variant="ghost" onClick={() => setConfirmingDelete(false)}>
+                  <Button variant="ghost" className="flex-1 sm:flex-none" onClick={() => setConfirmingDelete(false)}>
                     Cancel
                   </Button>
                 </div>
@@ -191,7 +191,7 @@ export default function TransactionDetailPage() {
 
             <Link
               to={ROUTES.transactions}
-              className="inline-block text-sm text-slate-400 transition hover:text-slate-200"
+              className="inline-flex items-center gap-1 text-sm text-slate-400 transition hover:text-slate-200 min-h-[44px]"
             >
               ← Back to transactions
             </Link>

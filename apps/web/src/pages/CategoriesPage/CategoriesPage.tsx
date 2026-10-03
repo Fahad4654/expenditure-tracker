@@ -113,7 +113,7 @@ export default function CategoriesPage() {
 
       <Card className="mb-6">
         <h2 className="mb-4 font-semibold text-white">New category</h2>
-        <form onSubmit={handleCreate} className="grid gap-4 sm:grid-cols-3" noValidate>
+        <form onSubmit={handleCreate} className="grid gap-4 sm:grid-cols-2" noValidate>
           <Field label="Name" htmlFor="cat-name" error={createErrors.name}>
             <TextInput
               id="cat-name"
@@ -137,8 +137,8 @@ export default function CategoriesPage() {
               ))}
             </Select>
           </Field>
-          <div className="flex items-end">
-            <Button type="submit" className="w-full" disabled={submitting}>
+          <div className="flex items-end sm:col-span-2">
+            <Button type="submit" className="w-full sm:w-auto" disabled={submitting}>
               {submitting ? 'Adding…' : 'Add category'}
             </Button>
           </div>
@@ -178,7 +178,7 @@ export default function CategoriesPage() {
                         if (event.key === 'Enter') void handleRename(category);
                         if (event.key === 'Escape') setEditingId(null);
                       }}
-                      className="w-36 rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-sm text-slate-100 outline-none focus:border-emerald-500"
+                      className="min-w-0 flex-1 max-w-[160px] rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-sm text-slate-100 outline-none focus:border-emerald-500"
                     />
                   ) : (
                     <span className="font-medium text-slate-100">{category.name}</span>

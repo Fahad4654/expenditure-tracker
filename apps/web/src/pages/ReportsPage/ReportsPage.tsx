@@ -96,13 +96,13 @@ export default function ReportsPage() {
         title="Reports"
         subtitle={`${range.from} → ${range.to} · ${timeZone}`}
         actions={
-          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 w-full sm:w-auto" role="group" aria-label="Report period">
+          <div className="grid grid-cols-4 sm:flex sm:flex-wrap items-center gap-1.5 sm:gap-2 w-full sm:w-auto" role="group" aria-label="Report period">
             {PRESETS.map((option) => (
               <Button
                 key={option.value}
                 variant={preset === option.value ? 'primary' : 'ghost'}
                 onClick={() => setPreset(option.value)}
-                className="flex-1 sm:flex-initial text-xs sm:text-sm px-3 py-1.5 min-h-[38px]"
+                className="w-full sm:w-auto text-xs sm:text-sm px-2 sm:px-3 py-1.5"
               >
                 {option.label}
               </Button>
@@ -157,7 +157,7 @@ export default function ReportsPage() {
         </Card>
 
         <Card className="min-w-0">
-          <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="font-semibold text-white">Category breakdown</h2>
               <p className="text-sm text-slate-500">Share of the period total.</p>
@@ -168,6 +168,7 @@ export default function ReportsPage() {
                   key={value}
                   variant={breakdownType === value ? 'primary' : 'ghost'}
                   onClick={() => setBreakdownType(value)}
+                  className="text-xs sm:text-sm"
                 >
                   {value === 'EXPENSE' ? 'Expense' : 'Income'}
                 </Button>
@@ -226,8 +227,8 @@ function SummaryCard({
     tone === 'income' ? 'text-emerald-400' : tone === 'expense' ? 'text-rose-400' : 'text-white';
   return (
     <Card>
-      <p className="text-sm text-slate-500">{label}</p>
-      <p className={`mt-1 text-3xl font-semibold tabular-nums ${colour}`}>{value}</p>
+      <p className="text-xs sm:text-sm text-slate-500">{label}</p>
+      <p className={`mt-1 text-2xl sm:text-3xl font-semibold tabular-nums truncate ${colour}`}>{value}</p>
     </Card>
   );
 }
@@ -238,9 +239,9 @@ function DailyBars({ report, currency }: { report: DailyReport; currency: string
     ...report.points.map((point) => Math.max(Number(point.income), Number(point.expense))),
   );
   return (
-    <div className="overflow-x-auto">
+    <div className="touch-scroll-x">
       <div
-        className="flex h-44 min-w-[420px] items-end gap-[3px]"
+        className="daily-chart-inner flex h-44 items-end gap-[3px]"
         role="img"
         aria-label="Daily income and expense chart"
       >
@@ -273,9 +274,9 @@ function MonthlyBars({ report, currency }: { report: MonthlyReport; currency: st
     ...report.points.map((point) => Math.max(Number(point.income), Number(point.expense))),
   );
   return (
-    <div className="overflow-x-auto">
+    <div className="touch-scroll-x">
       <div
-        className="flex h-44 min-w-[640px] items-end gap-3"
+        className="monthly-chart-inner flex h-44 items-end gap-3"
         role="img"
         aria-label="Monthly income and expense chart"
       >
