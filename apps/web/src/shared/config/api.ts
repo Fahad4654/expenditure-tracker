@@ -57,6 +57,7 @@ export const COOKIE_NAMES = {
 /** Browser storage keys used by the web PWA. */
 export const STORAGE_KEYS = {
   accessToken: 'exp.access_token',
+  accessExpiresAt: 'exp.access_expires_at',
   refreshToken: 'exp.refresh_token',
   user: 'exp.user',
 } as const;

@@ -1,8 +1,9 @@
 import { STORAGE_KEYS } from '../shared/config';
 import type { AuthSession, UserProfile } from '../shared/types';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { storeAccessToken, storeRefreshToken, storeUser } from '../lib/api';
 import AuthProvider from './AuthProvider';
 import { useAuth } from './auth-context';
 import { GuestOnlyRoute, ProtectedRoute } from './ProtectedRoute';
@@ -109,6 +110,51 @@ describe('AuthProvider', () => {
     await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('anonymous'));
     expect(screen.getByTestId('user').textContent).toBe('anonymous');
     expect(window.localStorage.getItem(STORAGE_KEYS.accessToken)).toBeNull();
+  });
+
+  it('keeps a valid session alive when the background rotation fails', async () => {
+    storeAccessToken({ accessToken: 'access-1', expiresIn: 900 });
+    storeRefreshToken('refresh-1');
+    storeUser(makeUser('Ada'));
+    const mock = stubFetch(() => failBody('REFRESH_TOKEN_INVALID'));
+
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+
+    expect(screen.getByTestId('status').textContent).toBe('authenticated');
+    expect(screen.getByTestId('user').textContent).toBe('Ada');
+
+    await waitFor(() => expect(mock).toHaveBeenCalled());
+    await act(async () => {});
+
+    expect(screen.getByTestId('status').textContent).toBe('authenticated');
+    expect(window.localStorage.getItem(STORAGE_KEYS.accessToken)).toBe('access-1');
+  });
+
+  it('re-establishes the session from the stored refresh token body', async () => {
+    storeAccessToken({ accessToken: 'access-1', expiresIn: 900 });
+    storeRefreshToken('refresh-1');
+    const mock = stubFetch((url) =>
+      url.endsWith('/auth/refresh') ? okBody(makeSession('Grace')) : failBody('NOT_FOUND', 404),
+    );
+
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId('user').textContent).toBe('Grace'));
+
+    const call = mock.mock.calls.find(([url]) => String(url).endsWith('/auth/refresh'));
+    expect(call).toBeDefined();
+    expect(JSON.parse(String((call![1] as RequestInit).body))).toEqual({
+      refreshToken: 'refresh-1',
+    });
+    expect(window.localStorage.getItem(STORAGE_KEYS.refreshToken)).toBe('refresh-1');
   });
 
   it('login stores the token and flips the session to authenticated', async () => {

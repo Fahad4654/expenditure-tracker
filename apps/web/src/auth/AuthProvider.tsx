@@ -1,10 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   API_ROUTES,
+  ApiError,
   apiFetch,
   clearAccessToken,
+  hasValidAccessToken,
+  persistSession,
+  readRefreshToken,
+  readStoredUser,
   setUnauthorizedHandler,
-  storeAccessToken,
+  storeRefreshToken,
+  storeUser,
 } from '../lib/api';
 import type {
   AuthSession,
@@ -23,38 +29,57 @@ interface State {
 /**
  * Owns the browser session.
  *
- * The refresh token lives in an HTTP-only cookie, so "am I signed in?" cannot
- * be answered from storage alone: on mount we ask the API to rotate it. The
- * same rotation is reused as the 401 handler for every other request, which is
- * why `apiFetch` can replay a call whose 15-minute access token expired.
+ * Every auth response carries the refresh token in its body, so the client
+ * keeps it in local storage and re-establishes the session with
+ * `POST /auth/refresh` alone — the HTTP-only cookie stays set as a fallback,
+ * but a dropped or blocked cookie never logs the user out. A reload with a
+ * still-valid access token starts out authenticated immediately; the silent
+ * rotation below runs in the background and only ends the session when the
+ * access token itself is gone for good. The same rotation is reused as the
+ * 401 handler for every other request, which is why `apiFetch` can replay a
+ * call whose 15-minute access token expired.
  */
 export default function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<State>({ status: 'loading', user: null });
 
   // Memoised so parallel 401s share one refresh round-trip instead of racing.
-  const refreshInFlight = useRef<Promise<boolean> | null>(null);
+  // `fatal` records whether any caller needs a failed rotation to end the
+  // session (the 401 handler does; a best-effort mount refresh does not).
+  const refreshInFlight = useRef<{ fatal: boolean; promise: Promise<boolean> } | null>(null);
 
-  const refresh = useCallback((): Promise<boolean> => {
+  const refresh = useCallback((fatal = true): Promise<boolean> => {
     if (!refreshInFlight.current) {
-      refreshInFlight.current = (async () => {
+      const entry = { fatal, promise: Promise.resolve(false) };
+      entry.promise = (async () => {
         try {
+          const refreshToken = readRefreshToken();
           const session = await apiFetch<AuthSession>(API_ROUTES.auth.refresh, {
             method: 'POST',
             skipAuthRetry: true,
+            ...(refreshToken ? { body: JSON.stringify({ refreshToken }) } : {}),
           });
-          storeAccessToken(session);
+          persistSession(session);
           setState({ status: 'authenticated', user: session.user });
           return true;
-        } catch {
-          clearAccessToken();
-          setState({ status: 'anonymous', user: null });
+        } catch (error) {
+          if (entry.fatal) {
+            clearAccessToken();
+            if (error instanceof ApiError && error.code === 'REFRESH_TOKEN_INVALID') {
+              storeRefreshToken(null);
+              storeUser(null);
+            }
+            setState({ status: 'anonymous', user: null });
+          }
           return false;
         } finally {
           refreshInFlight.current = null;
         }
       })();
+      refreshInFlight.current = entry;
+    } else if (fatal) {
+      refreshInFlight.current.fatal = true;
     }
-    return refreshInFlight.current;
+    return refreshInFlight.current.promise;
   }, []);
 
   const login = useCallback(async (input: LoginInput): Promise<AuthSession> => {
@@ -62,7 +87,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       method: 'POST',
       body: JSON.stringify(input),
     });
-    storeAccessToken(session);
+    persistSession(session);
     setState({ status: 'authenticated', user: session.user });
     return session;
   }, []);
@@ -72,7 +97,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       method: 'POST',
       body: JSON.stringify(input),
     });
-    storeAccessToken(session);
+    persistSession(session);
     setState({ status: 'authenticated', user: session.user });
     return session;
   }, []);
@@ -83,7 +108,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       body: JSON.stringify({ idToken }),
       skipAuthRetry: true,
     });
-    storeAccessToken(session);
+    persistSession(session);
     setState({ status: 'authenticated', user: session.user });
     return session;
   }, []);
@@ -95,7 +120,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify(input),
         skipAuthRetry: true,
       });
-      storeAccessToken(session);
+      persistSession(session);
       setState({ status: 'authenticated', user: session.user });
       return session;
     },
@@ -104,7 +129,12 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     try {
-      await apiFetch(API_ROUTES.auth.logout, { method: 'POST', skipAuthRetry: true });
+      const refreshToken = readRefreshToken();
+      await apiFetch(API_ROUTES.auth.logout, {
+        method: 'POST',
+        skipAuthRetry: true,
+        ...(refreshToken ? { body: JSON.stringify({ refreshToken }) } : {}),
+      });
     } catch {
       // Swallowed on purpose: the user asked to be signed out, and rethrowing
       // would only surface an error at a call site that cannot act on it. The
@@ -112,11 +142,14 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       // for a session that is already meaningless to this client.
     } finally {
       clearAccessToken();
+      storeRefreshToken(null);
+      storeUser(null);
       setState({ status: 'anonymous', user: null });
     }
   }, []);
 
   const setUser = useCallback((user: UserProfile) => {
+    storeUser(user);
     setState({ status: 'authenticated', user });
   }, []);
 
@@ -126,7 +159,14 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   useEffect(() => {
-    void refresh();
+    if (hasValidAccessToken()) {
+      // A reload must not end a session whose access token is still good:
+      // restore it instantly and rotate in the background, best-effort.
+      setState({ status: 'authenticated', user: readStoredUser() });
+      void refresh(false);
+    } else {
+      void refresh();
+    }
   }, [refresh]);
 
   const value = useMemo<AuthContextValue>(

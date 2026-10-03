@@ -1,13 +1,13 @@
 import { API_ROUTES, COOKIE_NAMES, STORAGE_KEYS } from '../shared/config';
-import type { ApiErrorCode, ApiResponse, AuthSession } from '../shared/types';
+import type { ApiErrorCode, ApiResponse, AuthSession, UserProfile } from '../shared/types';
 import { queryString, type QueryValue } from './query';
 
 /**
  * Base URL of the API as seen by the browser (`VITE_API_URL`), with a
- * localhost default for unconfigured dev. Must be **same-site** as the page
- * origin (same host — ports may differ): the refresh cookie is SameSite=Lax,
- * so a cross-site URL drops it and every session dies with the 15-minute
- * access token.
+ * localhost default for unconfigured dev. Prefer a **same-site** URL (same
+ * host — ports may differ): the refresh cookie is SameSite=Lax, so a
+ * cross-site URL drops it. Sessions do not depend on it — the refresh token
+ * is also kept in local storage and sent in the refresh request body.
  */
 export const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
 
@@ -148,17 +148,75 @@ export function readCookie(name: string): string | null {
 }
 
 /**
- * Writes the token half of a session to browser storage. The refresh token
- * stays in its HTTP-only cookie and is never written to JS-visible storage.
+ * Writes the access half of a session to browser storage, plus its expiry so
+ * a reload can tell "still signed in" without a round-trip.
  */
-export function storeAccessToken(session: Pick<AuthSession, 'accessToken'>): void {
+export function storeAccessToken(
+  session: Pick<AuthSession, 'accessToken'> & Partial<Pick<AuthSession, 'expiresIn'>>,
+): void {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(STORAGE_KEYS.accessToken, session.accessToken);
+  if (typeof session.expiresIn === 'number') {
+    window.localStorage.setItem(
+      STORAGE_KEYS.accessExpiresAt,
+      String(Date.now() + session.expiresIn * 1000),
+    );
+  }
+}
+
+/**
+ * Stores the refresh token so `POST /auth/refresh` can re-establish a session
+ * from the request body alone — the same transport the mobile app uses. The
+ * HTTP-only cookie remains set as a fallback for cookie-only clients, but a
+ * blocked or dropped cookie no longer logs the user out. Pass `null` to clear.
+ */
+export function storeRefreshToken(refreshToken: string | null): void {
+  if (typeof window === 'undefined') return;
+  if (refreshToken) window.localStorage.setItem(STORAGE_KEYS.refreshToken, refreshToken);
+  else window.localStorage.removeItem(STORAGE_KEYS.refreshToken);
+}
+
+export function readRefreshToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return window.localStorage.getItem(STORAGE_KEYS.refreshToken);
+}
+
+/** Keeps the last known profile so a reload renders the name immediately. */
+export function storeUser(user: UserProfile | null): void {
+  if (typeof window === 'undefined') return;
+  if (user) window.localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(user));
+  else window.localStorage.removeItem(STORAGE_KEYS.user);
+}
+
+export function readStoredUser(): UserProfile | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEYS.user);
+    return raw ? (JSON.parse(raw) as UserProfile) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** True while a stored access token exists and has not reached its expiry. */
+export function hasValidAccessToken(): boolean {
+  if (typeof window === 'undefined') return false;
+  if (!window.localStorage.getItem(STORAGE_KEYS.accessToken)) return false;
+  const raw = window.localStorage.getItem(STORAGE_KEYS.accessExpiresAt);
+  return raw !== null && Number(raw) > Date.now();
+}
+
+/** Writes every client-visible half of a session in one place. */
+export function persistSession(session: AuthSession): void {
+  storeAccessToken(session);
+  storeRefreshToken(session.refreshToken);
+  storeUser(session.user);
 }
 
 export function clearAccessToken(): void {
   if (typeof window === 'undefined') return;
   window.localStorage.removeItem(STORAGE_KEYS.accessToken);
+  window.localStorage.removeItem(STORAGE_KEYS.accessExpiresAt);
 }
 
 export { API_ROUTES };

@@ -177,7 +177,7 @@ Guarantees:
 | Token         | Lifetime                  | Transport                                        | Storage                                                    |
 | ------------- | ------------------------- | ------------------------------------------------ | ---------------------------------------------------------- |
 | Access JWT    | `JWT_ACCESS_TTL` (15 min) | `Authorization: Bearer`                          | Web: memory + localStorage; Mobile: flutter_secure_storage |
-| Refresh token | `JWT_REFRESH_TTL` (30 d)  | HTTP-only cookie (web) / secure storage (mobile) | Hashed server-side                                         |
+| Refresh token | `JWT_REFRESH_TTL` (30 d)  | `refreshToken` request body (web + mobile); HTTP-only cookie as web fallback | Hashed server-side; also localStorage (web) / secure storage (mobile) |
 
 ### Access token claims
 
@@ -222,6 +222,16 @@ Mutating cookie-based endpoints (`/auth/refresh`, `/auth/logout`) require the
 `X-CSRF-Token` header to equal the `exp_csrf` cookie → `CSRF_INVALID` otherwise.
 Bearer-token requests are not CSRF-exposed (a cross-site form cannot set an
 `Authorization` header).
+
+The web client sends the refresh token **in the request body** (the same
+transport as mobile) and keeps the cookies set as well. Reasons:
+
+- a session survives page reloads, dropped cookies, and cross-site dev setups
+  (`VITE_API_URL` on another host than the page) without logging the user out;
+- CSRF protection still applies whenever the cookie is present — the guard
+  skips only cookie-less requests, which cannot be CSRF-ambiguous;
+- rotation, reuse detection, and family revocation are transport-agnostic: the
+  same token identifies the family whether it arrives in the body or cookie.
 
 ### Logout
 

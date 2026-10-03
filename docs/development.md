@@ -152,7 +152,7 @@ Two env files, one per app — neither is ever committed:
 | File            | Loaded by                              | Contents                                                                  |
 | --------------- | -------------------------------------- | ------------------------------------------------------------------------- |
 | `apps/api/.env` | `loadApiEnv()` in `config/load-env.ts` | API config, `DATABASE_URL`, JWT secrets, OTP settings, SMTP, Firebase      |
-| `apps/web/.env` | Vite (default `envDir`)                | `VITE_API_URL` (must be same-site as the page host), `VITE_FIREBASE_*` (Google sign-in), `WEB_PORT` — no secrets |
+| `apps/web/.env` | Vite (default `envDir`)                | `VITE_API_URL` (same-site with the page host preferred, not required), `VITE_FIREBASE_*` (Google sign-in), `WEB_PORT` — no secrets |
 
 For the API, variables already in `process.env` (shell/CI) always win;
 `process.loadEnvFile` never overwrites existing keys, so secrets injected
@@ -355,6 +355,6 @@ if present, but nothing depends on it.
 | Migration `P3018` (type mismatch)                                         | Fix the schema, delete `apps/api/prisma/migrations/*`, re-run `npm run db:migrate` |
 | "applied to the database but missing from the local migrations directory" | `cd apps/api && npm run db:reset`                                                  |
 | Web cannot reach the API                                                  | Check `VITE_API_URL` and `CORS_ORIGINS`                                            |
-| Signed out after ~15 min of inactivity                                    | `VITE_API_URL` must be same-site as the page host (same host, ports may differ) — a cross-site URL drops the `SameSite=Lax` refresh cookie |
+| Signed out after ~15 min of inactivity                                    | Reload the page — the session refreshes from the stored token (body transport), so cookie loss alone cannot log you out; a logout means the stored refresh token is gone (cleared storage) → sign in again |
 | Port already in use                                                       | `API_PORT` in `apps/api/.env`, `WEB_PORT` in `apps/web/.env`                       |
 | Mobile sees connection refused on Android                                 | Use `http://10.0.2.2:4000`, not `localhost`                                        |
