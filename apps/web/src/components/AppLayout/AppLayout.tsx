@@ -6,9 +6,10 @@ import { ROUTES } from '../../routes';
 import Sidebar from '../Sidebar/Sidebar';
 
 /**
- * Shell around every page. The homepage keeps its own landing navbar; every
- * other route gets a left sidebar — fixed on large screens, and behind a
- * hamburger drawer on small ones.
+ * Shell around every page. The homepage keeps its own landing navbar. Every
+ * other route gets a left sidebar — fixed on large screens, behind a
+ * hamburger drawer on small ones — but only after sign-in; guests see a
+ * brand-only header with no menu.
  */
 export default function AppLayout() {
   const { status } = useAuth();
@@ -26,11 +27,13 @@ export default function AppLayout() {
 
   return (
     <div className="min-h-screen">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 border-r border-slate-800 bg-slate-950 lg:block">
-        <Sidebar />
-      </aside>
+      {signedIn ? (
+        <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 border-r border-slate-800 bg-slate-950 lg:block">
+          <Sidebar />
+        </aside>
+      ) : null}
 
-      {drawerOpen ? (
+      {signedIn && drawerOpen ? (
         <div className="fixed inset-0 z-50 lg:hidden">
           <button
             type="button"
@@ -66,38 +69,54 @@ export default function AppLayout() {
         </div>
       ) : null}
 
-      <div className="flex min-h-screen flex-col lg:pl-60">
-        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-slate-800 bg-slate-950/80 px-4 py-3 backdrop-blur lg:hidden">
-          <button
-            type="button"
-            aria-label="Open menu"
-            aria-expanded={drawerOpen}
-            className="rounded-md p-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-200"
-            onClick={() => setDrawerOpen(true)}
-          >
-            <svg
-              aria-hidden
-              viewBox="0 0 24 24"
-              className="h-5 w-5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
+      <div
+        className={`flex min-h-screen flex-col ${signedIn ? 'lg:pl-60' : ''}`}
+      >
+        {signedIn ? (
+          <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-slate-800 bg-slate-950/80 px-4 py-3 backdrop-blur lg:hidden">
+            <button
+              type="button"
+              aria-label="Open menu"
+              aria-expanded={drawerOpen}
+              className="rounded-md p-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-200"
+              onClick={() => setDrawerOpen(true)}
             >
-              <path d="M4 7h16M4 12h16M4 17h16" />
-            </svg>
-          </button>
+              <svg
+                aria-hidden
+                viewBox="0 0 24 24"
+                className="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              >
+                <path d="M4 7h16M4 12h16M4 17h16" />
+              </svg>
+            </button>
 
-          <NavLink
-            to={signedIn ? ROUTES.dashboard : ROUTES.home}
-            className="flex items-center gap-2 font-semibold text-white"
-          >
-            <span aria-hidden className="text-emerald-400">
-              ৳
-            </span>
-            Expenditure Tracker
-          </NavLink>
-        </header>
+            <NavLink
+              to={ROUTES.dashboard}
+              className="flex items-center gap-2 font-semibold text-white"
+            >
+              <span aria-hidden className="text-emerald-400">
+                ৳
+              </span>
+              Expenditure Tracker
+            </NavLink>
+          </header>
+        ) : (
+          <header className="border-b border-slate-800 bg-slate-950/80 px-6 py-4 backdrop-blur">
+            <NavLink
+              to={ROUTES.home}
+              className="flex items-center gap-2 font-semibold text-white"
+            >
+              <span aria-hidden className="text-emerald-400">
+                ৳
+              </span>
+              Expenditure Tracker
+            </NavLink>
+          </header>
+        )}
 
         <main className="flex-1">
           <Outlet />
