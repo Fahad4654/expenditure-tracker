@@ -99,8 +99,8 @@ export default function MobileNav() {
         )}
       </NavLink>
 
-      {/* Profile */}
-      <NavLink to={ROUTES.profile} className={navItemClass}>
+      {/* Categories */}
+      <NavLink to={ROUTES.categories} className={navItemClass}>
         {({ isActive }) => (
           <>
             <svg
@@ -112,10 +112,10 @@ export default function MobileNav() {
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
               />
             </svg>
-            <span>Profile</span>
+            <span className="truncate max-w-full px-0.5">Categories</span>
           </>
         )}
       </NavLink>
