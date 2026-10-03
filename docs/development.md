@@ -171,12 +171,12 @@ ships React's production build.
 ## Testing
 
 ```bash
-cd apps/api && npm test                   # API (75 tests)
-cd apps/web && npm test                   # web client (47 tests)
-cd apps/mobile && flutter test            # mobile
+cd apps/api && npm test                   # API (125 tests)
+cd apps/web && npm test                   # web client (62 tests)
+cd apps/mobile && flutter test            # mobile (83 tests)
 ```
 
-Current coverage — 144 tests, all DB-free (`PrismaService` is mocked, so the
+Current coverage — 270 tests, all DB-free (`PrismaService` is mocked, so the
 suite runs without infrastructure or secrets):
 
 - `apps/api/test/health.spec.ts` — success/error envelopes, readiness failure
@@ -191,6 +191,9 @@ suite runs without infrastructure or secrets):
 - `apps/api/test/resources.spec.ts` — category ownership rules, system-category
   guard, in-use conflict, `clientId` idempotency, `baseVersion` conflict,
   tombstone deletes, listing bounds.
+- `apps/api/test/notes_reminders.spec.ts` — note/reminder ownership (foreign id
+  → 404), soft deletes, `version` bumps, date-only `dueDate` conversion, the
+  `completed` toggle setting `completedAt`.
 - `apps/web/src/lib/api.test.ts` — envelope unwrapping, `ApiError` mapping,
   bearer-token handling (jsdom, `fetch` stubbed).
 - `apps/web/src/lib/api.csrf.test.ts` — CSRF double-submit header, query
@@ -345,6 +348,26 @@ if present, but nothing depends on it.
 - **Tests:** 22 mobile tests (144 total across the monorepo) plus an opt-in
   live-API smoke test (`LIVE_API=1`).
 - `flutter analyze` · `flutter test` · `flutter build apk --debug` all green.
+
+---
+
+### Delivered: Notes & Reminders
+
+- **Schema:** `Note` (title + optional content) and `Reminder` (title,
+  optional details, date-only `dueDate`, `completedAt` toggle) — both
+  user-owned, soft-deleted, `version`-bumped, migrated in
+  `20261003204811_add_notes_reminders`.
+- **API:** `GET/POST /notes`, `PATCH/DELETE /notes/:id`, `GET/POST /reminders`,
+  `PATCH/DELETE /reminders/:id` behind `JwtAuthGuard`; shared Zod schemas and
+  route constants live in `shared/{validation,types}` and are mirrored into
+  `apps/web`. Every mutation calls `logEvent` (`NOTE_*` / `REMINDER_*`
+  audit lines).
+- **Web:** `/notes` and `/reminders` pages with sidebar links — search, inline
+  create/edit/delete with confirm panels, pending-first reminder ordering with
+  overdue chips, single-PATCH completion toggle; responsive auto-fit grids
+  throughout.
+- **Tests:** `notes_reminders.spec.ts` (API, 11 tests) plus `NotesPage.test.tsx`
+  and `RemindersPage.test.tsx` (web, 6 tests).
 
 ## Troubleshooting
 

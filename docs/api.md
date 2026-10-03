@@ -166,6 +166,45 @@ Behaviour:
   CONFLICT** — move or delete them first.
 - A duplicate `(userId, name)` is **409 CONFLICT**.
 
+### Notes
+
+| Method   | Path         | Description                                  |
+| -------- | ------------ | -------------------------------------------- |
+| `GET`    | `/notes`     | Own notes, newest `updatedAt` first          |
+| `POST`   | `/notes`     | Create a note (`title`, optional `content`)  |
+| `PATCH`  | `/notes/:id` | Update title/content (own only)              |
+| `DELETE` | `/notes/:id` | Soft delete (own only)                       |
+
+Behaviour:
+
+- Notes are private to the caller; a foreign or deleted `noteId` is **404**
+  (never 403 — existence is not disclosed).
+- `title` is 1–120 chars, `content` up to 5000 chars (`null` allowed).
+- Deletes are soft (`deletedAt`); the `version` counter bumps on every write so
+  the sync feed can adopt notes later without a schema change. Notes are **not**
+  part of the Phase 5 sync feed yet.
+- Every mutation emits a `NOTE_CREATE` / `NOTE_UPDATE` / `NOTE_DELETE` audit
+  line through `logEvent`.
+
+### Reminders
+
+| Method   | Path            | Description                                            |
+| -------- | --------------- | ------------------------------------------------------ |
+| `GET`    | `/reminders`    | Own reminders, earliest `dueDate` first                |
+| `POST`   | `/reminders`    | Create (`title`, `dueDate`, optional `details`)        |
+| `PATCH`  | `/reminders/:id` | Update fields, or toggle `completed` (own only)       |
+| `DELETE` | `/reminders/:id` | Soft delete (own only)                                |
+
+Behaviour:
+
+- `dueDate` is a `YYYY-MM-DD` calendar date interpreted in the owner's
+  timezone (DATE column, like `transactionDate`).
+- `completed: true|false` on `PATCH` sets/clears `completedAt` server-side —
+  the client never manufactures the completion timestamp.
+- A foreign or deleted `reminderId` is **404**. Deletes are soft.
+- Audited as `REMINDER_CREATE` / `REMINDER_UPDATE` / `REMINDER_COMPLETE` /
+  `REMINDER_REOPEN` / `REMINDER_DELETE`.
+
 ### Reports
 
 | Method | Path                  | Description                                          |

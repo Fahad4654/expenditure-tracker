@@ -8,6 +8,8 @@ import HomePage from './pages/HomePage/HomePage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage/ForgotPasswordPage';
 import LoginPage from './pages/LoginPage/LoginPage';
 import NotFoundPage from './pages/NotFoundPage/NotFoundPage';
+import NotesPage from './pages/NotesPage/NotesPage';
+import RemindersPage from './pages/RemindersPage/RemindersPage';
 import StatusPage from './pages/StatusPage/StatusPage';
 import ProfilePage from './pages/ProfilePage/ProfilePage';
 import RegisterPage from './pages/RegisterPage/RegisterPage';
@@ -52,6 +54,8 @@ export default function App() {
             <Route path={ROUTES.transactionNew} element={<TransactionNewPage />} />
             <Route path={ROUTES.transactionDetailPattern} element={<TransactionDetailPage />} />
             <Route path={ROUTES.categories} element={<CategoriesPage />} />
+            <Route path={ROUTES.notes} element={<NotesPage />} />
+            <Route path={ROUTES.reminders} element={<RemindersPage />} />
             <Route path={ROUTES.reports} element={<ReportsPage />} />
             <Route path={ROUTES.profile} element={<ProfilePage />} />
             <Route path={ROUTES.settings} element={<ProfilePage />} />

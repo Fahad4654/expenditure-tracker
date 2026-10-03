@@ -24,6 +24,8 @@ export const ROUTES = {
   transactionNew: '/transactions/new',
   transactionDetailPattern: '/transactions/:id',
   categories: '/categories',
+  notes: '/notes',
+  reminders: '/reminders',
   reports: '/reports',
   settings: '/settings',
   profile: '/profile',

@@ -110,6 +110,8 @@ model User {
   syncOperations SyncOperation[]
   devices        Device[]
   changeLogs     ChangeLog[]
+  notes          Note[]
+  reminders      Reminder[]
 
   @@index([createdAt])
 }
@@ -310,4 +312,49 @@ model ChangeLog {
 
   @@index([userId, id])
   @@index([userId, entityType, entityId])
+}
+
+// --- Notes & reminders -------------------------------------------------------
+
+/// A private free-form note. Not part of the offline sync feed (Phase 5 covers
+/// transactions/categories only) — the `version` counter is kept so sync can
+/// adopt notes later without a schema change.
+model Note {
+  id      String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId  String  @db.Uuid
+  title   String
+  content String? @db.Text
+
+  version   Int       @default(1)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, updatedAt(sort: Desc)])
+}
+
+/// A dated reminder (bill due, goal date …). `dueDate` is DATE-only and is
+/// interpreted in the owner's timezone, like `Transaction.transactionDate`.
+model Reminder {
+  id     String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String  @db.Uuid
+  title  String
+  details String? @db.Text
+
+  /// DATE only — the day the reminder is due, in the owner's timezone.
+  dueDate DateTime @db.Date
+  /// Set when the user marks the reminder done; `null` = still pending.
+  completedAt DateTime?
+
+  version   Int       @default(1)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, dueDate])
+  @@index([userId, completedAt])
 }

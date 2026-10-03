@@ -31,6 +31,8 @@ User 1──* UserToken
 User 1──* Device
 User 1──* Category        (userId NULL ⇒ system category)
 User 1──* Transaction ──* Category
+User 1──* Note
+User 1──* Reminder
 User 1──* SyncOperation
 User 1──* ChangeLog
 ```
@@ -106,6 +108,36 @@ Business, Investment, Other) via the idempotent `db:seed` script (run from
 the second insert violates the constraint and the operation is reported as
 `DUPLICATE` rather than creating a second row.
 
+### `Note`
+
+| Column                               | Type       | Notes                                          |
+| ------------------------------------ | ---------- | ---------------------------------------------- |
+| `id`                                 | `uuid` PK  |                                                |
+| `userId`                             | `uuid` FK  | cascade delete                                 |
+| `title`                              | `text`     | 1–120 chars                                    |
+| `content`                            | `text` NULL | up to 5000 chars                              |
+| `version`                            | `int`      | +1 on every write; ready for a future sync feed |
+| `createdAt` / `updatedAt` / `deletedAt` |          | soft delete                                     |
+
+List order is `@@index([userId, updatedAt DESC])`. Notes carry `version` but are
+not yet drained by the Phase 5 `ChangeLog` feed.
+
+### `Reminder`
+
+| Column                               | Type         | Notes                                       |
+| ------------------------------------ | ------------ | ------------------------------------------- |
+| `id`                                 | `uuid` PK    |                                             |
+| `userId`                             | `uuid` FK    | cascade delete                              |
+| `title`                              | `text`       | 1–120 chars                                 |
+| `details`                            | `text` NULL  | optional note, up to 500 chars              |
+| `dueDate`                            | `date`       | **DATE only** — owner's timezone, like `transactionDate` |
+| `completedAt`                        | `ts` NULL    | set/cleared server-side by the `completed` toggle |
+| `version`                            | `int`        | +1 on every write                           |
+| `createdAt` / `updatedAt` / `deletedAt` |          | soft delete                                 |
+
+Indexes: `@@index([userId, dueDate])` (list order + due-date filter) and
+`@@index([userId, completedAt])` (pending vs completed).
+
 ### `RefreshToken`
 
 Opaque tokens are stored **hashed** (SHA-256) only.
@@ -178,6 +210,10 @@ UNIQUE (userId, clientId)                      -- sync idempotency
 (userId, categoryId, transactionDate)          -- category filter
 (userId, type, transactionDate)                -- income vs expense
 (userId, updatedAt)                            -- change detection
+
+-- Notes & reminders
+Note (userId, updatedAt DESC)                  -- list newest edit first
+Reminder (userId, dueDate), (userId, completedAt)
 
 -- Auth
 RefreshToken UNIQUE (tokenHash), (userId), (familyId), (expiresAt)

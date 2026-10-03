@@ -1,0 +1,224 @@
+import { HttpException } from '@nestjs/common';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { NotesService } from '../src/notes/notes.service';
+import { RemindersService } from '../src/reminders/reminders.service';
+
+const NOW = new Date('2026-01-01T00:00:00.000Z');
+
+type Spy = ReturnType<typeof vi.fn>;
+
+async function expectRejection(promise: Promise<unknown>, status: number, code: string) {
+  const error = await promise.then(
+    () => null,
+    (caught: unknown) => caught as HttpException,
+  );
+  expect(error, 'expected the operation to reject').toBeInstanceOf(HttpException);
+  expect(error!.getStatus()).toBe(status);
+  expect(error!.getResponse()).toMatchObject({ code });
+  return error!;
+}
+
+function noteRecord(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'note-1',
+    userId: 'user-1',
+    title: 'Groceries',
+    content: 'milk, eggs',
+    version: 1,
+    deletedAt: null,
+    createdAt: NOW,
+    updatedAt: NOW,
+    ...overrides,
+  };
+}
+
+function reminderRecord(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'rem-1',
+    userId: 'user-1',
+    title: 'Pay internet bill',
+    details: null,
+    dueDate: new Date('2026-10-05T00:00:00.000Z'),
+    completedAt: null,
+    version: 1,
+    deletedAt: null,
+    createdAt: NOW,
+    updatedAt: NOW,
+    ...overrides,
+  };
+}
+
+interface NoteMock {
+  findMany: Spy;
+  findUnique: Spy;
+  create: Spy;
+  update: Spy;
+}
+
+interface ReminderMock {
+  findMany: Spy;
+  findUnique: Spy;
+  create: Spy;
+  update: Spy;
+}
+
+describe('NotesService', () => {
+  let prisma: { note: NoteMock };
+  let service: NotesService;
+
+  beforeEach(() => {
+    prisma = {
+      note: {
+        findMany: vi.fn(),
+        findUnique: vi.fn(),
+        create: vi.fn(),
+        update: vi.fn(),
+      },
+    };
+    service = new NotesService(prisma as never);
+  });
+
+  it('lists only the caller’s notes, newest first', async () => {
+    prisma.note.findMany.mockResolvedValue([noteRecord()]);
+
+    const list = await service.list('user-1');
+
+    expect(list).toHaveLength(1);
+    expect(prisma.note.findMany.mock.calls[0]![0]).toMatchObject({
+      where: { userId: 'user-1', deletedAt: null },
+      orderBy: { updatedAt: 'desc' },
+    });
+  });
+
+  it('creates a note scoped to the caller with an empty body stored as null', async () => {
+    prisma.note.create.mockResolvedValue(noteRecord({ content: null }));
+
+    const created = await service.create('user-1', { title: 'Groceries' } as never);
+
+    expect(prisma.note.create.mock.calls[0]![0].data).toMatchObject({
+      userId: 'user-1',
+      title: 'Groceries',
+      content: null,
+    });
+    expect(created.id).toBe('note-1');
+    expect(created.createdAt).toBe(NOW.toISOString());
+  });
+
+  it('reports another user’s note as missing', async () => {
+    prisma.note.findUnique.mockResolvedValue(noteRecord({ userId: 'user-2' }));
+
+    await expectRejection(
+      service.update('user-1', 'note-1', { title: 'Stolen' } as never),
+      404,
+      'NOT_FOUND',
+    );
+    expect(prisma.note.update).not.toHaveBeenCalled();
+  });
+
+  it('reports a tombstoned note as missing', async () => {
+    prisma.note.findUnique.mockResolvedValue(noteRecord({ deletedAt: NOW }));
+
+    await expectRejection(service.remove('user-1', 'note-1'), 404, 'NOT_FOUND');
+    expect(prisma.note.update).not.toHaveBeenCalled();
+  });
+
+  it('applies only the provided fields and bumps the version', async () => {
+    prisma.note.findUnique.mockResolvedValue(noteRecord());
+    prisma.note.update.mockResolvedValue(noteRecord({ title: 'Groceries list', version: 2 }));
+
+    const updated = await service.update('user-1', 'note-1', { title: 'Groceries list' } as never);
+
+    expect(prisma.note.update.mock.calls[0]![0].data).toMatchObject({
+      title: 'Groceries list',
+      version: { increment: 1 },
+    });
+    expect(prisma.note.update.mock.calls[0]![0].data).not.toHaveProperty('content');
+    expect(updated.title).toBe('Groceries list');
+  });
+
+  it('tombstones rather than hard-deletes', async () => {
+    prisma.note.findUnique.mockResolvedValue(noteRecord());
+    prisma.note.update.mockResolvedValue(noteRecord({ deletedAt: NOW, version: 2 }));
+
+    const deleted = await service.remove('user-1', 'note-1');
+
+    expect(prisma.note.update.mock.calls[0]![0].data.deletedAt).toBeInstanceOf(Date);
+    expect(prisma.note.update.mock.calls[0]![0].data.version).toEqual({ increment: 1 });
+    expect(deleted.id).toBe('note-1');
+  });
+});
+
+describe('RemindersService', () => {
+  let prisma: { reminder: ReminderMock };
+  let service: RemindersService;
+
+  beforeEach(() => {
+    prisma = {
+      reminder: {
+        findMany: vi.fn(),
+        findUnique: vi.fn(),
+        create: vi.fn(),
+        update: vi.fn(),
+      },
+    };
+    service = new RemindersService(prisma as never);
+  });
+
+  it('lists the caller’s reminders ordered by due date', async () => {
+    prisma.reminder.findMany.mockResolvedValue([reminderRecord()]);
+
+    await service.list('user-1');
+
+    expect(prisma.reminder.findMany.mock.calls[0]![0]).toMatchObject({
+      where: { userId: 'user-1', deletedAt: null },
+      orderBy: [{ dueDate: 'asc' }],
+    });
+  });
+
+  it('stores the due date as UTC midnight and echoes it back as YYYY-MM-DD', async () => {
+    prisma.reminder.create.mockResolvedValue(reminderRecord());
+
+    const created = await service.create('user-1', {
+      title: 'Pay internet bill',
+      dueDate: '2026-10-05',
+    } as never);
+
+    expect(prisma.reminder.create.mock.calls[0]![0].data.dueDate).toEqual(
+      new Date('2026-10-05T00:00:00.000Z'),
+    );
+    expect(created.dueDate).toBe('2026-10-05');
+    expect(created.completedAt).toBeNull();
+  });
+
+  it('toggles completion without the client manufacturing a timestamp', async () => {
+    prisma.reminder.findUnique.mockResolvedValue(reminderRecord());
+    prisma.reminder.update.mockResolvedValue(reminderRecord({ completedAt: NOW, version: 2 }));
+
+    await service.update('user-1', 'rem-1', { completed: true } as never);
+
+    expect(prisma.reminder.update.mock.calls[0]![0].data.completedAt).toBeInstanceOf(Date);
+
+    prisma.reminder.update.mockClear();
+    prisma.reminder.update.mockResolvedValue(reminderRecord({ completedAt: null, version: 3 }));
+
+    await service.update('user-1', 'rem-1', { completed: false } as never);
+
+    expect(prisma.reminder.update.mock.calls[0]![0].data.completedAt).toBeNull();
+  });
+
+  it('reports another user’s reminder as missing', async () => {
+    prisma.reminder.findUnique.mockResolvedValue(reminderRecord({ userId: 'user-2' }));
+
+    await expectRejection(service.remove('user-1', 'rem-1'), 404, 'NOT_FOUND');
+    expect(prisma.reminder.update).not.toHaveBeenCalled();
+  });
+
+  it('soft deletes an owned reminder', async () => {
+    prisma.reminder.findUnique.mockResolvedValue(reminderRecord());
+    prisma.reminder.update.mockResolvedValue(reminderRecord({ deletedAt: NOW, version: 2 }));
+
+    await service.remove('user-1', 'rem-1');
+
+    expect(prisma.reminder.update.mock.calls[0]![0].data.deletedAt).toBeInstanceOf(Date);
+  });
+});

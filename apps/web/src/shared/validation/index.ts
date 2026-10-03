@@ -2,6 +2,8 @@ export * from './common';
 export * from './auth';
 export * from './user';
 export * from './category';
+export * from './note';
+export * from './reminder';
 export * from './transaction';
 export * from './report';
 export * from './sync';

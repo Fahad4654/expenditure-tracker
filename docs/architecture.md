@@ -87,6 +87,7 @@ apps/api/src/
 │   └── pipes/                 # ZodValidationPipe
 ├── health/                    # /health/live, /health/ready
 ├── auth/ users/ transactions/ categories/ reports/   # Phase 2
+├── notes/ reminders/          # personal notes & dated reminders
 └── (Phase 5) sync/
 ```
 
@@ -214,6 +215,8 @@ users/        profile read/update, timezone & currency        ✅ Phase 2
 transactions/ CRUD + search + filter + pagination             ✅ Phase 2
 categories/   system + user categories                        ✅ Phase 2
 reports/      summary, daily, monthly, category breakdown     ✅ Phase 2
+notes/        personal notes CRUD, soft delete                ✅
+reminders/    dated reminders + completion toggle             ✅
 health/       liveness + readiness                            ✅ Phase 1
 sync/         POST /sync, GET /sync/changes                   Phase 5
 otp, Google OAuth, password reset                             Phase 6

@@ -40,7 +40,13 @@ interface State {
  * call whose 15-minute access token expired.
  */
 export default function AuthProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<State>({ status: 'loading', user: null });
+  // Restored during render (not an effect): a still-valid access token means
+  // the session is already authenticated before any network round-trip.
+  const [state, setState] = useState<State>(() =>
+    hasValidAccessToken()
+      ? { status: 'authenticated', user: readStoredUser() }
+      : { status: 'loading', user: null },
+  );
 
   // Memoised so parallel 401s share one refresh round-trip instead of racing.
   // `fatal` records whether any caller needs a failed rotation to end the
@@ -160,9 +166,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (hasValidAccessToken()) {
-      // A reload must not end a session whose access token is still good:
-      // restore it instantly and rotate in the background, best-effort.
-      setState({ status: 'authenticated', user: readStoredUser() });
+      // The session already rendered as authenticated; rotate in the
+      // background, best-effort — a blocked cookie must not log you out.
       void refresh(false);
     } else {
       void refresh();

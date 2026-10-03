@@ -30,6 +30,14 @@ export const API_ROUTES = {
     base: `${API_PREFIX}/categories`,
     byId: (id: string) => `${API_PREFIX}/categories/${id}`,
   },
+  notes: {
+    base: `${API_PREFIX}/notes`,
+    byId: (id: string) => `${API_PREFIX}/notes/${id}`,
+  },
+  reminders: {
+    base: `${API_PREFIX}/reminders`,
+    byId: (id: string) => `${API_PREFIX}/reminders/${id}`,
+  },
   reports: {
     summary: `${API_PREFIX}/reports/summary`,
     daily: `${API_PREFIX}/reports/daily`,
