@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { API_BASE_URL } from '../../lib/api';
 import { useAuth } from '../../auth/auth-context';
 import { ROUTES } from '../../routes';
 import Sidebar from '../Sidebar/Sidebar';
@@ -119,15 +118,7 @@ export default function AppLayout() {
         </main>
 
         <footer className="border-t border-slate-800/80 px-4 sm:px-6 py-6 text-center text-xs text-slate-500">
-          Expenditure Tracker · API docs:{' '}
-          <a
-            className="text-slate-400 underline underline-offset-2"
-            href={`${API_BASE_URL}/docs`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            {API_BASE_URL}/docs
-          </a>
+          © {new Date().getFullYear()} Expenditure Tracker. All rights reserved.
         </footer>
 
         {signedIn ? <MobileNav /> : null}
