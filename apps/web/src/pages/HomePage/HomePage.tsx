@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { FullPageLoading } from '../../components/ui';
 import { useAuth } from '../../auth/auth-context';
@@ -63,43 +64,97 @@ function StatusPill({ state }: { state: 'loading' | 'up' | 'down' }) {
 }
 
 function LandingNavbar() {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-800/80 bg-slate-950/85 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-3 px-6 py-4">
-        <Link to={ROUTES.home} className="flex items-center gap-2 font-semibold text-white">
+    <header className="sticky top-0 z-40 border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-md">
+      <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 sm:px-6 py-3.5">
+        <Link to={ROUTES.home} className="flex items-center gap-2 font-bold text-white text-base sm:text-lg">
           <span aria-hidden className="text-emerald-400">
             ৳
           </span>
           Expenditure Tracker
         </Link>
 
-        <nav aria-label="Page sections" className="hidden items-center gap-6 text-sm md:flex">
+        {/* Desktop navigation */}
+        <nav aria-label="Page sections" className="hidden items-center gap-6 text-sm font-medium md:flex">
           {NAV_ANCHORS.map((item) => (
             <a
               key={item.href}
               href={item.href}
-              className="text-slate-400 transition hover:text-slate-200"
+              className="text-slate-400 transition hover:text-slate-100"
             >
               {item.label}
             </a>
           ))}
         </nav>
 
-        <div className="flex items-center gap-2 text-sm">
+        <div className="hidden items-center gap-3 text-sm md:flex">
           <Link
             to={ROUTES.login}
-            className="rounded-lg px-3 py-2 font-medium text-slate-300 transition hover:text-white"
+            className="rounded-xl px-3.5 py-2 font-semibold text-slate-300 transition hover:bg-slate-900 hover:text-white"
           >
             Sign in
           </Link>
           <Link
             to={ROUTES.register}
-            className="rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-slate-950 transition hover:bg-emerald-400"
+            className="rounded-xl bg-emerald-500 px-4 py-2 font-semibold text-slate-950 transition hover:bg-emerald-400 shadow-md shadow-emerald-500/20"
           >
             Create account
           </Link>
         </div>
+
+        {/* Mobile menu button */}
+        <button
+          type="button"
+          aria-label="Toggle navigation menu"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen(!menuOpen)}
+          className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-200 md:hidden"
+        >
+          <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {menuOpen ? (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+            )}
+          </svg>
+        </button>
       </div>
+
+      {/* Mobile drawer */}
+      {menuOpen ? (
+        <div className="border-b border-slate-800/80 bg-slate-950 px-4 py-4 md:hidden animate-in fade-in slide-in-from-top-2 duration-150">
+          <nav className="flex flex-col gap-3 font-medium text-sm">
+            {NAV_ANCHORS.map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                onClick={() => setMenuOpen(false)}
+                className="rounded-lg px-3 py-2 text-slate-300 transition hover:bg-slate-900 hover:text-white"
+              >
+                {item.label}
+              </a>
+            ))}
+          </nav>
+          <div className="mt-4 flex flex-col gap-2 pt-3 border-t border-slate-800/80">
+            <Link
+              to={ROUTES.login}
+              onClick={() => setMenuOpen(false)}
+              className="w-full text-center rounded-xl border border-slate-700 bg-slate-900 py-2.5 text-sm font-semibold text-slate-200"
+            >
+              Sign in
+            </Link>
+            <Link
+              to={ROUTES.register}
+              onClick={() => setMenuOpen(false)}
+              className="w-full text-center rounded-xl bg-emerald-500 py-2.5 text-sm font-semibold text-slate-950 shadow-md shadow-emerald-500/20"
+            >
+              Create account
+            </Link>
+          </div>
+        </div>
+      ) : null}
     </header>
   );
 }

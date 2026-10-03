@@ -87,7 +87,7 @@ export default function TransactionDetailPage() {
   if (query.error?.code === 'NOT_FOUND') return <NotFoundPage />;
   if (query.error) {
     return (
-      <main className="mx-auto w-full max-w-2xl px-6 py-10">
+      <main className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-6 sm:py-10">
         <ErrorBanner>{query.error.message}</ErrorBanner>
       </main>
     );
@@ -99,7 +99,7 @@ export default function TransactionDetailPage() {
   const expense = transaction.type === 'EXPENSE';
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-6 py-10">
+    <main className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-6 sm:py-10">
       <PageHeader
         title={editing ? 'Edit transaction' : transaction.title}
         subtitle={`${expense ? 'Expense' : 'Income'} · ${formatDay(transaction.transactionDate, {

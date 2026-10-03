@@ -1,0 +1,64 @@
+/* Mobile responsive enhancements using viewport units (vw/vh) & fluid dynamic sizing */
+
+:root {
+  --mobile-nav-height: 8vh;
+  --touch-target-size: 5.5vh;
+  --mobile-card-padding: 3.5vw;
+  --mobile-page-padding: 4vw;
+}
+
+@media (max-width: 640px) {
+  .mobile-touch-target {
+    min-height: 6vh;
+    min-width: 12vw;
+  }
+
+  .mobile-container-padding {
+    padding-left: 4vw;
+    padding-right: 4vw;
+    padding-top: 3vh;
+    padding-bottom: 12vh;
+  }
+
+  .mobile-card {
+    padding: 4vw;
+    border-radius: 4vw;
+  }
+
+  .mobile-heading-1 {
+    font-size: 7vw;
+    line-height: 8.5vw;
+  }
+
+  .mobile-heading-2 {
+    font-size: 5.5vw;
+    line-height: 7vw;
+  }
+
+  .mobile-subtext {
+    font-size: 3.6vw;
+    line-height: 5vw;
+  }
+
+  /* Ensure bottom nav floating layer does not overlap main content */
+  .has-bottom-nav {
+    padding-bottom: 11vh !important;
+  }
+}
+
+/* Custom scrollbars for touch swipe charts */
+.touch-scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+}
+
+.touch-scroll-x::-webkit-scrollbar {
+  height: 0.6vh;
+}
+
+.touch-scroll-x::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.4);
+  border-radius: 1vw;
+}

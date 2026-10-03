@@ -42,7 +42,7 @@ export default function TransactionNewPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-6 py-10">
+    <main className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-6 sm:py-10">
       <PageHeader
         title="Add transaction"
         subtitle="Records are idempotent — resubmitting this form cannot create a duplicate."

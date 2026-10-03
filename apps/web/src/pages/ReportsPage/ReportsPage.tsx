@@ -91,17 +91,18 @@ export default function ReportsPage() {
   const denseDaily = (daily.data?.points.length ?? 0) > 45;
 
   return (
-    <main className="w-full px-6 py-10">
+    <main className="mx-auto w-full max-w-6xl px-4 sm:px-6 py-6 sm:py-10">
       <PageHeader
         title="Reports"
         subtitle={`${range.from} → ${range.to} · ${timeZone}`}
         actions={
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Report period">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 w-full sm:w-auto" role="group" aria-label="Report period">
             {PRESETS.map((option) => (
               <Button
                 key={option.value}
                 variant={preset === option.value ? 'primary' : 'ghost'}
                 onClick={() => setPreset(option.value)}
+                className="flex-1 sm:flex-initial text-xs sm:text-sm px-3 py-1.5 min-h-[38px]"
               >
                 {option.label}
               </Button>

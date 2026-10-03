@@ -98,13 +98,13 @@ export default function CategoriesPage() {
   }
 
   return (
-    <main className="w-full px-6 py-10">
+    <main className="mx-auto w-full max-w-6xl px-4 sm:px-6 py-6 sm:py-10">
       <PageHeader
         title="Categories"
         subtitle="System categories are shared and read-only; yours are private to you."
         actions={
-          <Link to={ROUTES.transactionNew}>
-            <Button variant="secondary">Add transaction</Button>
+          <Link to={ROUTES.transactionNew} className="w-full sm:w-auto">
+            <Button variant="secondary" className="w-full sm:w-auto">Add transaction</Button>
           </Link>
         }
       />

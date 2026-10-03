@@ -4,6 +4,7 @@ import { API_BASE_URL } from '../../lib/api';
 import { useAuth } from '../../auth/auth-context';
 import { ROUTES } from '../../routes';
 import Sidebar from '../Sidebar/Sidebar';
+import MobileNav from '../MobileNav/MobileNav';
 
 /**
  * Shell around every page. The homepage keeps its own landing navbar. Every
@@ -12,7 +13,7 @@ import Sidebar from '../Sidebar/Sidebar';
  * brand-only header with no menu.
  */
 export default function AppLayout() {
-  const { status } = useAuth();
+  const { status, user } = useAuth();
   const signedIn = status === 'authenticated';
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -26,9 +27,9 @@ export default function AppLayout() {
   }, [drawerOpen]);
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-slate-950 text-slate-100">
       {signedIn ? (
-        <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 border-r border-slate-800 bg-slate-950 lg:block">
+        <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 border-r border-slate-800/80 bg-slate-950 lg:block">
           <Sidebar />
         </aside>
       ) : null}
@@ -38,15 +39,19 @@ export default function AppLayout() {
           <button
             type="button"
             aria-label="Close menu"
-            className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"
+            className="absolute inset-0 bg-slate-950/80 backdrop-blur-md transition-opacity"
             onClick={() => setDrawerOpen(false)}
           />
-          <div className="absolute inset-y-0 left-0 flex w-64 max-w-[85vw] flex-col border-r border-slate-800 bg-slate-950 shadow-xl">
-            <div className="flex justify-end p-3">
+          <div className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col border-r border-slate-800/80 bg-slate-950 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800/80 px-4 py-3">
+              <span className="flex items-center gap-2 font-semibold text-white">
+                <span aria-hidden className="text-emerald-400">৳</span>
+                Expenditure Tracker
+              </span>
               <button
                 type="button"
                 aria-label="Close menu"
-                className="rounded-md p-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-200"
+                className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-200"
                 onClick={() => setDrawerOpen(false)}
               >
                 <svg
@@ -70,42 +75,54 @@ export default function AppLayout() {
       ) : null}
 
       <div
-        className={`flex min-h-screen flex-col ${signedIn ? 'lg:pl-60' : ''}`}
+        className={`flex min-h-screen flex-col ${signedIn ? 'lg:pl-60 pb-20 lg:pb-0' : ''}`}
       >
         {signedIn ? (
-          <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-slate-800 bg-slate-950/80 px-4 py-3 backdrop-blur lg:hidden">
-            <button
-              type="button"
-              aria-label="Open menu"
-              aria-expanded={drawerOpen}
-              className="rounded-md p-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-200"
-              onClick={() => setDrawerOpen(true)}
-            >
-              <svg
-                aria-hidden
-                viewBox="0 0 24 24"
-                className="h-5 w-5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
+          <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-slate-800/80 bg-slate-950/90 px-4 py-3 backdrop-blur-md lg:hidden">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                aria-label="Open menu"
+                aria-expanded={drawerOpen}
+                className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-200 active:scale-95"
+                onClick={() => setDrawerOpen(true)}
               >
-                <path d="M4 7h16M4 12h16M4 17h16" />
-              </svg>
-            </button>
+                <svg
+                  aria-hidden
+                  viewBox="0 0 24 24"
+                  className="h-5 w-5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                >
+                  <path d="M4 7h16M4 12h16M4 17h16" />
+                </svg>
+              </button>
 
-            <NavLink
-              to={ROUTES.dashboard}
-              className="flex items-center gap-2 font-semibold text-white"
-            >
-              <span aria-hidden className="text-emerald-400">
-                ৳
-              </span>
-              Expenditure Tracker
-            </NavLink>
+              <NavLink
+                to={ROUTES.dashboard}
+                className="flex items-center gap-2 font-semibold text-white"
+              >
+                <span aria-hidden className="text-emerald-400">
+                  ৳
+                </span>
+                Expenditure Tracker
+              </NavLink>
+            </div>
+
+            {user ? (
+              <NavLink
+                to={ROUTES.profile}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-xs font-bold text-emerald-400 border border-slate-700 hover:border-emerald-500 transition"
+                aria-label="User profile"
+              >
+                {user.name.charAt(0).toUpperCase()}
+              </NavLink>
+            ) : null}
           </header>
         ) : (
-          <header className="border-b border-slate-800 bg-slate-950/80 px-6 py-4 backdrop-blur">
+          <header className="border-b border-slate-800/80 bg-slate-950/90 px-4 sm:px-6 py-4 backdrop-blur-md">
             <NavLink
               to={ROUTES.home}
               className="flex items-center gap-2 font-semibold text-white"
@@ -118,14 +135,14 @@ export default function AppLayout() {
           </header>
         )}
 
-        <main className="flex-1">
+        <main className="flex-1 w-full">
           <Outlet />
         </main>
 
-        <footer className="border-t border-slate-800 px-6 py-6 text-center text-xs text-slate-500">
+        <footer className="border-t border-slate-800/80 px-4 sm:px-6 py-6 text-center text-xs text-slate-500">
           Expenditure Tracker · API docs:{' '}
           <a
-            className="text-slate-400 underline underline-offset-2"
+            className="text-slate-400 underline underline-offset-2 transition hover:text-slate-200"
             href={`${API_BASE_URL}/docs`}
             target="_blank"
             rel="noreferrer"
@@ -133,7 +150,10 @@ export default function AppLayout() {
             {API_BASE_URL}/docs
           </a>
         </footer>
+
+        {signedIn ? <MobileNav /> : null}
       </div>
     </div>
   );
 }
+

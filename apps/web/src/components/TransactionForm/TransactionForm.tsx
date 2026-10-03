@@ -7,7 +7,7 @@ import {
 } from '../../shared/validation';
 import { indexByPath } from '../../lib/errors';
 import { DEFAULT_TIMEZONE, todayIn } from '../../lib/format';
-import { Button, ErrorBanner, Field, Select, TextInput, inputClass, labelClass } from '../ui';
+import { Button, CustomDatePicker, ErrorBanner, Field, Select, TextInput, inputClass, labelClass } from '../ui';
 
 export interface TransactionFormValues {
   type: TransactionTypeValue;
@@ -141,13 +141,11 @@ export default function TransactionForm({
         </Field>
 
         <Field label="Date" htmlFor="tx-date" error={errors.transactionDate}>
-          <TextInput
+          <CustomDatePicker
             id="tx-date"
             name="transactionDate"
-            type="date"
-            required
             value={values.transactionDate}
-            onChange={(event) => update('transactionDate', event.target.value)}
+            onChange={(val) => update('transactionDate', val)}
           />
         </Field>
       </div>
