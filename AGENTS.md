@@ -2,6 +2,8 @@
 
 - Auto-commit all changes after each task/iteration without being asked.
 
+- **Keep the mobile app in sync.** Whenever a feature is added or updated in the API or web client, update the Flutter app (`apps/mobile`) in the same iteration: repositories, routes, pages, shared models, tests, and `flutter analyze`/`flutter test` must all reflect the change. A feature is not done until all three surfaces (API, web, mobile) support it.
+
 - Every new or modified controller endpoint that performs a state-changing action (create, update, delete, approve, reject, etc.) **must** call `logEvent()` from `server/src/utils.ts` to record the event. The `logEvent` signature is:
 
   ```ts

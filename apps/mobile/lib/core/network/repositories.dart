@@ -1,6 +1,7 @@
 import '../../shared/models/category.dart';
 import '../../shared/models/otp_challenge.dart';
 import '../../shared/models/common.dart';
+import '../../shared/models/reminder.dart';
 import '../../shared/models/report.dart';
 import '../../shared/models/transaction.dart';
 import '../../shared/models/user.dart';
@@ -303,6 +304,51 @@ class CategoriesRepository {
   static const _notFound = ApiError(ApiErrorCodes.notFound, 'Category not found');
 }
 
+/// Reminders over REST — network-only, like the web client: the reminders
+/// table is not part of the sync feed, so there is no local-first write path.
+class RemindersRepository {
+  RemindersRepository(this._api);
+
+  final ApiClient _api;
+
+  Future<List<Reminder>> list() {
+    return _api.get(ApiRoutes.reminders, decode: _reminderList);
+  }
+
+  Future<Reminder> create(ReminderInput input) {
+    return _api.post(
+      ApiRoutes.reminders,
+      body: input.toJson(),
+      decode: Reminder.fromJson,
+    );
+  }
+
+  Future<Reminder> update(String id, ReminderInput input) {
+    return _api.patch(
+      ApiRoutes.reminder(id),
+      body: input.toJson(),
+      decode: Reminder.fromJson,
+    );
+  }
+
+  /// Toggles `completedAt` server-side — the client never manufactures the
+  /// completion timestamp.
+  Future<Reminder> setCompleted(String id, bool completed) {
+    return _api.patch(
+      ApiRoutes.reminder(id),
+      body: {'completed': completed},
+      decode: Reminder.fromJson,
+    );
+  }
+
+  Future<void> remove(String id) {
+    return _api.delete<void>(
+      ApiRoutes.reminder(id),
+      decode: (_) {},
+    );
+  }
+}
+
 /// Report endpoints answered by local SQL — no network.
 class ReportsRepository {
   ReportsRepository(this._local);
@@ -373,9 +419,10 @@ class UsersRepository {
 
 /// Bundle handed to every screen through [AppScope].
 ///
-/// Identity (`auth`, `users`) and reports stay network-aware; transactions and
-/// categories are local-first over SQLite, with `sync.requestSync` nudged
-/// after every write so the sync engine can push in the background.
+/// Identity (`auth`, `users`), reports and reminders stay network-aware;
+/// transactions and categories are local-first over SQLite, with
+/// `sync.requestSync` nudged after every write so the sync engine can push in
+/// the background.
 class Services {
   Services({
     required ApiClient api,
@@ -385,13 +432,15 @@ class Services {
         transactions = TransactionsRepository(store, sync.requestSync),
         categories = CategoriesRepository(store, sync.requestSync),
         reports = ReportsRepository(LocalReports(store)),
-        users = UsersRepository(api, store);
+        users = UsersRepository(api, store),
+        reminders = RemindersRepository(api);
 
   final AuthRepository auth;
   final TransactionsRepository transactions;
   final CategoriesRepository categories;
   final ReportsRepository reports;
   final UsersRepository users;
+  final RemindersRepository reminders;
   final SyncEngine sync;
 }
 
@@ -401,3 +450,6 @@ List<Map<String, Object?>> _rawList(Object? json) =>
 List<Map<String, Object?>> _rawItems(Object? json) =>
     ((json! as Map<String, dynamic>)['items']! as List<Object?>)
         .cast<Map<String, Object?>>();
+
+List<Reminder> _reminderList(Object? json) =>
+    (json! as List<Object?>).map(Reminder.fromJson).toList();

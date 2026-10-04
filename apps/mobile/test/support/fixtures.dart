@@ -94,6 +94,27 @@ Map<String, Object?> paginatedJson(List<Map<String, Object?>> items, {int total 
       'meta': {'page': 1, 'limit': 20, 'total': total, 'totalPages': 1},
     };
 
+const String reminderId = '66666666-6666-4666-8666-666666666666';
+
+Map<String, Object?> reminderJson({
+  String id = reminderId,
+  String title = 'Pay internet bill',
+  String? details = 'Account 12345',
+  String dueDate = '2026-10-05',
+  String? dueTime,
+  String? completedAt,
+}) =>
+    {
+      'id': id,
+      'title': title,
+      'details': details,
+      'dueDate': dueDate,
+      'dueTime': dueTime,
+      'completedAt': completedAt,
+      'createdAt': '2026-10-01T00:00:00.000Z',
+      'updatedAt': '2026-10-01T00:00:00.000Z',
+    };
+
 Map<String, Object?> syncResponseJson({
   List<Map<String, Object?>> results = const [],
   List<Map<String, Object?>> changes = const [],
@@ -179,6 +200,10 @@ void registerDefaultHandlers(FakeApiClient api) {
     'PATCH /api/v1/transactions/$transactionId': (_) => transactionJson(),
     'DELETE /api/v1/transactions/$transactionId': (_) => transactionJson(),
     'GET /api/v1/categories': (_) => [categoryJson()],
+    'GET /api/v1/reminders': (_) => <Object?>[],
+    'POST /api/v1/reminders': (_) => reminderJson(),
+    'PATCH /api/v1/reminders/$reminderId': (_) => reminderJson(),
+    'DELETE /api/v1/reminders/$reminderId': (_) => reminderJson(),
     'GET /api/v1/reports/summary': (_) => summaryJson(),
     'GET /api/v1/reports/daily': (_) => dailyJson(),
     'GET /api/v1/reports/monthly': (_) => monthlyJson(),

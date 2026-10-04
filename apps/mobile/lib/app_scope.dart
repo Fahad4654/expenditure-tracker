@@ -21,6 +21,7 @@ class AppScope extends InheritedWidget {
   CategoriesRepository get categories => services.categories;
   ReportsRepository get reports => services.reports;
   UsersRepository get users => services.users;
+  RemindersRepository get reminders => services.reminders;
   SyncEngine get sync => services.sync;
 
   /// Safe to call from `initState` (does not register a dependency).

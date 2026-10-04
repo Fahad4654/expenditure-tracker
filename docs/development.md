@@ -328,24 +328,28 @@ if present, but nothing depends on it.
   bearer token, and refreshes once on 401 with a single-flight lock and
   request replay; `TokenStore` persists only the refresh token (secure
   storage in production, in-memory backend in tests).
-- **Repositories:** `Auth`, `Transactions`, `Categories`, `Reports`, `Users`
-  mirroring the web client's contracts, including `clientId` idempotency and
-  `baseVersion` optimistic concurrency.
+- **Repositories:** `Auth`, `Transactions`, `Categories`, `Reports`, `Users`,
+  `Reminders` mirroring the web client's contracts, including `clientId`
+  idempotency and `baseVersion` optimistic concurrency. Reminders are
+  network-only (the table is not in the sync feed).
 - **Auth flow:** splash restores the session (refresh → shell) or lands on
   login; login/register validate client-side and surface the server's
   message; logout revokes and clears tokens.
-- **Shell:** bottom navigation with a central "Add" FAB, lazy tab creation,
-  and a shared `ValueNotifier` so a new transaction refreshes both the
-  dashboard and the list.
+- **Shell:** bottom navigation (Home, Transactions, Reports, Reminders,
+  Profile) with a central "Add" FAB, lazy tab creation, and a shared
+  `ValueNotifier` so a new transaction refreshes both the dashboard and the
+  list.
 - **Pages:** dashboard (today/month summaries, spending-by-category bars,
   recent activity), transactions (search/type/category/preset filters,
   add/edit/detail/delete with 409 conflict handling), categories
   (create/edit/archive with system-category and in-use errors), reports
-  (summary, daily/monthly/category charts), profile (details, defaults,
+  (summary, daily/monthly/category charts), reminders (pending/completed
+  filters, overdue/due-today chips, create/edit with date + optional `HH:mm`
+  time pickers, completion toggle, delete), profile (details, defaults,
   change password, sign out).
 - **Platform:** `INTERNET` permission + cleartext for local dev on Android,
   local-network allowance on iOS; builds on `minSdk 24`.
-- **Tests:** 22 mobile tests (144 total across the monorepo) plus an opt-in
+- **Tests:** 91 mobile tests (291 total across the monorepo) plus an opt-in
   live-API smoke test (`LIVE_API=1`).
 - `flutter analyze` · `flutter test` · `flutter build apk --debug` all green.
 
@@ -354,9 +358,10 @@ if present, but nothing depends on it.
 ### Delivered: Notes & Reminders
 
 - **Schema:** `Note` (title + optional content) and `Reminder` (title,
-  optional details, date-only `dueDate`, `completedAt` toggle) — both
-  user-owned, soft-deleted, `version`-bumped, migrated in
-  `20261003204811_add_notes_reminders`.
+  optional details, date-only `dueDate`, optional `HH:mm` `dueTime`,
+  `completedAt` toggle) — both user-owned, soft-deleted, `version`-bumped,
+  migrated in `20261003204811_add_notes_reminders` and
+  `20261004101813_add_reminder_time`.
 - **API:** `GET/POST /notes`, `PATCH/DELETE /notes/:id`, `GET/POST /reminders`,
   `PATCH/DELETE /reminders/:id` behind `JwtAuthGuard`; shared Zod schemas and
   route constants live in `shared/{validation,types}` and are mirrored into
@@ -364,10 +369,15 @@ if present, but nothing depends on it.
   audit lines).
 - **Web:** `/notes` and `/reminders` pages with sidebar links — search, inline
   create/edit/delete with confirm panels, pending-first reminder ordering with
-  overdue chips, single-PATCH completion toggle; responsive auto-fit grids
+  overdue chips, optional time picker (`CustomTimePicker`, two-click `HH:mm`
+  commit), single-PATCH completion toggle; responsive auto-fit grids
   throughout.
-- **Tests:** `notes_reminders.spec.ts` (API, 11 tests) plus `NotesPage.test.tsx`
-  and `RemindersPage.test.tsx` (web, 6 tests).
+- **Mobile:** Reminders tab in the shell — pending/completed filters,
+  overdue/due-today/time chips, network-only `RemindersRepository`, and a
+  shared create/edit form with date + optional time pickers and delete.
+- **Tests:** `notes_reminders.spec.ts` (API, 16 tests) plus
+  `NotesPage.test.tsx` (4) and `RemindersPage.test.tsx` (5) on the web and
+  `reminders_test.dart` (mobile, 7).
 
 ## Troubleshooting
 
