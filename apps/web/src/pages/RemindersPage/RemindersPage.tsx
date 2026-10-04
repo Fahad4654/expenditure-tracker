@@ -7,6 +7,7 @@ import {
   Card,
   CustomDatePicker,
   CustomSelect,
+  CustomTimePicker,
   EmptyState,
   ErrorBanner,
   Field,
@@ -28,16 +29,17 @@ const FILTER_OPTIONS = [
 type FilterValue = (typeof FILTER_OPTIONS)[number]['value'];
 
 function dueLabel(reminder: Reminder, today: string): { text: string; className: string } {
+  const time = reminder.dueTime ? ` · ${reminder.dueTime}` : '';
   if (reminder.completedAt) {
     return { text: `Completed`, className: 'bg-slate-800 text-slate-400' };
   }
   if (reminder.dueDate < today) {
-    return { text: `Overdue · ${formatDay(reminder.dueDate)}`, className: 'bg-rose-950 text-rose-300 border border-rose-900' };
+    return { text: `Overdue · ${formatDay(reminder.dueDate)}${time}`, className: 'bg-rose-950 text-rose-300 border border-rose-900' };
   }
   if (reminder.dueDate === today) {
-    return { text: 'Due today', className: 'bg-amber-950 text-amber-300 border border-amber-900' };
+    return { text: `Due today${time}`, className: 'bg-amber-950 text-amber-300 border border-amber-900' };
   }
-  return { text: formatDay(reminder.dueDate), className: 'bg-slate-800 text-slate-400' };
+  return { text: `${formatDay(reminder.dueDate)}${time}`, className: 'bg-slate-800 text-slate-400' };
 }
 
 /**
@@ -58,6 +60,7 @@ export default function RemindersPage() {
   const [title, setTitle] = useState('');
   const [details, setDetails] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [dueTime, setDueTime] = useState('');
   const [createErrors, setCreateErrors] = useState<Record<string, string>>({});
   const [banner, setBanner] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -65,6 +68,7 @@ export default function RemindersPage() {
   const [editTitle, setEditTitle] = useState('');
   const [editDetails, setEditDetails] = useState('');
   const [editDueDate, setEditDueDate] = useState('');
+  const [editDueTime, setEditDueTime] = useState('');
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const rows = list.data ?? [];
@@ -81,6 +85,7 @@ export default function RemindersPage() {
       title,
       details: details.trim() || null,
       dueDate,
+      dueTime: dueTime || null,
     });
     if (!parsed.success) {
       setCreateErrors(indexByPath(toFieldErrors(parsed.error)));
@@ -98,6 +103,7 @@ export default function RemindersPage() {
       setTitle('');
       setDetails('');
       setDueDate('');
+      setDueTime('');
     } catch (error) {
       setCreateErrors(parseFormError(error).fields);
       setBanner(bannerFor(error));
@@ -124,6 +130,7 @@ export default function RemindersPage() {
       title: editTitle,
       details: editDetails.trim() || null,
       dueDate: editDueDate,
+      dueTime: editDueTime || null,
     });
     if (!parsed.success) {
       setBanner(indexByPath(toFieldErrors(parsed.error)).title ?? null);
@@ -186,17 +193,18 @@ export default function RemindersPage() {
               onChange={setDueDate}
             />
           </Field>
-          <div className="sm:col-span-2">
-            <Field label="Details" htmlFor="rem-details" error={createErrors.details}>
-              <TextInput
-                id="rem-details"
-                placeholder="Optional — account number, amount…"
-                maxLength={1000}
-                value={details}
-                onChange={(event) => setDetails(event.target.value)}
-              />
-            </Field>
-          </div>
+          <Field label="Time" htmlFor="rem-time" error={createErrors.dueTime}>
+            <CustomTimePicker id="rem-time" value={dueTime} onChange={setDueTime} />
+          </Field>
+          <Field label="Details" htmlFor="rem-details" error={createErrors.details}>
+            <TextInput
+              id="rem-details"
+              placeholder="Optional — account number, amount…"
+              maxLength={1000}
+              value={details}
+              onChange={(event) => setDetails(event.target.value)}
+            />
+          </Field>
           <div className="flex items-end sm:col-span-2">
             <Button type="submit" className="w-full sm:w-auto" disabled={submitting}>
               {submitting ? 'Saving…' : 'Add reminder'}
@@ -268,7 +276,14 @@ export default function RemindersPage() {
                         onChange={setEditDueDate}
                       />
                     </Field>
-                    <div>
+                    <Field label="Time" htmlFor={`edit-time-${reminder.id}`}>
+                      <CustomTimePicker
+                        id={`edit-time-${reminder.id}`}
+                        value={editDueTime}
+                        onChange={setEditDueTime}
+                      />
+                    </Field>
+                    <div className="sm:col-span-2">
                       <label htmlFor={`edit-details-${reminder.id}`} className="mb-1.5 block text-sm font-medium text-slate-300">
                         Details
                       </label>
@@ -330,6 +345,7 @@ export default function RemindersPage() {
                             setEditTitle(reminder.title);
                             setEditDetails(reminder.details ?? '');
                             setEditDueDate(reminder.dueDate);
+                            setEditDueTime(reminder.dueTime ?? '');
                             setPendingDeleteId(null);
                           }}
                         >

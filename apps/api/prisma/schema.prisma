@@ -354,6 +354,9 @@ model Reminder {
 
   /// DATE only — the day the reminder is due, in the owner's timezone.
   dueDate DateTime @db.Date
+  /// Optional wall-clock time on that day, `HH:mm` (24-hour).
+  /// `null` = a date-only reminder with no time involved.
+  dueTime String?  @db.VarChar(5)
   /// Set when the user marks the reminder done; `null` = still pending.
   completedAt DateTime?
 

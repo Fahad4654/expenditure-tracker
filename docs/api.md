@@ -196,17 +196,20 @@ Behaviour:
 
 ### Reminders
 
-| Method   | Path            | Description                                            |
-| -------- | --------------- | ------------------------------------------------------ |
-| `GET`    | `/reminders`    | Own reminders, earliest `dueDate` first                |
-| `POST`   | `/reminders`    | Create (`title`, `dueDate`, optional `details`)        |
-| `PATCH`  | `/reminders/:id` | Update fields, or toggle `completed` (own only)       |
-| `DELETE` | `/reminders/:id` | Soft delete (own only)                                |
+| Method   | Path            | Description                                                       |
+| -------- | --------------- | ----------------------------------------------------------------- |
+| `GET`    | `/reminders`    | Own reminders, earliest `dueDate` first, then `dueTime` (timeless last) |
+| `POST`   | `/reminders`    | Create (`title`, `dueDate`, optional `details`, optional `dueTime`) |
+| `PATCH`  | `/reminders/:id` | Update fields (including `dueTime`), or toggle `completed` (own only) |
+| `DELETE` | `/reminders/:id` | Soft delete (own only)                                           |
 
 Behaviour:
 
 - `dueDate` is a `YYYY-MM-DD` calendar date interpreted in the owner's
   timezone (DATE column, like `transactionDate`).
+- `dueTime` is an optional `HH:mm` 24-hour wall-clock time (matches the
+  `HH:mm` display used across the app). Omit it — or send `null` on `PATCH`
+  — for a date-only reminder; it never carries a timezone or date part.
 - `completed: true|false` on `PATCH` sets/clears `completedAt` server-side —
   the client never manufactures the completion timestamp.
 - A foreign or deleted `reminderId` is **404**. Deletes are soft.

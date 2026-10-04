@@ -51,7 +51,7 @@ export class RemindersController {
       user.sub,
       'REMINDER_CREATE',
       'Created a reminder',
-      { dueDate: reminder.dueDate },
+      { dueDate: reminder.dueDate, dueTime: reminder.dueTime },
       'REMINDER',
       reminder.id,
     );
@@ -72,7 +72,7 @@ export class RemindersController {
       user.sub,
       body.completed === undefined ? 'REMINDER_UPDATE' : reminder.completedAt ? 'REMINDER_COMPLETE' : 'REMINDER_REOPEN',
       body.completed === undefined ? 'Updated a reminder' : 'Toggled reminder completion',
-      { dueDate: reminder.dueDate },
+      { dueDate: reminder.dueDate, dueTime: reminder.dueTime },
       'REMINDER',
       reminder.id,
     );

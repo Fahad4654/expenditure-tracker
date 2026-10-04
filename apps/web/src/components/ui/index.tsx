@@ -6,8 +6,9 @@ import React, {
 } from 'react';
 import { CustomSelect } from './CustomSelect';
 import { CustomDatePicker } from './CustomDatePicker';
+import { CustomTimePicker } from './CustomTimePicker';
 
-export { CustomSelect, CustomDatePicker };
+export { CustomSelect, CustomDatePicker, CustomTimePicker };
 
 /** Shared surface for text-like controls. Kept in one place so forms agree. */
 export const inputClass =

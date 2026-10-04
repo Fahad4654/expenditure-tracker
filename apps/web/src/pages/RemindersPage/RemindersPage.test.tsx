@@ -23,6 +23,7 @@ function makeReminder(overrides: Partial<Reminder> = {}): Reminder {
     title: 'Pay internet bill',
     details: 'Account 12345',
     dueDate: '2020-01-01',
+    dueTime: null,
     completedAt: null,
     createdAt: '2026-10-01T10:00:00.000Z',
     updatedAt: '2026-10-01T10:00:00.000Z',
@@ -126,5 +127,56 @@ describe('RemindersPage', () => {
         String(url).endsWith('/reminders') && (init as RequestInit)?.method === 'POST',
     );
     expect(posts).toHaveLength(0);
+  });
+
+  it('creates a reminder with a date and a picked time', async () => {
+    const mock = stubFetch((url, init) => {
+      const method = (init as RequestInit | undefined)?.method ?? 'GET';
+      if (url.endsWith('/auth/refresh')) return failAuth();
+      if (url.endsWith('/reminders') && method === 'POST') {
+        return okBody(makeReminder({ dueDate: '2026-10-15', dueTime: '18:30' }));
+      }
+      return okBody([]);
+    });
+
+    renderReminders();
+    await waitFor(() => expect(screen.getByText('No reminders yet')).toBeTruthy());
+
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Pay internet bill' } });
+
+    // Date: open the custom picker (labelled by its field label) and click day 15 of the current month.
+    fireEvent.click(screen.getByRole('button', { name: 'Due date' }));
+    fireEvent.click(screen.getByRole('button', { name: '15' }));
+
+    // Time: open the custom picker, pick the hour then the minute (the second
+    // pick commits and closes the panel).
+    fireEvent.click(screen.getByRole('button', { name: 'Time' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Hour 18' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Minute 30' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add reminder' }));
+
+    await waitFor(() => {
+      const post = mock.mock.calls.find(
+        ([url, init]) =>
+          String(url).endsWith('/reminders') && (init as RequestInit)?.method === 'POST',
+      );
+      expect(post).toBeDefined();
+      const body = JSON.parse(String((post![1] as RequestInit).body));
+      expect(body).toMatchObject({ title: 'Pay internet bill', dueTime: '18:30' });
+      expect(body.dueDate).toMatch(/^\d{4}-\d{2}-15$/);
+    });
+  });
+
+  it('shows the time on the due chip', async () => {
+    stubFetch((url) => {
+      if (url.endsWith('/auth/refresh')) return failAuth();
+      return okBody([makeReminder({ dueTime: '09:15' })]);
+    });
+
+    renderReminders();
+
+    expect(await screen.findByText('Pay internet bill')).toBeTruthy();
+    expect(screen.getByText(/Overdue .*09:15/)).toBeTruthy();
   });
 });

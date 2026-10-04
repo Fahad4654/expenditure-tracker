@@ -134,6 +134,7 @@ number of transactions — the link is `Transaction.noteId` (nullable FK,
 | `title`                              | `text`       | 1–120 chars                                 |
 | `details`                            | `text` NULL  | optional note, up to 500 chars              |
 | `dueDate`                            | `date`       | **DATE only** — owner's timezone, like `transactionDate` |
+| `dueTime`                            | `varchar(5)` NULL | optional `HH:mm` wall-clock time; NULL = date-only reminder |
 | `completedAt`                        | `ts` NULL    | set/cleared server-side by the `completed` toggle |
 | `version`                            | `int`        | +1 on every write                           |
 | `createdAt` / `updatedAt` / `deletedAt` |          | soft delete                                 |

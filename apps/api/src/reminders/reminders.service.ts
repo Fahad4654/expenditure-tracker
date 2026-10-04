@@ -10,6 +10,7 @@ interface ReminderRecord {
   title: string;
   details: string | null;
   dueDate: Date;
+  dueTime: string | null;
   completedAt: Date | null;
   version: number;
   createdAt: Date;
@@ -23,6 +24,7 @@ function toReminder(reminder: ReminderRecord): Reminder {
     title: reminder.title,
     details: reminder.details,
     dueDate: reminder.dueDate.toISOString().slice(0, 10),
+    dueTime: reminder.dueTime,
     completedAt: reminder.completedAt ? reminder.completedAt.toISOString() : null,
     createdAt: reminder.createdAt.toISOString(),
     updatedAt: reminder.updatedAt.toISOString(),
@@ -45,7 +47,8 @@ export class RemindersService {
   async list(userId: string): Promise<Reminder[]> {
     const reminders = await this.prisma.reminder.findMany({
       where: { userId, deletedAt: null },
-      orderBy: [{ dueDate: 'asc' }],
+      // Same day first, then by wall-clock time; date-only rows sort last.
+      orderBy: [{ dueDate: 'asc' }, { dueTime: { sort: 'asc', nulls: 'last' } }],
     });
     return reminders.map(toReminder);
   }
@@ -57,6 +60,7 @@ export class RemindersService {
         title: input.title,
         details: input.details ?? null,
         dueDate: dateOnly(input.dueDate),
+        dueTime: input.dueTime ?? null,
       },
     });
     return toReminder(reminder);
@@ -70,6 +74,7 @@ export class RemindersService {
         ...(input.title !== undefined && { title: input.title }),
         ...(input.details !== undefined && { details: input.details }),
         ...(input.dueDate !== undefined && { dueDate: dateOnly(input.dueDate) }),
+        ...(input.dueTime !== undefined && { dueTime: input.dueTime }),
         ...(input.completed !== undefined && {
           completedAt: input.completed ? new Date() : null,
         }),

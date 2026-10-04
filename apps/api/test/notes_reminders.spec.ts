@@ -39,6 +39,7 @@ function reminderRecord(overrides: Record<string, unknown> = {}) {
     title: 'Pay internet bill',
     details: null,
     dueDate: new Date('2026-10-05T00:00:00.000Z'),
+    dueTime: null,
     completedAt: null,
     version: 1,
     deletedAt: null,
@@ -232,7 +233,7 @@ describe('RemindersService', () => {
 
     expect(prisma.reminder.findMany.mock.calls[0]![0]).toMatchObject({
       where: { userId: 'user-1', deletedAt: null },
-      orderBy: [{ dueDate: 'asc' }],
+      orderBy: [{ dueDate: 'asc' }, { dueTime: { sort: 'asc', nulls: 'last' } }],
     });
   });
 
@@ -249,6 +250,41 @@ describe('RemindersService', () => {
     );
     expect(created.dueDate).toBe('2026-10-05');
     expect(created.completedAt).toBeNull();
+  });
+
+  it('stores an optional due time and echoes it back', async () => {
+    prisma.reminder.create.mockResolvedValue(reminderRecord({ dueTime: '18:30' }));
+
+    const created = await service.create('user-1', {
+      title: 'Pay internet bill',
+      dueDate: '2026-10-05',
+      dueTime: '18:30',
+    } as never);
+
+    expect(prisma.reminder.create.mock.calls[0]![0].data.dueTime).toBe('18:30');
+    expect(created.dueTime).toBe('18:30');
+  });
+
+  it('creates a date-only reminder with no time involved', async () => {
+    prisma.reminder.create.mockResolvedValue(reminderRecord({ dueTime: null }));
+
+    const created = await service.create('user-1', {
+      title: 'Pay internet bill',
+      dueDate: '2026-10-05',
+    } as never);
+
+    expect(prisma.reminder.create.mock.calls[0]![0].data.dueTime).toBeNull();
+    expect(created.dueTime).toBeNull();
+  });
+
+  it('clears the time when dueTime is sent as null on update', async () => {
+    prisma.reminder.findUnique.mockResolvedValue(reminderRecord({ dueTime: '18:30' }));
+    prisma.reminder.update.mockResolvedValue(reminderRecord({ dueTime: null, version: 2 }));
+
+    const updated = await service.update('user-1', 'rem-1', { dueTime: null } as never);
+
+    expect(prisma.reminder.update.mock.calls[0]![0].data).toMatchObject({ dueTime: null });
+    expect(updated.dueTime).toBeNull();
   });
 
   it('toggles completion without the client manufacturing a timestamp', async () => {
