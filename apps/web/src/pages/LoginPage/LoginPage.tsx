@@ -4,7 +4,7 @@ import { loginSchema, toFieldErrors } from '../../shared/validation';
 import { useAuth } from '../../auth/auth-context';
 import AuthShell from '../../components/AuthShell/AuthShell';
 import GoogleButton from '../../components/GoogleButton/GoogleButton';
-import { Button, ErrorBanner, Field, TextInput } from '../../components/ui';
+import { Button, ErrorBanner, Field, PasswordInput, TextInput } from '../../components/ui';
 import { bannerFor, indexByPath, parseFormError } from '../../lib/errors';
 import { ROUTES } from '../../routes';
 
@@ -101,10 +101,9 @@ export default function LoginPage() {
             </Link>
           }
         >
-          <TextInput
+          <PasswordInput
             id="password"
             name="password"
-            type="password"
             autoComplete="current-password"
             required
             value={values.password}

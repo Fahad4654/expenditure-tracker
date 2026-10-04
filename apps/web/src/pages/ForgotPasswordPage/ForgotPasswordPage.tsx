@@ -5,7 +5,7 @@ import { useAuth } from '../../auth/auth-context';
 import { requestPasswordReset } from '../../auth/email-otp';
 import type { EmailOtpChallenge } from '../../shared/types';
 import AuthShell from '../../components/AuthShell/AuthShell';
-import { Button, ErrorBanner, Field, TextInput } from '../../components/ui';
+import { Button, ErrorBanner, Field, PasswordInput, TextInput } from '../../components/ui';
 import { bannerFor, indexByPath, parseFormError } from '../../lib/errors';
 import { ROUTES } from '../../routes';
 
@@ -150,10 +150,9 @@ export default function ForgotPasswordPage() {
           error={fields.password}
           hint={PASSWORD_HINT}
         >
-          <TextInput
+          <PasswordInput
             id="password"
             name="password"
-            type="password"
             autoComplete="new-password"
             required
             value={values.password}

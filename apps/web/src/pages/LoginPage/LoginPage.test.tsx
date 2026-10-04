@@ -132,6 +132,23 @@ describe('LoginPage', () => {
     expect(mock.mock.calls.filter(([url]) => String(url).endsWith('/auth/login'))).toHaveLength(1);
   });
 
+  it('toggles password visibility with the show password button', async () => {
+    stubFetch(() => jsonResponse({ ok: false, error: { code: 'NOT_FOUND', message: 'no' } }, 404));
+
+    renderLogin();
+    await waitFor(() => expect(screen.getByLabelText('Password')).toBeTruthy());
+
+    const input = screen.getByLabelText('Password') as HTMLInputElement;
+    expect(input.type).toBe('password');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show password' }));
+    expect(input.type).toBe('text');
+    expect(screen.getByRole('button', { name: 'Hide password' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hide password' }));
+    expect(input.type).toBe('password');
+  });
+
   it('returns to the destination that triggered the login redirect', async () => {
     stubFetch((url) => {
       if (url.endsWith('/auth/refresh')) {
