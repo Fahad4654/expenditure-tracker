@@ -54,7 +54,9 @@ function taggedTransactions(userId: string): Prisma.NoteInclude {
  *
  * A note can be tagged on any number of transactions; the link lives on
  * `Transaction.noteId`, and deleting the note clears those tags (announced
- * through the change feed so other devices converge).
+ * through the change feed so other devices converge). Create/update accept an
+ * optional `transactionIds` array that replaces the whole tag set from the
+ * note side.
  *
  * Notes are not part of the Phase 5 sync feed yet; the `version` counter is
  * bumped on every write so sync can adopt them without a schema change.
@@ -73,29 +75,38 @@ export class NotesService {
   }
 
   async create(userId: string, input: CreateNoteInputDto): Promise<Note> {
-    const note = await this.prisma.note.create({
-      data: {
-        userId,
-        title: input.title,
-        content: input.content ?? null,
-      },
-      include: taggedTransactions(userId),
+    return withTx(this.prisma, undefined, async (tx) => {
+      const note = await tx.note.create({
+        data: {
+          userId,
+          title: input.title,
+          content: input.content ?? null,
+        },
+        include: taggedTransactions(userId),
+      });
+      if (input.transactionIds == null) return toNote(note);
+      await this.applyTags(tx, userId, note.id, input.transactionIds);
+      return toNote(await this.reload(tx, userId, note.id));
     });
-    return toNote(note);
   }
 
   async update(userId: string, id: string, input: UpdateNoteInputDto): Promise<Note> {
     const note = await this.requireOwned(userId, id);
-    const updated = await this.prisma.note.update({
-      where: { id: note.id },
-      data: {
-        ...(input.title !== undefined && { title: input.title }),
-        ...(input.content !== undefined && { content: input.content }),
-        version: { increment: 1 },
-      },
-      include: taggedTransactions(userId),
+    return withTx(this.prisma, undefined, async (tx) => {
+      const updated = await tx.note.update({
+        where: { id: note.id },
+        data: {
+          ...(input.title !== undefined && { title: input.title }),
+          ...(input.content !== undefined && { content: input.content }),
+          version: { increment: 1 },
+        },
+        include: taggedTransactions(userId),
+      });
+      // Absent key = leave the tag set alone; `null`/array replaces it.
+      if (input.transactionIds === undefined) return toNote(updated);
+      await this.applyTags(tx, userId, note.id, input.transactionIds ?? []);
+      return toNote(await this.reload(tx, userId, note.id));
     });
-    return toNote(updated);
   }
 
   async remove(userId: string, id: string): Promise<Note> {
@@ -138,5 +149,78 @@ export class NotesService {
       throw errors.notFound('Note not found');
     }
     return note;
+  }
+
+  /**
+   * Makes `transactionIds` the note's complete tag set: tags every missing
+   * transaction, clears tags that dropped out, and announces each transaction
+   * write through the change feed. Every id must be a live transaction owned
+   * by the caller — a foreign or deleted one is a 404, never a silent skip.
+   * A transaction already tagged with another note is re-pointed here (the FK
+   * allows only one note per transaction).
+   */
+  private async applyTags(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    noteId: string,
+    transactionIds: string[],
+  ): Promise<void> {
+    const desired = [...new Set(transactionIds)];
+    if (desired.length > 0) {
+      const owned = await tx.transaction.findMany({
+        where: { id: { in: desired }, userId, deletedAt: null },
+        select: { id: true },
+      });
+      if (owned.length !== desired.length) {
+        throw errors.notFound('Transaction not found');
+      }
+    }
+
+    const current = await tx.transaction.findMany({
+      where: { noteId, userId },
+      select: { id: true },
+    });
+    const desiredSet = new Set(desired);
+    const currentSet = new Set(current.map((row) => row.id));
+
+    for (const { id } of current) {
+      if (!desiredSet.has(id)) await this.retag(tx, userId, id, null);
+    }
+    for (const id of desired) {
+      if (!currentSet.has(id)) await this.retag(tx, userId, id, noteId);
+    }
+  }
+
+  private async retag(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    transactionId: string,
+    noteId: string | null,
+  ): Promise<void> {
+    const updated = await tx.transaction.update({
+      where: { id: transactionId },
+      data: { noteId, version: { increment: 1 } },
+    });
+    await recordChange(tx, {
+      userId,
+      deviceId: null,
+      entityType: 'TRANSACTION',
+      entityId: updated.id,
+      kind: 'UPSERT',
+      version: updated.version,
+    });
+  }
+
+  private async reload(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    noteId: string,
+  ): Promise<NoteRecord> {
+    const fresh = await tx.note.findUnique({
+      where: { id: noteId },
+      include: taggedTransactions(userId),
+    });
+    if (!fresh) throw errors.notFound('Note not found');
+    return fresh;
   }
 }

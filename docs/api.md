@@ -174,8 +174,8 @@ Behaviour:
 | Method   | Path         | Description                                  |
 | -------- | ------------ | -------------------------------------------- |
 | `GET`    | `/notes`     | Own notes, newest `updatedAt` first          |
-| `POST`   | `/notes`     | Create a note (`title`, optional `content`)  |
-| `PATCH`  | `/notes/:id` | Update title/content (own only)              |
+| `POST`   | `/notes`     | Create a note (`title`, optional `content`, optional `transactionIds`) |
+| `PATCH`  | `/notes/:id` | Update title/content/`transactionIds` (own only) |
 | `DELETE` | `/notes/:id` | Soft delete (own only)                       |
 
 Behaviour:
@@ -183,6 +183,14 @@ Behaviour:
 - Notes are private to the caller; a foreign or deleted `noteId` is **404**
   (never 403 — existence is not disclosed).
 - `title` is 1–120 chars, `content` up to 5000 chars (`null` allowed).
+- `transactionIds` is an optional array of transaction uuids that **replaces**
+  the note's whole tag set: omit the key on `PATCH` to leave tags untouched,
+  send `null` or `[]` to clear them. A foreign or non-owned transaction id is
+  404 (`Transaction not found`), and every retag bumps `version` and announces
+  each affected transaction through the change feed (same as `remove`). Since a
+  transaction carries at most one `noteId`, tagging it here moves it off any
+  other note. Responses and web/mobile reads use `transactionIds`; the
+  `transactions` array is the enriched read model.
 - Every response carries a `transactions` array (`{ id, title, transactionDate }`,
   newest first) listing the live transactions the note is tagged on — this is
   the "tagged on" indicator on the notes page.

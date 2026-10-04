@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app_scope.dart';
 import '../../core/sync/sync_engine.dart';
 import '../dashboard/dashboard_page.dart';
+import '../notes/notes_page.dart';
 import '../profile/profile_page.dart';
 import '../reminders/reminders_page.dart';
 import '../reports/reports_page.dart';
@@ -20,12 +21,20 @@ class ShellPage extends StatefulWidget {
 }
 
 class _ShellPageState extends State<ShellPage> {
-  static const _labels = ['Home', 'Transactions', 'Reports', 'Reminders', 'Profile'];
+  static const _labels = [
+    'Home',
+    'Transactions',
+    'Reports',
+    'Reminders',
+    'Notes',
+    'Profile',
+  ];
   static const _icons = [
     Icons.dashboard_outlined,
     Icons.receipt_long_outlined,
     Icons.bar_chart_rounded,
     Icons.notifications_outlined,
+    Icons.notes_outlined,
     Icons.person_outline,
   ];
 
@@ -47,6 +56,7 @@ class _ShellPageState extends State<ShellPage> {
       TransactionsPage(refreshTick: _refreshTick),
       ReportsPage(refreshTick: _refreshTick),
       const RemindersPage(),
+      const NotesPage(),
       const ProfilePage(),
     ];
   }

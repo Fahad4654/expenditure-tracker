@@ -180,6 +180,116 @@ describe('NotesService', () => {
     ]);
   });
 
+  it('tags the selected transactions when a note is created with transactionIds', async () => {
+    prisma.note.create.mockResolvedValue(noteRecord());
+    prisma.transaction.findMany
+      .mockResolvedValueOnce([{ id: 'tx-1' }, { id: 'tx-2' }]) // owned & live
+      .mockResolvedValueOnce([]); // currently tagged with this new note
+    prisma.transaction.update.mockImplementation(async (args: { where: { id: string } }) => ({
+      id: args.where.id,
+      version: 2,
+    }));
+    prisma.note.findUnique.mockImplementation(
+      async (args: { include?: unknown }) =>
+        args.include
+          ? noteRecord({
+              transactions: [
+                { id: 'tx-2', title: 'B', transactionDate: NOW },
+                { id: 'tx-1', title: 'A', transactionDate: NOW },
+              ],
+            })
+          : noteRecord(),
+    );
+
+    const created = await service.create('user-1', {
+      title: 'Groceries',
+      transactionIds: ['tx-1', 'tx-2'],
+    } as never);
+
+    expect(prisma.transaction.update).toHaveBeenCalledTimes(2);
+    expect(prisma.transaction.update.mock.calls[0]![0]).toMatchObject({
+      where: { id: 'tx-1' },
+      data: { noteId: 'note-1' },
+    });
+    expect(prisma.changeLog.create).toHaveBeenCalledTimes(2);
+    expect(created.transactions.map((t) => t.id)).toEqual(['tx-2', 'tx-1']);
+  });
+
+  it('rejects a foreign or deleted transaction id when tagging', async () => {
+    prisma.note.create.mockResolvedValue(noteRecord());
+    prisma.transaction.findMany.mockResolvedValueOnce([{ id: 'tx-1' }]); // only one of two
+
+    await expectRejection(
+      service.create('user-1', {
+        title: 'Groceries',
+        transactionIds: ['tx-1', 'tx-2'],
+      } as never),
+      404,
+      'NOT_FOUND',
+    );
+    expect(prisma.transaction.update).not.toHaveBeenCalled();
+    expect(prisma.changeLog.create).not.toHaveBeenCalled();
+  });
+
+  it('replaces the tag set on update, clearing dropped transactions', async () => {
+    prisma.note.findUnique.mockImplementation(
+      async (args: { include?: unknown }) =>
+        args.include
+          ? noteRecord({
+              transactions: [{ id: 'tx-keep', title: 'Rent', transactionDate: NOW }],
+            })
+          : noteRecord(),
+    );
+    prisma.note.update.mockResolvedValue(noteRecord({ version: 2 }));
+    prisma.transaction.findMany
+      .mockResolvedValueOnce([{ id: 'tx-keep' }]) // owned & live
+      .mockResolvedValueOnce([
+        { id: 'tx-keep' },
+        { id: 'tx-drop' },
+      ]); // currently tagged with the note
+    prisma.transaction.update.mockImplementation(async (args: { where: { id: string } }) => ({
+      id: args.where.id,
+      version: 3,
+    }));
+
+    const updated = await service.update('user-1', 'note-1', {
+      transactionIds: ['tx-keep'],
+    } as never);
+
+    expect(prisma.transaction.update).toHaveBeenCalledTimes(1);
+    expect(prisma.transaction.update.mock.calls[0]![0]).toMatchObject({
+      where: { id: 'tx-drop' },
+      data: { noteId: null },
+    });
+    expect(prisma.changeLog.create).toHaveBeenCalledTimes(1);
+    expect(updated.transactions.map((t) => t.id)).toEqual(['tx-keep']);
+  });
+
+  it('clears every tag when transactionIds is sent as null on update', async () => {
+    prisma.note.findUnique.mockImplementation(
+      async (args: { include?: unknown }) =>
+        args.include
+          ? noteRecord({ transactions: [] })
+          : noteRecord(),
+    );
+    prisma.note.update.mockResolvedValue(noteRecord({ version: 2 }));
+    // No ids to validate, so the first query is the currently-tagged set.
+    prisma.transaction.findMany.mockResolvedValueOnce([
+      { id: 'tx-1' },
+      { id: 'tx-2' },
+    ]);
+    prisma.transaction.update.mockImplementation(async (args: { where: { id: string } }) => ({
+      id: args.where.id,
+      version: 3,
+    }));
+
+    await service.update('user-1', 'note-1', { transactionIds: null } as never);
+
+    expect(prisma.transaction.update).toHaveBeenCalledTimes(2);
+    expect(prisma.transaction.update.mock.calls[0]![0].data).toMatchObject({ noteId: null });
+    expect(prisma.transaction.update.mock.calls[1]![0].data).toMatchObject({ noteId: null });
+  });
+
   it('clears the tag on every referencing transaction when a note is deleted', async () => {
     prisma.note.findUnique.mockResolvedValue(noteRecord());
     prisma.note.update.mockResolvedValue(noteRecord({ deletedAt: NOW, version: 2 }));

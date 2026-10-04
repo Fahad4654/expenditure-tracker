@@ -1,4 +1,5 @@
 import '../../shared/models/category.dart';
+import '../../shared/models/note.dart';
 import '../../shared/models/otp_challenge.dart';
 import '../../shared/models/common.dart';
 import '../../shared/models/reminder.dart';
@@ -349,6 +350,35 @@ class RemindersRepository {
   }
 }
 
+/// Notes over REST — network-only, like the web client: notes are not part of
+/// the sync feed yet, so there is no local-first write path. `transactionIds`
+/// on create/update replaces the note's whole tag set.
+class NotesRepository {
+  NotesRepository(this._api);
+
+  final ApiClient _api;
+
+  Future<List<Note>> list() {
+    return _api.get(ApiRoutes.notes, decode: _noteList);
+  }
+
+  Future<Note> create(NoteInput input) {
+    return _api.post(ApiRoutes.notes, body: input.toJson(), decode: Note.fromJson);
+  }
+
+  Future<Note> update(String id, NoteInput input) {
+    return _api.patch(
+      ApiRoutes.note(id),
+      body: input.toJson(),
+      decode: Note.fromJson,
+    );
+  }
+
+  Future<void> remove(String id) {
+    return _api.delete<void>(ApiRoutes.note(id), decode: (_) {});
+  }
+}
+
 /// Report endpoints answered by local SQL — no network.
 class ReportsRepository {
   ReportsRepository(this._local);
@@ -433,7 +463,8 @@ class Services {
         categories = CategoriesRepository(store, sync.requestSync),
         reports = ReportsRepository(LocalReports(store)),
         users = UsersRepository(api, store),
-        reminders = RemindersRepository(api);
+        reminders = RemindersRepository(api),
+        notes = NotesRepository(api);
 
   final AuthRepository auth;
   final TransactionsRepository transactions;
@@ -441,6 +472,7 @@ class Services {
   final ReportsRepository reports;
   final UsersRepository users;
   final RemindersRepository reminders;
+  final NotesRepository notes;
   final SyncEngine sync;
 }
 
@@ -453,3 +485,6 @@ List<Map<String, Object?>> _rawItems(Object? json) =>
 
 List<Reminder> _reminderList(Object? json) =>
     (json! as List<Object?>).map(Reminder.fromJson).toList();
+
+List<Note> _noteList(Object? json) =>
+    (json! as List<Object?>).map(Note.fromJson).toList();

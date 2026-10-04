@@ -46,7 +46,15 @@ export class NotesController {
     @Body(new ZodValidationPipe(createNoteSchema)) body: CreateNoteInputDto,
   ): Promise<Note> {
     const note = await this.notes.create(user.sub, body);
-    logEvent(this.logger, user.sub, 'NOTE_CREATE', 'Created a note', undefined, 'NOTE', note.id);
+    logEvent(
+      this.logger,
+      user.sub,
+      'NOTE_CREATE',
+      'Created a note',
+      { transactionCount: note.transactions.length },
+      'NOTE',
+      note.id,
+    );
     return note;
   }
 
@@ -59,7 +67,15 @@ export class NotesController {
     @Body(new ZodValidationPipe(updateNoteSchema)) body: UpdateNoteInputDto,
   ): Promise<Note> {
     const note = await this.notes.update(user.sub, id, body);
-    logEvent(this.logger, user.sub, 'NOTE_UPDATE', 'Updated a note', undefined, 'NOTE', note.id);
+    logEvent(
+      this.logger,
+      user.sub,
+      'NOTE_UPDATE',
+      'Updated a note',
+      { transactionCount: note.transactions.length },
+      'NOTE',
+      note.id,
+    );
     return note;
   }
 

@@ -21,9 +21,13 @@ export interface Note {
 export interface CreateNoteInput {
   title: string;
   content?: string | null;
+  /** Full set of transactions to tag this note on (replaces any previous set). */
+  transactionIds?: Uuid[] | null;
 }
 
 export interface UpdateNoteInput {
   title?: string;
   content?: string | null;
+  /** Replaces the tag set; `null` clears every tag. Absent = leave untouched. */
+  transactionIds?: Uuid[] | null;
 }

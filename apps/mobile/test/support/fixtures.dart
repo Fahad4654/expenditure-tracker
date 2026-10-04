@@ -95,6 +95,7 @@ Map<String, Object?> paginatedJson(List<Map<String, Object?>> items, {int total 
     };
 
 const String reminderId = '66666666-6666-4666-8666-666666666666';
+const String noteId = '88888888-8888-4888-8888-888888888888';
 
 Map<String, Object?> reminderJson({
   String id = reminderId,
@@ -111,6 +112,32 @@ Map<String, Object?> reminderJson({
       'dueDate': dueDate,
       'dueTime': dueTime,
       'completedAt': completedAt,
+      'createdAt': '2026-10-01T00:00:00.000Z',
+      'updatedAt': '2026-10-01T00:00:00.000Z',
+    };
+
+Map<String, Object?> noteTransactionRefJson({
+  String id = '33333333-3333-4333-8333-333333333333',
+  String title = 'Weekly groceries',
+  String transactionDate = '2026-10-02',
+}) =>
+    {
+      'id': id,
+      'title': title,
+      'transactionDate': transactionDate,
+    };
+
+Map<String, Object?> noteJson({
+  String id = noteId,
+  String title = 'Groceries',
+  String? content = 'milk, eggs',
+  List<Map<String, Object?>> transactions = const [],
+}) =>
+    {
+      'id': id,
+      'title': title,
+      'content': content,
+      'transactions': transactions,
       'createdAt': '2026-10-01T00:00:00.000Z',
       'updatedAt': '2026-10-01T00:00:00.000Z',
     };
@@ -204,6 +231,10 @@ void registerDefaultHandlers(FakeApiClient api) {
     'POST /api/v1/reminders': (_) => reminderJson(),
     'PATCH /api/v1/reminders/$reminderId': (_) => reminderJson(),
     'DELETE /api/v1/reminders/$reminderId': (_) => reminderJson(),
+    'GET /api/v1/notes': (_) => <Object?>[],
+    'POST /api/v1/notes': (_) => noteJson(),
+    'PATCH /api/v1/notes/$noteId': (_) => noteJson(),
+    'DELETE /api/v1/notes/$noteId': (_) => noteJson(),
     'GET /api/v1/reports/summary': (_) => summaryJson(),
     'GET /api/v1/reports/daily': (_) => dailyJson(),
     'GET /api/v1/reports/monthly': (_) => monthlyJson(),

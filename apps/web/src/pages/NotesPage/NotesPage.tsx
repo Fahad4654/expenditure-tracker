@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import type { Note } from '../../shared/types';
+import type { Note, NoteTransactionRef, Paginated, Transaction } from '../../shared/types';
 import { createNoteSchema, toFieldErrors } from '../../shared/validation';
 import {
   Button,
@@ -9,6 +9,7 @@ import {
   ErrorBanner,
   Field,
   PageHeader,
+  Select,
   Spinner,
   TextInput,
   inputClass,
@@ -18,6 +19,85 @@ import { bannerFor, indexByPath, parseFormError } from '../../lib/errors';
 import { formatDay, formatInstant } from '../../lib/format';
 import { useAsync } from '../../lib/useAsync';
 import { transactionPath } from '../../routes';
+
+/** Chip label for a tagged transaction, falling back to the note's own ref
+ * when the transaction is older than the fetched page. */
+function tagLabel(
+  id: string,
+  transactions: Transaction[],
+  refs: NoteTransactionRef[],
+): string {
+  const transaction = transactions.find((row) => row.id === id);
+  if (transaction) return `${transaction.title} · ${formatDay(transaction.transactionDate)}`;
+  const ref = refs.find((row) => row.id === id);
+  if (ref) return `${ref.title} · ${formatDay(ref.transactionDate)}`;
+  return id;
+}
+
+/**
+ * Multi-tag picker for the note form: selected transactions render as
+ * removable chips, and the system select adds the next one. One transaction
+ * can only carry a single note, so tagging it here moves it off any other.
+ */
+function TagPicker({
+  id,
+  transactions,
+  refs,
+  selected,
+  onChange,
+}: {
+  id: string;
+  transactions: Transaction[];
+  refs: NoteTransactionRef[];
+  selected: string[];
+  onChange: (ids: string[]) => void;
+}) {
+  const available = transactions.filter((row) => !selected.includes(row.id));
+
+  return (
+    <div className="grid gap-2">
+      {selected.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5">
+          {selected.map((txId) => {
+            const label = tagLabel(txId, transactions, refs);
+            return (
+              <span
+                key={txId}
+                className="inline-flex max-w-full items-center gap-1 rounded-full border border-emerald-900 bg-emerald-950/60 px-2 py-0.5 text-xs text-emerald-300"
+              >
+                <span className="truncate">{label}</span>
+                <button
+                  type="button"
+                  aria-label={`Remove tag ${label}`}
+                  onClick={() => onChange(selected.filter((value) => value !== txId))}
+                  className="shrink-0 rounded-full leading-none text-emerald-400 transition hover:text-emerald-200"
+                >
+                  ×
+                </button>
+              </span>
+            );
+          })}
+        </div>
+      ) : null}
+      <Select
+        id={id}
+        value=""
+        disabled={available.length === 0}
+        onChange={(event) => {
+          const value = event.target.value;
+          if (value && !selected.includes(value)) onChange([...selected, value]);
+        }}
+      >
+        <option value="">Tag a transaction…</option>
+        {available.map((transaction) => (
+          <option key={transaction.id} value={transaction.id}>
+            {`${transaction.title} · ${formatDay(transaction.transactionDate)}`}
+          </option>
+        ))}
+      </Select>
+    </div>
+  );
+}
 
 /**
  * Notes: a private scratch space with list + inline create/edit/delete.
@@ -29,17 +109,31 @@ export default function NotesPage() {
     (signal) => apiFetch<Note[]>(API_ROUTES.notes.base, { signal }),
     [],
   );
+  // Newest transactions offered to the tag picker (page 1 is plenty for
+  // picking; a note's own refs keep older tags labelled).
+  const transactions = useAsync<Paginated<Transaction>>(
+    (signal) =>
+      apiFetch<Paginated<Transaction>>(
+        `${API_ROUTES.transactions.base}?page=1&limit=50&sort=transactionDate&order=desc`,
+        { signal },
+      ),
+    [],
+  );
 
   const [search, setSearch] = useState('');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [tagIds, setTagIds] = useState<string[]>([]);
   const [createErrors, setCreateErrors] = useState<Record<string, string>>({});
   const [banner, setBanner] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
+  const [editTagIds, setEditTagIds] = useState<string[]>([]);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  const txRows = transactions.data?.items ?? [];
 
   const query = search.trim().toLowerCase();
   const notes = (list.data ?? []).filter(
@@ -56,6 +150,7 @@ export default function NotesPage() {
     const parsed = createNoteSchema.safeParse({
       title,
       content: content.trim() || null,
+      transactionIds: tagIds,
     });
     if (!parsed.success) {
       setCreateErrors(indexByPath(toFieldErrors(parsed.error)));
@@ -72,6 +167,7 @@ export default function NotesPage() {
       list.setData([created, ...(list.data ?? [])]);
       setTitle('');
       setContent('');
+      setTagIds([]);
     } catch (error) {
       setCreateErrors(parseFormError(error).fields);
       setBanner(bannerFor(error));
@@ -84,6 +180,7 @@ export default function NotesPage() {
     const parsed = createNoteSchema.safeParse({
       title: editTitle,
       content: editContent.trim() || null,
+      transactionIds: editTagIds,
     });
     if (!parsed.success) {
       setBanner(indexByPath(toFieldErrors(parsed.error)).title ?? null);
@@ -146,6 +243,24 @@ export default function NotesPage() {
               className={inputClass}
               value={content}
               onChange={(event) => setContent(event.target.value)}
+            />
+          </Field>
+          <Field
+            label="Tagged transactions"
+            htmlFor="note-tags"
+            error={createErrors.transactionIds}
+            hint={
+              txRows.length === 0
+                ? 'No transactions to tag yet.'
+                : 'Optional — pick the transactions this note belongs to.'
+            }
+          >
+            <TagPicker
+              id="note-tags"
+              transactions={txRows}
+              refs={[]}
+              selected={tagIds}
+              onChange={setTagIds}
             />
           </Field>
           <div className="flex items-end">
@@ -215,6 +330,18 @@ export default function NotesPage() {
                     value={editContent}
                     onChange={(event) => setEditContent(event.target.value)}
                   />
+                  <div>
+                    <label htmlFor={`edit-tags-${note.id}`} className="sr-only">
+                      Tagged transactions
+                    </label>
+                    <TagPicker
+                      id={`edit-tags-${note.id}`}
+                      transactions={txRows}
+                      refs={note.transactions}
+                      selected={editTagIds}
+                      onChange={setEditTagIds}
+                    />
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     <Button variant="primary" onClick={() => void handleSave(note)}>
                       Save
@@ -260,6 +387,7 @@ export default function NotesPage() {
                         setEditingId(note.id);
                         setEditTitle(note.title);
                         setEditContent(note.content ?? '');
+                        setEditTagIds(note.transactions.map((transaction) => transaction.id));
                         setPendingDeleteId(null);
                       }}
                     >

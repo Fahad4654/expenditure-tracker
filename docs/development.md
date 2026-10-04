@@ -329,13 +329,13 @@ if present, but nothing depends on it.
   request replay; `TokenStore` persists only the refresh token (secure
   storage in production, in-memory backend in tests).
 - **Repositories:** `Auth`, `Transactions`, `Categories`, `Reports`, `Users`,
-  `Reminders` mirroring the web client's contracts, including `clientId`
-  idempotency and `baseVersion` optimistic concurrency. Reminders are
-  network-only (the table is not in the sync feed).
+  `Reminders`, `Notes` mirroring the web client's contracts, including `clientId`
+  idempotency and `baseVersion` optimistic concurrency. Reminders and notes are
+  network-only (neither table is in the sync feed).
 - **Auth flow:** splash restores the session (refresh → shell) or lands on
   login; login/register validate client-side and surface the server's
   message; logout revokes and clears tokens.
-- **Shell:** bottom navigation (Home, Transactions, Reports, Reminders,
+- **Shell:** bottom navigation (Home, Transactions, Reports, Reminders, Notes,
   Profile) with a central "Add" FAB, lazy tab creation, and a shared
   `ValueNotifier` so a new transaction refreshes both the dashboard and the
   list.
@@ -345,11 +345,12 @@ if present, but nothing depends on it.
   (create/edit/archive with system-category and in-use errors), reports
   (summary, daily/monthly/category charts), reminders (pending/completed
   filters, overdue/due-today chips, create/edit with date + optional `HH:mm`
-  time pickers, completion toggle, delete), profile (details, defaults,
-  change password, sign out).
+  time pickers, completion toggle, delete), notes (search, tagged-transaction
+  chips, create/edit/delete with a transaction tag picker over the newest synced
+  transactions), profile (details, defaults, change password, sign out).
 - **Platform:** `INTERNET` permission + cleartext for local dev on Android,
   local-network allowance on iOS; builds on `minSdk 24`.
-- **Tests:** 91 mobile tests (291 total across the monorepo) plus an opt-in
+- **Tests:** 95 mobile tests (301 total across the monorepo) plus an opt-in
   live-API smoke test (`LIVE_API=1`).
 - `flutter analyze` · `flutter test` · `flutter build apk --debug` all green.
 
@@ -370,14 +371,18 @@ if present, but nothing depends on it.
 - **Web:** `/notes` and `/reminders` pages with sidebar links — search, inline
   create/edit/delete with confirm panels, pending-first reminder ordering with
   overdue chips, optional time picker (`CustomTimePicker`, two-click `HH:mm`
-  commit), single-PATCH completion toggle; responsive auto-fit grids
-  throughout.
-- **Mobile:** Reminders tab in the shell — pending/completed filters,
-  overdue/due-today/time chips, network-only `RemindersRepository`, and a
-  shared create/edit form with date + optional time pickers and delete.
-- **Tests:** `notes_reminders.spec.ts` (API, 16 tests) plus
-  `NotesPage.test.tsx` (4) and `RemindersPage.test.tsx` (5) on the web and
-  `reminders_test.dart` (mobile, 7).
+  commit), single-PATCH completion toggle; on `/notes`, a tag picker (removable
+  chips + searchable select fed by `GET /transactions`) sends `transactionIds`
+  on create/edit; responsive auto-fit grids throughout.
+- **Mobile:** Reminders and Notes tabs in the shell — pending/completed
+  filters, overdue/due-today/time chips, network-only `RemindersRepository`, a
+  shared create/edit form with date + optional time pickers and delete; the
+  notes feature adds a network-only `NotesRepository`, list with
+  tagged-transaction chips, and a shared create/edit form whose tag picker
+  offers the 50 newest synced transactions (`transactionIds` on submit).
+- **Tests:** `notes_reminders.spec.ts` (API, 20 tests) plus
+  `NotesPage.test.tsx` (6) and `RemindersPage.test.tsx` (5) on the web, and
+  `reminders_test.dart` (7) + `notes_test.dart` (4) on mobile.
 
 ## Troubleshooting
 
