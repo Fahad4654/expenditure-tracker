@@ -21,6 +21,13 @@ export interface BugReport {
   updatedAt: IsoDateTime;
 }
 
+/** Admin view of a report: the row plus whoever filed it. */
+export interface AdminBugReport extends BugReport {
+  userId: Uuid;
+  reporterName: string;
+  reporterEmail: string | null;
+}
+
 export interface CreateBugReportInput {
   title: string;
   description: string;

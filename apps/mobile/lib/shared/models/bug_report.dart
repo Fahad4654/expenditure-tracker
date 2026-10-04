@@ -48,12 +48,64 @@ class BugReport {
   }
 }
 
+/// Admin view of a report: the row plus whoever filed it. Only ever returned
+/// by `GET /admin/bug-reports`.
+class AdminBugReport extends BugReport {
+  const AdminBugReport({
+    required super.id,
+    required super.title,
+    required super.description,
+    required super.severity,
+    required super.status,
+    required super.area,
+    required super.appVersion,
+    required super.platform,
+    required super.createdAt,
+    required super.updatedAt,
+    required this.userId,
+    required this.reporterName,
+    required this.reporterEmail,
+  });
+
+  final String userId;
+  final String reporterName;
+  final String? reporterEmail;
+
+  factory AdminBugReport.fromJson(Object? json) {
+    final map = json! as Map<String, dynamic>;
+    return AdminBugReport(
+      id: map['id']! as String,
+      title: map['title']! as String,
+      description: map['description']! as String,
+      severity: map['severity']! as String,
+      status: map['status']! as String,
+      area: map['area'] as String?,
+      appVersion: map['appVersion'] as String?,
+      platform: map['platform'] as String?,
+      createdAt: map['createdAt']! as String,
+      updatedAt: map['updatedAt']! as String,
+      userId: map['userId']! as String,
+      reporterName: map['reporterName']! as String,
+      reporterEmail: map['reporterEmail'] as String?,
+    );
+  }
+}
+
 /// Severities a reporter may choose, ascending by how much it hurts.
 const List<String> bugReportSeverities = <String>[
   'LOW',
   'MEDIUM',
   'HIGH',
   'CRITICAL',
+];
+
+/// Triage states, in the order a report normally walks through them. Only an
+/// admin ever moves a report between them.
+const List<String> bugReportStatuses = <String>[
+  'OPEN',
+  'IN_PROGRESS',
+  'RESOLVED',
+  'CLOSED',
 ];
 
 /// Display label for a raw severity value.

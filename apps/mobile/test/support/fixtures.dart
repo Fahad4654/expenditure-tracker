@@ -8,6 +8,7 @@ Map<String, Object?> userJson({
   String id = userId,
   String name = 'Fahad Rahman',
   String email = 'fahad@example.com',
+  String role = 'USER',
 }) =>
     {
       'id': id,
@@ -17,6 +18,7 @@ Map<String, Object?> userJson({
       'avatarUrl': null,
       'emailVerified': true,
       'phoneVerified': false,
+      'role': role,
       'providers': ['email'],
       'defaultCurrency': 'BDT',
       'timezone': 'Asia/Dhaka',
@@ -24,8 +26,8 @@ Map<String, Object?> userJson({
       'updatedAt': '2026-01-01T00:00:00.000Z',
     };
 
-Map<String, Object?> sessionJson({String? refreshToken}) => {
-      'user': userJson(),
+Map<String, Object?> sessionJson({String? refreshToken, String role = 'USER'}) => {
+      'user': userJson(role: role),
       'accessToken': 'access-token',
       'expiresIn': 900,
       'refreshToken': refreshToken ?? 'refresh-token',
@@ -167,6 +169,36 @@ Map<String, Object?> bugReportJson({
       'updatedAt': '2026-10-01T00:00:00.000Z',
     };
 
+/// The admin view: the same row plus the identity of whoever filed it.
+Map<String, Object?> adminBugReportJson({
+  String id = bugReportId,
+  String title = 'Chart renders empty',
+  String description = 'The monthly report chart is blank for October.',
+  String severity = 'HIGH',
+  String status = 'OPEN',
+  String? area = 'Reports',
+  String? appVersion,
+  String? platform = 'web',
+  String reporterId = '00000000-0000-4000-8000-000000000009',
+  String reporterName = 'Bob Khan',
+  String? reporterEmail = 'bob@example.com',
+}) =>
+    {
+      ...bugReportJson(
+        id: id,
+        title: title,
+        description: description,
+        severity: severity,
+        status: status,
+        area: area,
+        appVersion: appVersion,
+        platform: platform,
+      ),
+      'userId': reporterId,
+      'reporterName': reporterName,
+      'reporterEmail': reporterEmail,
+    };
+
 Map<String, Object?> syncResponseJson({
   List<Map<String, Object?>> results = const [],
   List<Map<String, Object?>> changes = const [],
@@ -263,6 +295,9 @@ void registerDefaultHandlers(FakeApiClient api) {
     'GET /api/v1/bug-reports': (_) => <Object?>[],
     'POST /api/v1/bug-reports': (_) => bugReportJson(),
     'DELETE /api/v1/bug-reports/$bugReportId': (_) => bugReportJson(),
+    'GET /api/v1/admin/bug-reports': (_) => <Object?>[],
+    'PATCH /api/v1/admin/bug-reports/$bugReportId': (_) =>
+        adminBugReportJson(status: 'IN_PROGRESS'),
     'GET /api/v1/reports/summary': (_) => summaryJson(),
     'GET /api/v1/reports/daily': (_) => dailyJson(),
     'GET /api/v1/reports/monthly': (_) => monthlyJson(),

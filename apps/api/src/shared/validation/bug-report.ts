@@ -20,3 +20,13 @@ export const createBugReportSchema = z.object({
 });
 
 export type CreateBugReportInputDto = z.infer<typeof createBugReportSchema>;
+
+/**
+ * Triage status change, admin-only. Bumping the status is the one part of a
+ * report the caller can never touch — this is the only schema that accepts it.
+ */
+export const updateBugReportStatusSchema = z.object({
+  status: z.enum(BUG_REPORT_STATUSES),
+});
+
+export type UpdateBugReportStatusDto = z.infer<typeof updateBugReportStatusSchema>;

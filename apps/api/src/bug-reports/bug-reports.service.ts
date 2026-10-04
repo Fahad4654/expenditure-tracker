@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { BugReport } from '../shared/types';
+import type { AdminBugReport, BugReport, BugReportStatus } from '../shared/types';
 import type { CreateBugReportInputDto } from '../shared/validation';
 import { errors } from '../common/http/api-error';
 import { PrismaService } from '../prisma/prisma.module';
@@ -20,6 +20,13 @@ interface BugReportRecord {
   deletedAt: Date | null;
 }
 
+/** Reporter projection joined onto a report for the admin list. */
+interface AdminBugReportRecord extends BugReportRecord {
+  user: { id: string; name: string; email: string | null };
+}
+
+const REPORTER_SELECT = { id: true, name: true, email: true } as const;
+
 function toBugReport(report: BugReportRecord): BugReport {
   return {
     id: report.id,
@@ -35,6 +42,15 @@ function toBugReport(report: BugReportRecord): BugReport {
   };
 }
 
+function toAdminBugReport(report: AdminBugReportRecord): AdminBugReport {
+  return {
+    ...toBugReport(report),
+    userId: report.user.id,
+    reporterName: report.user.name,
+    reporterEmail: report.user.email,
+  };
+}
+
 /**
  * User-submitted bug reports, always scoped to the caller. Another user's
  * report is a 404 so its existence is never disclosed, and deletes are soft
@@ -47,6 +63,10 @@ function toBugReport(report: BugReportRecord): BugReport {
  *
  * Reports are not part of the Phase 5 sync feed; the `version` counter is
  * bumped on every write so sync can adopt them without a schema change.
+ *
+ * Two audiences share this service: the caller-scoped methods below (every
+ * user sees only their own reports) and the admin methods, which the
+ * `AdminGuard`-protected controller exposes over `/admin/bug-reports`.
  */
 @Injectable()
 export class BugReportsService {
@@ -91,5 +111,35 @@ export class BugReportsService {
       throw errors.notFound('Bug report not found');
     }
     return report;
+  }
+
+  /**
+   * Every report across every account, newest first, with the reporter joined
+   * in. Admin-guarded: none of the caller-scoped methods ever reach this.
+   */
+  async listAll(): Promise<AdminBugReport[]> {
+    const reports = await this.prisma.bugReport.findMany({
+      where: { deletedAt: null },
+      orderBy: { createdAt: 'desc' },
+      include: { user: { select: REPORTER_SELECT } },
+    });
+    return reports.map(toAdminBugReport);
+  }
+
+  /**
+   * Triage status change. Soft-deleted reports are 404s even for an admin so
+   * the trash stays inert, and `version` bumps so the change is observable
+   * by the sync feed once reports join it.
+   */
+  async setStatus(id: string, status: BugReportStatus): Promise<AdminBugReport> {
+    const existing = await this.prisma.bugReport.findUnique({ where: { id } });
+    if (!existing || existing.deletedAt) throw errors.notFound('Bug report not found');
+
+    const report = await this.prisma.bugReport.update({
+      where: { id },
+      data: { status, version: { increment: 1 } },
+      include: { user: { select: REPORTER_SELECT } },
+    });
+    return toAdminBugReport(report);
   }
 }

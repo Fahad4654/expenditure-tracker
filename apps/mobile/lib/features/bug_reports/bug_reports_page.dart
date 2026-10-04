@@ -178,11 +178,11 @@ class _BugReportCard extends StatelessWidget {
               spacing: 6,
               runSpacing: 6,
               children: [
-                _StatusChip(
+                StatusChip(
                   label: bugReportSeverityLabel(report.severity),
                   color: severityColor(report.severity),
                 ),
-                _StatusChip(
+                StatusChip(
                   label: bugReportStatusLabel(report.status),
                   color: statusColor(report.status),
                 ),
@@ -232,8 +232,9 @@ class _BugReportCard extends StatelessWidget {
   }
 }
 
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.label, required this.color});
+/// Outline pill for a severity or triage status — shared with the admin board.
+class StatusChip extends StatelessWidget {
+  const StatusChip({super.key, required this.label, required this.color});
 
   final String label;
   final Color color;

@@ -1,10 +1,18 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
-import type { BugReport, BugReportSeverity, BugReportStatus } from '../../shared/types';
+import { useState, type FormEvent } from 'react';
+import type { BugReport, BugReportSeverity } from '../../shared/types';
 import {
   BUG_REPORT_SEVERITIES,
   createBugReportSchema,
   toFieldErrors,
 } from '../../shared/validation';
+import { Chip } from '../../shared/bug-report-chip';
+import {
+  SEVERITY_CLASSES,
+  SEVERITY_LABELS,
+  STATUS_CLASSES,
+  contextLine,
+  statusLabel,
+} from '../../shared/bug-report-view';
 import {
   Button,
   Card,
@@ -23,54 +31,6 @@ import { formatInstant } from '../../lib/format';
 import { useAsync } from '../../lib/useAsync';
 
 const DEFAULT_SEVERITY: BugReportSeverity = 'MEDIUM';
-
-const SEVERITY_LABELS: Record<BugReportSeverity, string> = {
-  LOW: 'Low',
-  MEDIUM: 'Medium',
-  HIGH: 'High',
-  CRITICAL: 'Critical',
-};
-
-const SEVERITY_CLASSES: Record<BugReportSeverity, string> = {
-  LOW: 'border-slate-700 bg-slate-800/60 text-slate-300',
-  MEDIUM: 'border-sky-900 bg-sky-950/60 text-sky-300',
-  HIGH: 'border-amber-900 bg-amber-950/60 text-amber-300',
-  CRITICAL: 'border-rose-900 bg-rose-950/60 text-rose-300',
-};
-
-const STATUS_CLASSES: Record<BugReportStatus, string> = {
-  OPEN: 'border-slate-700 bg-slate-800/60 text-slate-300',
-  IN_PROGRESS: 'border-emerald-900 bg-emerald-950/60 text-emerald-300',
-  RESOLVED: 'border-sky-900 bg-sky-950/60 text-sky-300',
-  CLOSED: 'border-slate-800 bg-slate-900/60 text-slate-400',
-};
-
-function statusLabel(status: BugReportStatus): string {
-  return status === 'IN_PROGRESS'
-    ? 'In progress'
-    : status.charAt(0) + status.slice(1).toLowerCase();
-}
-
-/** Small outline pill used for severity and status. */
-function Chip({ className, children }: { className: string; children: ReactNode }) {
-  return (
-    <span
-      className={`inline-flex max-w-full items-center rounded-full border px-2 py-0.5 text-xs font-medium ${className}`}
-    >
-      <span className="truncate">{children}</span>
-    </span>
-  );
-}
-
-/** Where a report came from: `Web · Dashboard` style context line. */
-function contextLine(report: BugReport): string | null {
-  const parts = [
-    report.area ?? null,
-    report.platform ? report.platform.replace(/^\w/, (c) => c.toUpperCase()) : null,
-    report.appVersion ? `v${report.appVersion}` : null,
-  ].filter((part): part is string => Boolean(part));
-  return parts.length > 0 ? parts.join(' · ') : null;
-}
 
 /**
  * Bug reports: an inline create form above the caller's own reports, following

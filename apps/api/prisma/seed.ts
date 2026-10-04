@@ -16,7 +16,14 @@ const ARGON2_OPTIONS = {
 const DEMO_PASSWORD = 'Password123!';
 
 const DEMO_USERS = [
-  { name: 'Demo User', email: 'demo@example.com', timezone: 'Asia/Dhaka', defaultCurrency: 'BDT' },
+  // The maintainer account: the only one that reaches `/admin/bug-reports`.
+  {
+    name: 'Demo User',
+    email: 'demo@example.com',
+    role: 'ADMIN',
+    timezone: 'Asia/Dhaka',
+    defaultCurrency: 'BDT',
+  },
   {
     name: 'Alice Rahman',
     email: 'alice@example.com',
@@ -78,6 +85,12 @@ async function main(): Promise<void> {
 
     const userCount = await prisma.user.count({
       where: { email: { in: DEMO_USERS.map((u) => u.email) } },
+    });
+    // Re-running the seed promotes the demo maintainer in place, so an
+    // existing local account can reach the admin panel without a reset.
+    await prisma.user.updateMany({
+      where: { email: 'demo@example.com' },
+      data: { role: 'ADMIN' },
     });
     console.log(`Demo users — ${userCount} present: ${DEMO_USERS.map((u) => u.email).join(', ')}`);
     console.log(`Password for all demo users: ${DEMO_PASSWORD}`);

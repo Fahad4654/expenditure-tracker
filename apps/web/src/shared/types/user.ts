@@ -1,6 +1,12 @@
 import type { CurrencyCode, IsoDateTime, Timezone } from './common';
 import type { AuthProvider } from './auth';
 
+/**
+ * Account role. Only `ADMIN` sees the admin entry points — and the server
+ * re-checks it on every admin request, so this drives navigation, not trust.
+ */
+export type UserRole = 'USER' | 'ADMIN';
+
 export interface UserProfile {
   id: string;
   name: string;
@@ -10,6 +16,7 @@ export interface UserProfile {
   avatarUrl: string | null;
   emailVerified: boolean;
   phoneVerified: boolean;
+  role: UserRole;
   providers: AuthProvider[];
   defaultCurrency: CurrencyCode;
   timezone: Timezone;

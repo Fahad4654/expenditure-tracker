@@ -1,4 +1,4 @@
-import type { AuthProvider, UserProfile } from '../shared/types';
+import type { AuthProvider, UserProfile, UserRole } from '../shared/types';
 
 export interface UserRecord {
   id: string;
@@ -9,6 +9,7 @@ export interface UserRecord {
   avatarUrl: string | null;
   emailVerified: boolean;
   phoneVerified: boolean;
+  role: UserRole;
   defaultCurrency: string;
   timezone: string;
   createdAt: Date;
@@ -35,6 +36,7 @@ export function toUserProfile(user: UserRecord): UserProfile {
     avatarUrl: user.avatarUrl,
     emailVerified: user.emailVerified,
     phoneVerified: user.phoneVerified,
+    role: user.role,
     providers: providersOf(user),
     defaultCurrency: user.defaultCurrency,
     timezone: user.timezone,

@@ -32,6 +32,10 @@ abstract final class ApiRoutes {
   static const String bugReports = '$prefix/bug-reports';
   static String bugReport(String id) => '$bugReports/$id';
 
+  /// Admin-only triage surface — `AdminGuard` answers 403 for anyone else.
+  static const String adminBugReports = '$prefix/admin/bug-reports';
+  static String adminBugReport(String id) => '$adminBugReports/$id';
+
   static const String reportSummary = '$prefix/reports/summary';
   static const String reportDaily = '$prefix/reports/daily';
   static const String reportMonthly = '$prefix/reports/monthly';

@@ -33,3 +33,17 @@ export function GuestOnlyRoute() {
   if (status === 'authenticated') return <Navigate to={ROUTES.dashboard} replace />;
   return <Outlet />;
 }
+
+/**
+ * Wraps the admin section. The server is the authority — `AdminGuard` answers
+ * 403 for a non-admin — but bouncing to the dashboard reads better than a
+ * dead-end error page, and hides the link before anyone clicks it.
+ */
+export function AdminRoute() {
+  const { status, user } = useAuth();
+
+  if (status === 'loading') return <FullPageLoading />;
+  if (status === 'anonymous') return <Navigate to={ROUTES.login} replace />;
+  if (user?.role !== 'ADMIN') return <Navigate to={ROUTES.dashboard} replace />;
+  return <Outlet />;
+}

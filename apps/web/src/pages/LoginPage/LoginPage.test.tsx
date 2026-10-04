@@ -22,6 +22,7 @@ const user: UserProfile = {
   avatarUrl: null,
   emailVerified: true,
   phoneVerified: false,
+  role: 'USER',
   providers: ['email'],
   defaultCurrency: 'USD',
   timezone: 'UTC',

@@ -42,6 +42,10 @@ export const API_ROUTES = {
     base: `${API_PREFIX}/bug-reports`,
     byId: (id: string) => `${API_PREFIX}/bug-reports/${id}`,
   },
+  adminBugReports: {
+    base: `${API_PREFIX}/admin/bug-reports`,
+    byId: (id: string) => `${API_PREFIX}/admin/bug-reports/${id}`,
+  },
   reports: {
     summary: `${API_PREFIX}/reports/summary`,
     daily: `${API_PREFIX}/reports/daily`,

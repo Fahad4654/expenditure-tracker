@@ -82,7 +82,7 @@ Every command runs **from inside its app directory**:
 | `npm run build`        | Production build (`dist/`)              |
 | `npm run typecheck`    | Strict TypeScript check                 |
 | `npm run lint`         | ESLint                                  |
-| `npm test`             | Vitest (75 tests, incl. money math)     |
+| `npm test`             | Vitest (153 tests, incl. money math)    |
 | `npm run format`       | Prettier write                          |
 | `npm run db:migrate`   | New migration (dev)                     |
 | `npm run db:deploy`    | Apply pending migrations (CI/prod)      |
@@ -98,7 +98,7 @@ Every command runs **from inside its app directory**:
 | `npm run preview`   | Serve the production build          |
 | `npm run typecheck` | Strict TypeScript check             |
 | `npm run lint`      | ESLint                              |
-| `npm test`          | Vitest (47 tests)                   |
+| `npm test`          | Vitest (77 tests)                   |
 | `npm run format`    | Prettier write                      |
 
 ### `apps/mobile`
@@ -171,12 +171,12 @@ ships React's production build.
 ## Testing
 
 ```bash
-cd apps/api && npm test                   # API (125 tests)
-cd apps/web && npm test                   # web client (62 tests)
-cd apps/mobile && flutter test            # mobile (83 tests)
+cd apps/api && npm test                   # API (153 tests)
+cd apps/web && npm test                   # web client (77 tests)
+cd apps/mobile && flutter test            # mobile (105 tests)
 ```
 
-Current coverage — 270 tests, all DB-free (`PrismaService` is mocked, so the
+Current coverage — 335 tests, all DB-free (`PrismaService` is mocked, so the
 suite runs without infrastructure or secrets):
 
 - `apps/api/test/health.spec.ts` — success/error envelopes, readiness failure
@@ -184,7 +184,9 @@ suite runs without infrastructure or secrets):
 - `apps/api/test/utils.spec.ts` — TTL parsing, timezone-aware date ranges,
   UTC-midnight Prisma bounds, money aggregation above `2^53`.
 - `apps/api/test/guards.spec.ts` — `JwtAuthGuard` (bearer parsing, `@Public()`
-  bypass, no user id from the request) and `CookieCsrfGuard` double-submit.
+  bypass, no user id from the request), `CookieCsrfGuard` double-submit, and
+  `AdminGuard` (role read per request, 403 for non-admin / deleted / unknown
+  accounts).
 - `apps/api/test/auth.spec.ts` — register/login, identical wrong-email and
   wrong-password errors, dummy-hash timing path, lockout thresholds, refresh
   rotation and family revocation on reuse, idempotent logout.
@@ -408,9 +410,39 @@ if present, but nothing depends on it.
   `ConfirmDialog`) and `BugReportFormPage` (title, description, severity
   dropdown, optional area; the platform is attached from
   `defaultTargetPlatform`, so only Android/iOS report one).
-- **Tests:** `bug_reports.spec.ts` (API, 7 tests) plus
+- **Tests:** `bug_reports.spec.ts` (API, 10 tests) plus
   `BugReportsPage.test.tsx` (5) on the web and `bug_reports_test.dart` (4) on
   mobile.
+
+### Delivered: Admin bug triage
+
+- **Roles:** `UserRole` (`USER` | `ADMIN`) is now part of `UserProfile` on all
+  three surfaces, so each one decides independently whether to render its
+  admin entry point. Authorisation still happens on the server: `AdminGuard`
+  is applied at the controller (the global `JwtAuthGuard` runs first) and
+  re-reads the role from the database on every request, so demoting an admin
+  takes effect immediately — the access token still only carries `sub`/`fid`.
+- **API:** `GET /admin/bug-reports` (every report, newest first, joined with
+  `userId` / `reporterName` / `reporterEmail`) and
+  `PATCH /admin/bug-reports/:id` (accepts `status` only, bumps `version`, logs
+  `BUG_REPORT_STATUS`). The caller-scoped `/bug-reports` endpoints are
+  untouched: users still see only their own reports, and a foreign id is still
+  a 404.
+- **Web:** `/admin/bug-reports` sits behind `AdminRoute`, which sends
+  non-admins back to the dashboard; the sidebar shows an "Admin panel" link
+  only for `role === 'ADMIN'`. The page is a client-filtered triage board with
+  a status `Select` on every card.
+- **Mobile:** Profile → Manage → "Admin panel" appears only when
+  `UserProfile.isAdmin`, and opens `AdminBugReportsPage` — status filter plus a
+  `DropdownButtonFormField` per card. `role` is parsed defensively, so a
+  profile snapshot cached before the field existed never reads as an admin.
+- **Seed:** `demo@example.com` is promoted to `ADMIN` on every seed run, so the
+  panel is reachable in a local environment without a manual update.
+- **Tests:** `guards.spec.ts` (5 `AdminGuard` cases) and three extra
+  `bug_reports.spec.ts` cases on the API,
+  `AdminBugReportsPage.test.tsx` (4) on the web, and
+  `admin_bug_reports_test.dart` (5) plus a legacy-snapshot case in
+  `local_store_test.dart` on mobile.
 
 ## Troubleshooting
 

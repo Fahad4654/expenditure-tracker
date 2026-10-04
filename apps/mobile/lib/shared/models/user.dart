@@ -24,6 +24,7 @@ class UserProfile {
     required this.avatarUrl,
     required this.emailVerified,
     required this.phoneVerified,
+    required this.role,
     required this.providers,
     required this.defaultCurrency,
     required this.timezone,
@@ -38,6 +39,14 @@ class UserProfile {
   final String? avatarUrl;
   final bool emailVerified;
   final bool phoneVerified;
+
+  /// `USER` | `ADMIN` — decides which admin entry points this profile sees.
+  final String role;
+
+  /// Whether the profile may reach the admin surfaces. The server re-checks
+  /// this on every admin request; here it only gates navigation.
+  bool get isAdmin => role == 'ADMIN';
+
   final List<AuthProvider> providers;
   final CurrencyCode defaultCurrency;
   final Timezone timezone;
@@ -54,6 +63,8 @@ class UserProfile {
       avatarUrl: map['avatarUrl'] as String?,
       emailVerified: map['emailVerified']! as bool,
       phoneVerified: map['phoneVerified']! as bool,
+      // Profiles cached before the field existed must not read as admins.
+      role: map['role'] as String? ?? 'USER',
       providers: ((map['providers'] as List<Object?>?) ?? const [])
           .map((p) => AuthProvider.parse(p! as String))
           .toList(),
@@ -73,6 +84,7 @@ class UserProfile {
         avatarUrl: avatarUrl,
         emailVerified: emailVerified,
         phoneVerified: phoneVerified,
+        role: role,
         providers: providers,
         defaultCurrency: defaultCurrency ?? this.defaultCurrency,
         timezone: timezone ?? this.timezone,
@@ -89,6 +101,7 @@ class UserProfile {
         'avatarUrl': avatarUrl,
         'emailVerified': emailVerified,
         'phoneVerified': phoneVerified,
+        'role': role,
         'providers': providers.map((p) => p.wire).toList(),
         'defaultCurrency': defaultCurrency,
         'timezone': timezone,

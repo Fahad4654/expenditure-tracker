@@ -10,6 +10,7 @@ import '../../core/network/api_error.dart';
 import '../../shared/widgets/confirm_dialog.dart';
 import '../../shared/widgets/error_banner.dart';
 import '../../shared/widgets/section_card.dart';
+import '../bug_reports/admin_bug_reports_page.dart';
 import '../bug_reports/bug_reports_page.dart';
 import '../categories/categories_page.dart';
 
@@ -151,6 +152,12 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _openBugReports() async {
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const BugReportsPage()),
+    );
+  }
+
+  Future<void> _openAdminPanel() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const AdminBugReportsPage()),
     );
   }
 
@@ -342,6 +349,20 @@ class _ProfilePageState extends State<ProfilePage> {
                               trailing: const Icon(Icons.chevron_right),
                               onTap: _openBugReports,
                             ),
+                            // Admin-only: everyone else's reports never leave
+                            // the server, so the entry point is hidden too.
+                            if (user?.isAdmin == true)
+                              ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                leading:
+                                    const Icon(Icons.shield_outlined),
+                                title: const Text('Admin panel'),
+                                subtitle: const Text(
+                                  'Triage bug reports from everyone',
+                                ),
+                                trailing: const Icon(Icons.chevron_right),
+                                onTap: _openAdminPanel,
+                              ),
                           ],
                         ),
                       ),

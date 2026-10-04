@@ -125,6 +125,10 @@ an SMS provider.
 | `GET`   | `/users/me` | Current profile                          |
 | `PATCH` | `/users/me` | Update name / defaultCurrency / timezone |
 
+Every profile response (auth session, `/auth/me`, `/users/me`) carries `role`:
+`USER` (the default) or `ADMIN`. Clients use it to decide whether to render
+the admin entry points; the server never trusts it — see [Admin](#admin).
+
 ### Transactions
 
 | Method   | Path                | Description                                 |
@@ -242,11 +246,34 @@ Behaviour:
 - `severity` defaults to `MEDIUM` and is the only triage input the client
   supplies: `LOW` | `MEDIUM` | `HIGH` | `CRITICAL`. `status` is **never** taken
   from the request body — every report starts as `OPEN` and only the server
-  moves it (`IN_PROGRESS`, `RESOLVED`, `CLOSED`).
+  moves it (`IN_PROGRESS`, `RESOLVED`, `CLOSED`), via the
+  [admin panel](#admin) below.
 - Deletes are soft (`deletedAt`) and bump `version`, so the tombstone is ready
   for the sync feed. Reports are **not** part of the Phase 5 sync feed yet.
 - Every mutation emits a `BUG_REPORT_CREATE` / `BUG_REPORT_DELETE` audit line
   through `logEvent`.
+
+### Admin
+
+| Method   | Path                     | Description                                    |
+| -------- | ------------------------ | ---------------------------------------------- |
+| `GET`    | `/admin/bug-reports`     | Every user's reports, newest `createdAt` first |
+| `PATCH`  | `/admin/bug-reports/:id` | Set triage `status` (`OPEN` \| `IN_PROGRESS` \| `RESOLVED` \| `CLOSED`) |
+
+Behaviour:
+
+- Guarded by `AdminGuard`. The caller's `role` is re-read from the database on
+  every request (the access token only carries `sub`/`fid`), so demoting an
+  admin takes effect immediately instead of at the next refresh. Anything other
+  than a live `ADMIN` account — including a soft-deleted one — is **403**
+  `FORBIDDEN`.
+- The list is the only endpoint that crosses user boundaries: it joins the
+  reporter onto each row as `userId`, `reporterName` and `reporterEmail` and
+  hides tombstoned reports. `/bug-reports` stays strictly caller-scoped.
+- `PATCH` bumps `version` (ready for the sync feed) and emits a
+  `BUG_REPORT_STATUS` audit event with the acting admin's id.
+- `GET /admin/bug-reports` is for the maintainer's triage board; there is no
+  bulk or delete variant.
 
 ### Reports
 

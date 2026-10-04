@@ -1,7 +1,8 @@
 import { Route, Routes } from 'react-router-dom';
 import AppLayout from './components/AppLayout/AppLayout';
 import AuthProvider from './auth/AuthProvider';
-import { GuestOnlyRoute, ProtectedRoute } from './auth/ProtectedRoute';
+import { GuestOnlyRoute, ProtectedRoute, AdminRoute } from './auth/ProtectedRoute';
+import AdminBugReportsPage from './pages/AdminBugReportsPage/AdminBugReportsPage';
 import CategoriesPage from './pages/CategoriesPage/CategoriesPage';
 import BugReportsPage from './pages/BugReportsPage/BugReportsPage';
 import DashboardPage from './pages/DashboardPage/DashboardPage';
@@ -59,6 +60,12 @@ export default function App() {
             <Route path={ROUTES.reminders} element={<RemindersPage />} />
             <Route path={ROUTES.reports} element={<ReportsPage />} />
             <Route path={ROUTES.bugReports} element={<BugReportsPage />} />
+
+            {/* Admin only — `AdminRoute` sends everyone else back to the dashboard. */}
+            <Route element={<AdminRoute />}>
+              <Route path={ROUTES.adminBugReports} element={<AdminBugReportsPage />} />
+            </Route>
+
             <Route path={ROUTES.profile} element={<ProfilePage />} />
             <Route path={ROUTES.settings} element={<ProfilePage />} />
           </Route>

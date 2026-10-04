@@ -4,6 +4,7 @@ import { COOKIE_NAMES } from '../src/shared/config';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CookieCsrfGuard } from '../src/common/guards/cookie-csrf.guard';
 import { JwtAuthGuard } from '../src/common/guards/jwt-auth.guard';
+import { AdminGuard } from '../src/common/guards/admin.guard';
 import type { TokenService } from '../src/auth/token.service';
 
 function contextFor(request: unknown): ExecutionContext {
@@ -144,5 +145,62 @@ describe('JwtAuthGuard', () => {
     expect(error?.getResponse()).toMatchObject({ code: 'UNAUTHORIZED' });
     // The underlying JWT message must not leak.
     expect(JSON.stringify(error?.getResponse())).not.toContain('jwt expired');
+  });
+});
+
+describe('AdminGuard', () => {
+  let findUnique: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    findUnique = vi.fn();
+  });
+
+  const makeGuard = () => new AdminGuard({ user: { findUnique } } as never);
+
+  it('rejects a request that never went through authentication', async () => {
+    const error = await rejectionOf(makeGuard().canActivate(contextFor({ headers: {} })));
+    expect(error?.getStatus()).toBe(401);
+    expect(error?.getResponse()).toMatchObject({ code: 'UNAUTHORIZED' });
+    expect(findUnique).not.toHaveBeenCalled();
+  });
+
+  it('admits an admin, looking the role up by the token sub', async () => {
+    findUnique.mockResolvedValue({ role: 'ADMIN', deletedAt: null });
+
+    await expect(
+      makeGuard().canActivate(contextFor({ user: { sub: 'user-1', fid: 'fam-1' } })),
+    ).resolves.toBe(true);
+    expect(findUnique).toHaveBeenCalledWith({
+      where: { id: 'user-1' },
+      select: { role: true, deletedAt: true },
+    });
+  });
+
+  it('rejects a regular user with the same 403 as any other intruder', async () => {
+    findUnique.mockResolvedValue({ role: 'USER', deletedAt: null });
+
+    const error = await rejectionOf(
+      makeGuard().canActivate(contextFor({ user: { sub: 'user-2', fid: 'fam-1' } })),
+    );
+    expect(error?.getStatus()).toBe(403);
+    expect(error?.getResponse()).toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  it('rejects a soft-deleted admin', async () => {
+    findUnique.mockResolvedValue({ role: 'ADMIN', deletedAt: new Date() });
+
+    const error = await rejectionOf(
+      makeGuard().canActivate(contextFor({ user: { sub: 'user-3', fid: 'fam-1' } })),
+    );
+    expect(error?.getStatus()).toBe(403);
+  });
+
+  it('rejects an account that no longer exists', async () => {
+    findUnique.mockResolvedValue(null);
+
+    const error = await rejectionOf(
+      makeGuard().canActivate(contextFor({ user: { sub: 'ghost', fid: 'fam-1' } })),
+    );
+    expect(error?.getStatus()).toBe(403);
   });
 });

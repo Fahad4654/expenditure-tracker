@@ -13,6 +13,9 @@ const NAV_LINKS = [
   { to: ROUTES.bugReports, label: 'Bug reports' },
 ] as const;
 
+/** Shown only to accounts the server would let through `AdminGuard`. */
+const ADMIN_LINKS = [{ to: ROUTES.adminBugReports, label: 'Admin panel' }] as const;
+
 const linkClass = ({ isActive }: { isActive: boolean }) =>
   `rounded-md px-3 py-2.5 text-sm transition-colors duration-150 ${
     isActive
@@ -36,6 +39,8 @@ export default function Sidebar({
 }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+
+  const links = user?.role === 'ADMIN' ? [...NAV_LINKS, ...ADMIN_LINKS] : NAV_LINKS;
 
   async function handleLogout() {
     await logout();
@@ -80,7 +85,7 @@ export default function Sidebar({
       </div>
 
       <nav aria-label="Main navigation" className="flex flex-col gap-1 text-sm">
-        {NAV_LINKS.map((link) => (
+        {links.map((link) => (
           <NavLink key={link.to} to={link.to} onClick={onNavigate} className={linkClass}>
             {link.label}
           </NavLink>

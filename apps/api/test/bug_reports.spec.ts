@@ -155,4 +155,52 @@ describe('BugReportsService', () => {
     expect(prisma.bugReport.update.mock.calls[0]![0].data.deletedAt).toBeInstanceOf(Date);
     expect(deleted.id).toBe('bug-1');
   });
+
+  describe('admin', () => {
+    const reporter = { id: 'user-9', name: 'Bob Khan', email: 'bob@example.com' };
+    const adminRecord = (overrides: Record<string, unknown> = {}) =>
+      reportRecord({ ...overrides, user: reporter });
+
+    it('lists every report, unscoped by user, with the reporter joined in', async () => {
+      prisma.bugReport.findMany.mockResolvedValue([adminRecord()]);
+
+      const list = await service.listAll();
+
+      expect(prisma.bugReport.findMany.mock.calls[0]![0]).toMatchObject({
+        where: { deletedAt: null },
+        orderBy: { createdAt: 'desc' },
+        include: { user: { select: { id: true, name: true, email: true } } },
+      });
+      expect(list[0]).toMatchObject({
+        id: 'bug-1',
+        userId: 'user-9',
+        reporterName: 'Bob Khan',
+        reporterEmail: 'bob@example.com',
+      });
+    });
+
+    it('applies a triage status and bumps the sync version', async () => {
+      prisma.bugReport.findUnique.mockResolvedValue(reportRecord());
+      prisma.bugReport.update.mockResolvedValue(adminRecord({ status: 'RESOLVED', version: 2 }));
+
+      const updated = await service.setStatus('bug-1', 'RESOLVED');
+
+      expect(prisma.bugReport.update.mock.calls[0]![0]).toMatchObject({
+        where: { id: 'bug-1' },
+        data: { status: 'RESOLVED', version: { increment: 1 } },
+      });
+      expect(updated).toMatchObject({
+        status: 'RESOLVED',
+        reporterName: 'Bob Khan',
+        reporterEmail: 'bob@example.com',
+      });
+    });
+
+    it('refuses to triage a tombstoned report', async () => {
+      prisma.bugReport.findUnique.mockResolvedValue(reportRecord({ deletedAt: NOW }));
+
+      await expectRejection(service.setStatus('bug-1', 'CLOSED'), 404, 'NOT_FOUND');
+      expect(prisma.bugReport.update).not.toHaveBeenCalled();
+    });
+  });
 });

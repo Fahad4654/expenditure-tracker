@@ -383,6 +383,9 @@ class NotesRepository {
 /// Bug reports over REST — network-only, like the web client: reports are not
 /// part of the sync feed. The caller only ever sees their own reports, and the
 /// triage `status` is decided server-side.
+///
+/// [listAll] and [setStatus] are the admin half: they cross account
+/// boundaries, so the server answers 403 unless the caller's role is `ADMIN`.
 class BugReportsRepository {
   BugReportsRepository(this._api);
 
@@ -402,6 +405,18 @@ class BugReportsRepository {
 
   Future<void> remove(String id) {
     return _api.delete<void>(ApiRoutes.bugReport(id), decode: (_) {});
+  }
+
+  Future<List<AdminBugReport>> listAll() {
+    return _api.get(ApiRoutes.adminBugReports, decode: _adminBugReportList);
+  }
+
+  Future<AdminBugReport> setStatus(String id, String status) {
+    return _api.patch(
+      ApiRoutes.adminBugReport(id),
+      body: {'status': status},
+      decode: AdminBugReport.fromJson,
+    );
   }
 }
 
@@ -519,3 +534,6 @@ List<Note> _noteList(Object? json) =>
 
 List<BugReport> _bugReportList(Object? json) =>
     (json! as List<Object?>).map(BugReport.fromJson).toList();
+
+List<AdminBugReport> _adminBugReportList(Object? json) =>
+    (json! as List<Object?>).map(AdminBugReport.fromJson).toList();

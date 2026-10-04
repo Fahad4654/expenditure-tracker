@@ -30,6 +30,9 @@ export const ROUTES = {
   bugReports: '/bug-reports',
   settings: '/settings',
   profile: '/profile',
+
+  // Admin (rendered only when the signed-in profile has role ADMIN)
+  adminBugReports: '/admin/bug-reports',
 } as const;
 
 /** Build the URL for a single transaction detail page. */

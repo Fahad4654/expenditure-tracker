@@ -633,6 +633,7 @@ void main() {
         avatarUrl: null,
         emailVerified: true,
         phoneVerified: false,
+        role: 'ADMIN',
         providers: [AuthProvider.email],
         defaultCurrency: 'BDT',
         timezone: 'Asia/Dhaka',
@@ -645,6 +646,33 @@ void main() {
       expect(loaded.name, 'Demo');
       expect(loaded.providers, [AuthProvider.email]);
       expect(loaded.defaultCurrency, 'BDT');
+      expect(loaded.role, 'ADMIN');
+      expect(loaded.isAdmin, isTrue);
+    });
+
+    test('a snapshot cached before `role` existed is not read as an admin', () {
+      const user = UserProfile(
+        id: 'user-2',
+        name: 'Legacy',
+        email: null,
+        phone: null,
+        avatarUrl: null,
+        emailVerified: false,
+        phoneVerified: false,
+        role: 'USER',
+        providers: [],
+        defaultCurrency: 'BDT',
+        timezone: 'UTC',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      );
+      final legacy = jsonDecode(jsonEncode(user.toJson())) as Map<String, Object?>;
+      legacy.remove('role');
+
+      final parsed = UserProfile.fromJson(legacy);
+
+      expect(parsed.role, 'USER');
+      expect(parsed.isAdmin, isFalse);
     });
   });
 

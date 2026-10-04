@@ -25,6 +25,7 @@ function makeUser(name: string): UserProfile {
     avatarUrl: null,
     emailVerified: true,
     phoneVerified: false,
+    role: 'USER',
     providers: ['email'],
     defaultCurrency: 'USD',
     timezone: 'UTC',

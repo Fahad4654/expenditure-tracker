@@ -21,6 +21,16 @@ export interface BugReport {
   updatedAt: IsoDateTime;
 }
 
+/**
+ * Admin view of a report: the user-facing {@link BugReport} plus the identity
+ * of whoever filed it. Never returned by the caller-scoped endpoints.
+ */
+export interface AdminBugReport extends BugReport {
+  userId: Uuid;
+  reporterName: string;
+  reporterEmail: string | null;
+}
+
 export interface CreateBugReportInput {
   title: string;
   description: string;
