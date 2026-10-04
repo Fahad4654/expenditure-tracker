@@ -27,6 +27,7 @@ export const ROUTES = {
   notes: '/notes',
   reminders: '/reminders',
   reports: '/reports',
+  bugReports: '/bug-reports',
   settings: '/settings',
   profile: '/profile',
 } as const;

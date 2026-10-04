@@ -7,3 +7,4 @@ export * from './reminder';
 export * from './transaction';
 export * from './report';
 export * from './sync';
+export * from './bug-report';

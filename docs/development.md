@@ -329,9 +329,10 @@ if present, but nothing depends on it.
   request replay; `TokenStore` persists only the refresh token (secure
   storage in production, in-memory backend in tests).
 - **Repositories:** `Auth`, `Transactions`, `Categories`, `Reports`, `Users`,
-  `Reminders`, `Notes` mirroring the web client's contracts, including `clientId`
-  idempotency and `baseVersion` optimistic concurrency. Reminders and notes are
-  network-only (neither table is in the sync feed).
+  `Reminders`, `Notes`, `BugReports` mirroring the web client's contracts,
+  including `clientId`
+  idempotency and `baseVersion` optimistic concurrency. Reminders, notes and
+  bug reports are network-only (none of those tables are in the sync feed).
 - **Auth flow:** splash restores the session (refresh → shell) or lands on
   login; login/register validate client-side and surface the server's
   message; logout revokes and clears tokens.
@@ -350,7 +351,7 @@ if present, but nothing depends on it.
   transactions), profile (details, defaults, change password, sign out).
 - **Platform:** `INTERNET` permission + cleartext for local dev on Android,
   local-network allowance on iOS; builds on `minSdk 24`.
-- **Tests:** 95 mobile tests (301 total across the monorepo) plus an opt-in
+- **Tests:** 99 mobile tests (317 total across the monorepo) plus an opt-in
   live-API smoke test (`LIVE_API=1`).
 - `flutter analyze` · `flutter test` · `flutter build apk --debug` all green.
 
@@ -383,6 +384,33 @@ if present, but nothing depends on it.
 - **Tests:** `notes_reminders.spec.ts` (API, 20 tests) plus
   `NotesPage.test.tsx` (6) and `RemindersPage.test.tsx` (5) on the web, and
   `reminders_test.dart` (7) + `notes_test.dart` (4) on mobile.
+
+---
+
+### Delivered: Bug reports
+
+- **Schema:** `BugReport` (title, description, `severity`, server-owned
+  `status`, optional `area` / `appVersion` / `platform`) — user-owned,
+  soft-deleted, `version`-bumped, migrated in
+  `20261004210700_add_bug_reports`, with `BugReportSeverity` /
+  `BugReportStatus` enums.
+- **API:** `GET/POST /bug-reports` and `DELETE /bug-reports/:id` behind
+  `JwtAuthGuard`; shared Zod schema (`createBugReportSchema`) and route
+  constants live in `shared/{validation,types,config}` and are mirrored into
+  `apps/web`. The client may choose `severity` but never `status`, and every
+  mutation calls `logEvent` (`BUG_REPORT_CREATE` / `BUG_REPORT_DELETE`).
+- **Web:** `/bug-reports` page with a sidebar link — inline create form
+  (system `Select` for severity, `platform: 'web'` captured automatically),
+  responsive auto-fit card grid with severity/status chips, and delete behind
+  an inline confirm panel.
+- **Mobile:** Profile → Manage → "Report a bug" opens a network-only
+  `BugReportsPage` (severity/status chips, pull-to-refresh, delete via
+  `ConfirmDialog`) and `BugReportFormPage` (title, description, severity
+  dropdown, optional area; the platform is attached from
+  `defaultTargetPlatform`, so only Android/iOS report one).
+- **Tests:** `bug_reports.spec.ts` (API, 7 tests) plus
+  `BugReportsPage.test.tsx` (5) on the web and `bug_reports_test.dart` (4) on
+  mobile.
 
 ## Troubleshooting
 

@@ -76,6 +76,22 @@ enum ChangeKind {
   DELETE
 }
 
+/// How badly a reported bug hurts. Clients send it, maintainers triage on it.
+enum BugReportSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+/// Triage state of a report. Only the server moves it — clients can read it.
+enum BugReportStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
 // --- User & authentication ---------------------------------------------------
 
 model User {
@@ -112,6 +128,7 @@ model User {
   changeLogs     ChangeLog[]
   notes          Note[]
   reminders      Reminder[]
+  bugReports     BugReport[]
 
   @@index([createdAt])
 }
@@ -369,4 +386,34 @@ model Reminder {
 
   @@index([userId, dueDate])
   @@index([userId, completedAt])
+}
+
+/// A user-submitted bug report. Not part of the offline sync feed — the
+/// `version` counter is kept so sync can adopt reports later without a
+/// schema change, exactly like `Note`/`Reminder`.
+model BugReport {
+  id      String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId  String @db.Uuid
+  /// One-line summary, 1–160 chars.
+  title   String
+  /// What went wrong, up to 5000 chars.
+  description String @db.Text
+  severity BugReportSeverity @default(MEDIUM)
+  status   BugReportStatus   @default(OPEN)
+  /// Screen/area the bug happened in, e.g. `Transactions`.
+  area     String? @db.VarChar(80)
+  /// Client-reported build, e.g. `1.4.0`.
+  appVersion String? @db.VarChar(40)
+  /// Client-reported platform: `web`, `android`, `ios`.
+  platform String? @db.VarChar(40)
+
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
 }

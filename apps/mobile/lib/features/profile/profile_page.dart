@@ -10,6 +10,7 @@ import '../../core/network/api_error.dart';
 import '../../shared/widgets/confirm_dialog.dart';
 import '../../shared/widgets/error_banner.dart';
 import '../../shared/widgets/section_card.dart';
+import '../bug_reports/bug_reports_page.dart';
 import '../categories/categories_page.dart';
 
 /// Currencies offered in the preference dropdown (ISO-4217).
@@ -144,6 +145,12 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _openCategories() async {
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const CategoriesPage()),
+    );
+  }
+
+  Future<void> _openBugReports() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const BugReportsPage()),
     );
   }
 
@@ -326,6 +333,14 @@ class _ProfilePageState extends State<ProfilePage> {
                               subtitle: const Text('Create and organise your categories'),
                               trailing: const Icon(Icons.chevron_right),
                               onTap: _openCategories,
+                            ),
+                            ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: const Icon(Icons.bug_report_outlined),
+                              title: const Text('Report a bug'),
+                              subtitle: const Text('Something broken? Tell us about it'),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: _openBugReports,
                             ),
                           ],
                         ),

@@ -12,6 +12,7 @@ import { ReportsModule } from './reports/reports.module';
 import { SyncModule } from './sync/sync.module';
 import { NotesModule } from './notes/notes.module';
 import { RemindersModule } from './reminders/reminders.module';
+import { BugReportsModule } from './bug-reports/bug-reports.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { RemindersModule } from './reminders/reminders.module';
     SyncModule,
     NotesModule,
     RemindersModule,
+    BugReportsModule,
   ],
 })
 export class AppModule {}

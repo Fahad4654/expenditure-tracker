@@ -142,6 +142,31 @@ Map<String, Object?> noteJson({
       'updatedAt': '2026-10-01T00:00:00.000Z',
     };
 
+const String bugReportId = '99999999-9999-4999-8999-999999999999';
+
+Map<String, Object?> bugReportJson({
+  String id = bugReportId,
+  String title = 'Chart renders empty',
+  String description = 'The monthly report chart is blank for October.',
+  String severity = 'HIGH',
+  String status = 'OPEN',
+  String? area = 'Reports',
+  String? appVersion,
+  String? platform = 'web',
+}) =>
+    {
+      'id': id,
+      'title': title,
+      'description': description,
+      'severity': severity,
+      'status': status,
+      'area': area,
+      'appVersion': appVersion,
+      'platform': platform,
+      'createdAt': '2026-10-01T00:00:00.000Z',
+      'updatedAt': '2026-10-01T00:00:00.000Z',
+    };
+
 Map<String, Object?> syncResponseJson({
   List<Map<String, Object?>> results = const [],
   List<Map<String, Object?>> changes = const [],
@@ -235,6 +260,9 @@ void registerDefaultHandlers(FakeApiClient api) {
     'POST /api/v1/notes': (_) => noteJson(),
     'PATCH /api/v1/notes/$noteId': (_) => noteJson(),
     'DELETE /api/v1/notes/$noteId': (_) => noteJson(),
+    'GET /api/v1/bug-reports': (_) => <Object?>[],
+    'POST /api/v1/bug-reports': (_) => bugReportJson(),
+    'DELETE /api/v1/bug-reports/$bugReportId': (_) => bugReportJson(),
     'GET /api/v1/reports/summary': (_) => summaryJson(),
     'GET /api/v1/reports/daily': (_) => dailyJson(),
     'GET /api/v1/reports/monthly': (_) => monthlyJson(),

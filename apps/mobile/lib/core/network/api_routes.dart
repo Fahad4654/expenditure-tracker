@@ -29,6 +29,9 @@ abstract final class ApiRoutes {
   static const String notes = '$prefix/notes';
   static String note(String id) => '$notes/$id';
 
+  static const String bugReports = '$prefix/bug-reports';
+  static String bugReport(String id) => '$bugReports/$id';
+
   static const String reportSummary = '$prefix/reports/summary';
   static const String reportDaily = '$prefix/reports/daily';
   static const String reportMonthly = '$prefix/reports/monthly';

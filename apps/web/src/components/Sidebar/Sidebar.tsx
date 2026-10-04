@@ -10,6 +10,7 @@ const NAV_LINKS = [
   { to: ROUTES.categories, label: 'Categories' },
   { to: ROUTES.notes, label: 'Notes' },
   { to: ROUTES.reminders, label: 'Reminders' },
+  { to: ROUTES.bugReports, label: 'Bug reports' },
 ] as const;
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>

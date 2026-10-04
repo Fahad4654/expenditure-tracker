@@ -9,3 +9,4 @@ export * from './transaction';
 export * from './report';
 export * from './sync';
 export * from './money';
+export * from './bug-report';

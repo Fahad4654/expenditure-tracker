@@ -224,6 +224,30 @@ Behaviour:
 - Audited as `REMINDER_CREATE` / `REMINDER_UPDATE` / `REMINDER_COMPLETE` /
   `REMINDER_REOPEN` / `REMINDER_DELETE`.
 
+### Bug reports
+
+| Method   | Path             | Description                                          |
+| -------- | ---------------- | ---------------------------------------------------- |
+| `GET`    | `/bug-reports`   | Own reports, newest `createdAt` first                |
+| `POST`   | `/bug-reports`   | Report a bug (`title`, `description`, `severity`?, `area`?, `appVersion`?, `platform`?) |
+| `DELETE` | `/bug-reports/:id` | Soft delete (own only)                             |
+
+Behaviour:
+
+- Reports are private to the caller; a foreign or deleted `bugReportId` is
+  **404** (never 403 — existence is not disclosed).
+- `title` is 1–160 chars, `description` 1–5000 chars (both required). Optional
+  context: `area` (screen/feature, ≤80 chars), `appVersion` (≤40) and
+  `platform` (`web` / `android` / `ios`, ≤40).
+- `severity` defaults to `MEDIUM` and is the only triage input the client
+  supplies: `LOW` | `MEDIUM` | `HIGH` | `CRITICAL`. `status` is **never** taken
+  from the request body — every report starts as `OPEN` and only the server
+  moves it (`IN_PROGRESS`, `RESOLVED`, `CLOSED`).
+- Deletes are soft (`deletedAt`) and bump `version`, so the tombstone is ready
+  for the sync feed. Reports are **not** part of the Phase 5 sync feed yet.
+- Every mutation emits a `BUG_REPORT_CREATE` / `BUG_REPORT_DELETE` audit line
+  through `logEvent`.
+
 ### Reports
 
 | Method | Path                  | Description                                          |

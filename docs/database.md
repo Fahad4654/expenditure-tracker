@@ -33,6 +33,7 @@ User 1──* Category        (userId NULL ⇒ system category)
 User 1──* Transaction ──* Category
 User 1──* Note
 User 1──* Reminder
+User 1──* BugReport
 User 1──* SyncOperation
 User 1──* ChangeLog
 ```
@@ -142,6 +143,27 @@ number of transactions — the link is `Transaction.noteId` (nullable FK,
 Indexes: `@@index([userId, dueDate])` (list order + due-date filter) and
 `@@index([userId, completedAt])` (pending vs completed).
 
+### `BugReport`
+
+| Column                               | Type                 | Notes                                          |
+| ------------------------------------ | -------------------- | ---------------------------------------------- |
+| `id`                                 | `uuid` PK            |                                                |
+| `userId`                             | `uuid` FK            | cascade delete                                 |
+| `title`                              | `text`               | 1–160 chars                                    |
+| `description`                        | `text`               | 1–5000 chars                                   |
+| `severity`                           | `BugReportSeverity`  | `LOW` \| `MEDIUM` \| `HIGH` \| `CRITICAL`, default `MEDIUM` |
+| `status`                             | `BugReportStatus`    | `OPEN` \| `IN_PROGRESS` \| `RESOLVED` \| `CLOSED`, default `OPEN` |
+| `area`                               | `varchar(80)` NULL   | screen/feature the bug happened in             |
+| `appVersion`                         | `varchar(40)` NULL   | client-reported build                          |
+| `platform`                           | `varchar(40)` NULL   | `web` \| `android` \| `ios`                    |
+| `version`                            | `int`                | +1 on every write; ready for a future sync feed |
+| `createdAt` / `updatedAt` / `deletedAt` |                    | soft delete                                     |
+
+List order is `@@index([userId, createdAt DESC])`;
+`@@index([status, createdAt DESC])` serves a future triage queue. The client
+picks the severity but never the status — that column is written by the server
+only. Migrated in `20261004210700_add_bug_reports`.
+
 ### `RefreshToken`
 
 Opaque tokens are stored **hashed** (SHA-256) only.
@@ -218,6 +240,9 @@ UNIQUE (userId, clientId)                      -- sync idempotency
 -- Notes & reminders
 Note (userId, updatedAt DESC)                  -- list newest edit first
 Reminder (userId, dueDate), (userId, completedAt)
+
+-- Bug reports
+BugReport (userId, createdAt DESC), (status, createdAt DESC)
 
 -- Auth
 RefreshToken UNIQUE (tokenHash), (userId), (familyId), (expiresAt)

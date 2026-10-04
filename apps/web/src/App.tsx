@@ -3,6 +3,7 @@ import AppLayout from './components/AppLayout/AppLayout';
 import AuthProvider from './auth/AuthProvider';
 import { GuestOnlyRoute, ProtectedRoute } from './auth/ProtectedRoute';
 import CategoriesPage from './pages/CategoriesPage/CategoriesPage';
+import BugReportsPage from './pages/BugReportsPage/BugReportsPage';
 import DashboardPage from './pages/DashboardPage/DashboardPage';
 import HomePage from './pages/HomePage/HomePage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage/ForgotPasswordPage';
@@ -57,6 +58,7 @@ export default function App() {
             <Route path={ROUTES.notes} element={<NotesPage />} />
             <Route path={ROUTES.reminders} element={<RemindersPage />} />
             <Route path={ROUTES.reports} element={<ReportsPage />} />
+            <Route path={ROUTES.bugReports} element={<BugReportsPage />} />
             <Route path={ROUTES.profile} element={<ProfilePage />} />
             <Route path={ROUTES.settings} element={<ProfilePage />} />
           </Route>

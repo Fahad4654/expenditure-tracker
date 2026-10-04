@@ -1,4 +1,5 @@
 import '../../shared/models/category.dart';
+import '../../shared/models/bug_report.dart';
 import '../../shared/models/note.dart';
 import '../../shared/models/otp_challenge.dart';
 import '../../shared/models/common.dart';
@@ -379,6 +380,31 @@ class NotesRepository {
   }
 }
 
+/// Bug reports over REST — network-only, like the web client: reports are not
+/// part of the sync feed. The caller only ever sees their own reports, and the
+/// triage `status` is decided server-side.
+class BugReportsRepository {
+  BugReportsRepository(this._api);
+
+  final ApiClient _api;
+
+  Future<List<BugReport>> list() {
+    return _api.get(ApiRoutes.bugReports, decode: _bugReportList);
+  }
+
+  Future<BugReport> create(BugReportInput input) {
+    return _api.post(
+      ApiRoutes.bugReports,
+      body: input.toJson(),
+      decode: BugReport.fromJson,
+    );
+  }
+
+  Future<void> remove(String id) {
+    return _api.delete<void>(ApiRoutes.bugReport(id), decode: (_) {});
+  }
+}
+
 /// Report endpoints answered by local SQL — no network.
 class ReportsRepository {
   ReportsRepository(this._local);
@@ -449,8 +475,8 @@ class UsersRepository {
 
 /// Bundle handed to every screen through [AppScope].
 ///
-/// Identity (`auth`, `users`), reports and reminders stay network-aware;
-/// transactions and categories are local-first over SQLite, with
+/// Identity (`auth`, `users`), reports, reminders and bug reports stay
+/// network-aware; transactions and categories are local-first over SQLite, with
 /// `sync.requestSync` nudged after every write so the sync engine can push in
 /// the background.
 class Services {
@@ -464,7 +490,8 @@ class Services {
         reports = ReportsRepository(LocalReports(store)),
         users = UsersRepository(api, store),
         reminders = RemindersRepository(api),
-        notes = NotesRepository(api);
+        notes = NotesRepository(api),
+        bugReports = BugReportsRepository(api);
 
   final AuthRepository auth;
   final TransactionsRepository transactions;
@@ -473,6 +500,7 @@ class Services {
   final UsersRepository users;
   final RemindersRepository reminders;
   final NotesRepository notes;
+  final BugReportsRepository bugReports;
   final SyncEngine sync;
 }
 
@@ -488,3 +516,6 @@ List<Reminder> _reminderList(Object? json) =>
 
 List<Note> _noteList(Object? json) =>
     (json! as List<Object?>).map(Note.fromJson).toList();
+
+List<BugReport> _bugReportList(Object? json) =>
+    (json! as List<Object?>).map(BugReport.fromJson).toList();
