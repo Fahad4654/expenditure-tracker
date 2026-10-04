@@ -89,6 +89,7 @@ function transactionRecord(overrides: Record<string, unknown> = {}) {
     categoryId: 'own-1',
     title: 'Lunch',
     description: null,
+    noteId: null,
     transactionDate: new Date('2026-09-30T00:00:00.000Z'),
     version: 1,
     createdAt: NOW,
@@ -244,6 +245,7 @@ describe('TransactionsService', () => {
   let prisma: {
     transaction: TransactionMock;
     category: { findFirst: Spy };
+    note: { findFirst: Spy };
     $transaction: Spy;
     changeLog: { create: Spy };
   };
@@ -261,6 +263,7 @@ describe('TransactionsService', () => {
         count: vi.fn(),
       },
       category: { findFirst: vi.fn() },
+      note: { findFirst: vi.fn() },
       $transaction: vi.fn(),
       changeLog: { create: vi.fn() },
     };
@@ -518,6 +521,74 @@ describe('TransactionsService', () => {
         kind: 'DELETE',
         version: 2,
       },
+    });
+  });
+
+  it('stores a tagged note on create after verifying the caller owns it', async () => {
+    prisma.category.findFirst.mockResolvedValue({ id: 'own-1' });
+    prisma.note.findFirst.mockResolvedValue({ id: 'note-1' });
+    prisma.transaction.create.mockResolvedValue(transactionRecord({ noteId: 'note-1' }));
+
+    const result = await service.create('user-1', {
+      clientId: 'client-1',
+      type: 'EXPENSE',
+      amount: '125.50',
+      categoryId: 'own-1',
+      title: 'Lunch',
+      noteId: 'note-1',
+      transactionDate: '2026-09-30',
+    } as never);
+
+    expect(prisma.note.findFirst.mock.calls[0]![0].where).toMatchObject({
+      id: 'note-1',
+      userId: 'user-1',
+      deletedAt: null,
+    });
+    expect(prisma.transaction.create.mock.calls[0]![0].data.noteId).toBe('note-1');
+    expect(result.transaction.noteId).toBe('note-1');
+  });
+
+  it('rejects tagging a note the caller does not own', async () => {
+    prisma.category.findFirst.mockResolvedValue({ id: 'own-1' });
+    prisma.note.findFirst.mockResolvedValue(null);
+
+    await expectRejection(
+      service.create('user-1', {
+        type: 'EXPENSE',
+        amount: '10.00',
+        categoryId: 'own-1',
+        title: 'x',
+        noteId: 'someone-elses-note',
+        transactionDate: '2026-09-30',
+      } as never),
+      404,
+      'NOT_FOUND',
+    );
+    expect(prisma.transaction.create).not.toHaveBeenCalled();
+  });
+
+  it('validates a tagged note on update before touching the row', async () => {
+    prisma.category.findFirst.mockResolvedValue({ id: 'own-1' });
+    prisma.note.findFirst.mockResolvedValue(null);
+
+    await expectRejection(
+      service.update('user-1', 'tx-1', { noteId: 'someone-elses-note' } as never),
+      404,
+      'NOT_FOUND',
+    );
+    expect(prisma.transaction.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('clears the tag when noteId is sent as null without a note lookup', async () => {
+    prisma.category.findFirst.mockResolvedValue({ id: 'own-1' });
+    prisma.transaction.updateMany.mockResolvedValue({ count: 1 });
+    prisma.transaction.findFirst.mockResolvedValue(transactionRecord({ version: 2 }));
+
+    await service.update('user-1', 'tx-1', { baseVersion: 1, noteId: null } as never);
+
+    expect(prisma.note.findFirst).not.toHaveBeenCalled();
+    expect(prisma.transaction.updateMany.mock.calls[0]![0].data).toMatchObject({
+      noteId: null,
     });
   });
 });

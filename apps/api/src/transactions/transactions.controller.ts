@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Logger,
   Param,
   Patch,
   Post,
@@ -25,12 +26,15 @@ import type { Paginated, Transaction } from '../shared/types';
 import type { Response } from 'express';
 import { CurrentUser, type AuthenticatedUser } from '../common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { logEvent } from '../common/utils/log-event';
 import { TransactionsService } from './transactions.service';
 
 @ApiTags('transactions')
 @ApiSecurity('bearer')
 @Controller('transactions')
 export class TransactionsController {
+  private readonly logger = new Logger(TransactionsController.name);
+
   constructor(private readonly transactions: TransactionsService) {}
 
   @Post()
@@ -47,6 +51,17 @@ export class TransactionsController {
   ): Promise<Transaction> {
     const { transaction, created } = await this.transactions.create(user.sub, body);
     res.status(created ? HttpStatus.CREATED : HttpStatus.OK);
+    if (created) {
+      logEvent(
+        this.logger,
+        user.sub,
+        'TRANSACTION_CREATE',
+        'Created a transaction',
+        { type: transaction.type, amount: transaction.amount, currency: transaction.currency },
+        'TRANSACTION',
+        transaction.id,
+      );
+    }
     return transaction;
   }
 
@@ -75,12 +90,22 @@ export class TransactionsController {
       'Send `baseVersion` for optimistic concurrency — a stale version returns ' +
       '409 CONFLICT instead of silently overwriting a newer edit.',
   })
-  update(
+  async update(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
     @Body(new ZodValidationPipe(updateTransactionSchema)) body: UpdateTransactionInputDto,
   ): Promise<Transaction> {
-    return this.transactions.update(user.sub, id, body);
+    const transaction = await this.transactions.update(user.sub, id, body);
+    logEvent(
+      this.logger,
+      user.sub,
+      'TRANSACTION_UPDATE',
+      'Updated a transaction',
+      { fields: Object.keys(body).filter((key) => key !== 'baseVersion') },
+      'TRANSACTION',
+      transaction.id,
+    );
+    return transaction;
   }
 
   @Delete(':id')

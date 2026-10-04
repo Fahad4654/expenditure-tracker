@@ -227,6 +227,10 @@ model Transaction {
   title       String
   description String?
 
+  /// Optional link to a private note tagged on this transaction.
+  /// Clearing the note (or deleting it) sets this back to NULL.
+  noteId      String? @db.Uuid
+
   /// DATE only — interpreted in the owner's timezone for day bucketing.
   transactionDate DateTime @db.Date
 
@@ -238,6 +242,7 @@ model Transaction {
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  note     Note?    @relation(fields: [noteId], references: [id], onDelete: SetNull)
 
   /// One row per (user, clientId): replaying a CREATE is a no-op.
   @@unique([userId, clientId])
@@ -245,6 +250,7 @@ model Transaction {
   @@index([userId, categoryId, transactionDate])
   @@index([userId, type, transactionDate])
   @@index([userId, updatedAt])
+  @@index([userId, noteId])
 }
 
 // --- Offline synchronisation -------------------------------------------------
@@ -324,6 +330,9 @@ model Note {
   userId  String  @db.Uuid
   title   String
   content String? @db.Text
+
+  /// Transactions this note is tagged on (the FK lives on Transaction).
+  transactions Transaction[]
 
   version   Int       @default(1)
   createdAt DateTime  @default(now())

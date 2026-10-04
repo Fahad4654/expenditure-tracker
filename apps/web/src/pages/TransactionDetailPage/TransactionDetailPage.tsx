@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import type { Category, Transaction } from '../../shared/types';
+import type { Category, Note, Transaction } from '../../shared/types';
 import type { CreateTransactionInputDto } from '../../shared/validation';
 import TransactionForm from '../../components/TransactionForm/TransactionForm';
 import NotFoundPage from '../NotFoundPage/NotFoundPage';
@@ -20,13 +20,14 @@ export default function TransactionDetailPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
-  const query = useAsync<{ transaction: Transaction; categories: Category[] }>(
+  const query = useAsync<{ transaction: Transaction; categories: Category[]; notes: Note[] }>(
     async (signal) => {
-      const [transaction, categories] = await Promise.all([
+      const [transaction, categories, notes] = await Promise.all([
         apiFetch<Transaction>(API_ROUTES.transactions.byId(id), { signal }),
         apiFetch<Category[]>(API_ROUTES.categories.base, { signal }),
+        apiFetch<Note[]>(API_ROUTES.notes.base, { signal }),
       ]);
-      return { transaction, categories };
+      return { transaction, categories, notes };
     },
     [id],
   );
@@ -48,6 +49,7 @@ export default function TransactionDetailPage() {
           categoryId: payload.categoryId,
           title: payload.title,
           description: payload.description ?? null,
+          noteId: payload.noteId ?? null,
           transactionDate: payload.transactionDate,
           // Optimistic concurrency: refuse to clobber a concurrent edit.
           baseVersion: query.data.transaction.version,
@@ -94,8 +96,11 @@ export default function TransactionDetailPage() {
   }
   if (!query.data) return null;
 
-  const { transaction, categories } = query.data;
+  const { transaction, categories, notes } = query.data;
   const category = categories.find((c) => c.id === transaction.categoryId);
+  const taggedNote = transaction.noteId
+    ? notes.find((note) => note.id === transaction.noteId)
+    : undefined;
   const expense = transaction.type === 'EXPENSE';
 
   return (
@@ -126,6 +131,7 @@ export default function TransactionDetailPage() {
           <TransactionForm
             key={transaction.id}
             categories={categories}
+            notes={notes}
             initialValue={transaction}
             submitting={submitting}
             banner={null}
@@ -160,6 +166,21 @@ export default function TransactionDetailPage() {
                 <dt className="text-slate-500">Description</dt>
                 <dd className="mt-1 whitespace-pre-wrap text-slate-200">
                   {transaction.description || '—'}
+                </dd>
+              </div>
+              <div className="sm:col-span-2">
+                <dt className="text-slate-500">Tagged note</dt>
+                <dd className="mt-1">
+                  {taggedNote ? (
+                    <Link
+                      to={ROUTES.notes}
+                      className="font-medium text-emerald-400 underline-offset-2 hover:text-emerald-300 hover:underline"
+                    >
+                      {taggedNote.title}
+                    </Link>
+                  ) : (
+                    <span className="text-slate-200">—</span>
+                  )}
                 </dd>
               </div>
               <div>

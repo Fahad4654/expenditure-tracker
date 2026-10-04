@@ -99,7 +99,8 @@ Business, Investment, Other) via the idempotent `db:seed` script (run from
 | `currency`                              | `char(3)`              | default `BDT`                                        |
 | `categoryId`                            | `uuid` FK → `Category` | `ON DELETE RESTRICT` — history is never orphaned     |
 | `title`                                 | `text`                 |                                                      |
-| `description`                           | `text` NULL            | notes                                                |
+| `description`                           | `text` NULL            | free-form description                               |
+| `noteId`                                | `uuid` FK → `Note` NULL | `ON DELETE SET NULL` — optional tagged note         |
 | `transactionDate`                       | `date`                 | in the owner's timezone                              |
 | `version`                               | `int`                  | +1 on every write; LWW conflict key                  |
 | `createdAt` / `updatedAt` / `deletedAt` |                        |                                                      |
@@ -120,7 +121,9 @@ the second insert violates the constraint and the operation is reported as
 | `createdAt` / `updatedAt` / `deletedAt` |          | soft delete                                     |
 
 List order is `@@index([userId, updatedAt DESC])`. Notes carry `version` but are
-not yet drained by the Phase 5 `ChangeLog` feed.
+not yet drained by the Phase 5 `ChangeLog` feed. A note can be tagged on any
+number of transactions — the link is `Transaction.noteId` (nullable FK,
+`ON DELETE SET NULL`), and soft-deleting the note clears those tags explicitly.
 
 ### `Reminder`
 

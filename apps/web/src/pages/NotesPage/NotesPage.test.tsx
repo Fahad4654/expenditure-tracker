@@ -22,6 +22,7 @@ function makeNote(overrides: Partial<Note> = {}): Note {
     id: 'note-1',
     title: 'Groceries',
     content: 'milk, eggs',
+    transactions: [],
     createdAt: '2026-10-01T10:00:00.000Z',
     updatedAt: '2026-10-02T09:30:00.000Z',
     ...overrides,
@@ -65,6 +66,24 @@ describe('NotesPage', () => {
 
     expect(await screen.findByText('Groceries')).toBeTruthy();
     expect(screen.getByText('milk, eggs')).toBeTruthy();
+    expect(screen.queryByText('Tagged on')).toBeNull();
+  });
+
+  it('shows the transactions a note is tagged on', async () => {
+    stubFetch((url) => {
+      if (url.endsWith('/auth/refresh')) return failAuth();
+      return okBody([
+        makeNote({
+          transactions: [{ id: 'tx-1', title: 'Weekly groceries', transactionDate: '2026-10-02' }],
+        }),
+      ]);
+    });
+
+    renderNotes();
+
+    const link = await screen.findByRole('link', { name: /Weekly groceries/ });
+    expect(link.getAttribute('href')).toBe('/transactions/tx-1');
+    expect(screen.getByText('Tagged on')).toBeTruthy();
   });
 
   it('validates on the client and never posts an empty title', async () => {

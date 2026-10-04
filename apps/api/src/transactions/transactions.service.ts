@@ -34,6 +34,7 @@ export function toTransaction(transaction: TransactionRecord): Transaction {
     categoryId: transaction.categoryId,
     title: transaction.title,
     description: transaction.description,
+    noteId: transaction.noteId,
     transactionDate: transaction.transactionDate.toISOString().slice(0, 10),
     version: transaction.version,
     createdAt: transaction.createdAt.toISOString(),
@@ -74,6 +75,7 @@ export class TransactionsService {
       }
 
       await this.requireVisibleCategory(userId, input.categoryId, tx);
+      if (input.noteId) await this.requireOwnedNote(userId, input.noteId, tx);
 
       try {
         const created = await tx.transaction.create({
@@ -88,6 +90,7 @@ export class TransactionsService {
             categoryId: input.categoryId,
             title: input.title,
             description: input.description ?? null,
+            noteId: input.noteId ?? null,
             transactionDate: `${input.transactionDate}T00:00:00.000Z`,
           },
         });
@@ -175,6 +178,10 @@ export class TransactionsService {
 
     return withTx(this.prisma, db, async (tx) => {
       if (input.categoryId) await this.requireVisibleCategory(userId, input.categoryId, tx);
+      // `null` clears the tag; a UUID must resolve to one of the caller's notes.
+      if (fields.noteId !== undefined && fields.noteId !== null) {
+        await this.requireOwnedNote(userId, fields.noteId, tx);
+      }
 
       const result = await tx.transaction.updateMany({
         where: {
@@ -191,6 +198,7 @@ export class TransactionsService {
           ...(fields.categoryId !== undefined && { categoryId: fields.categoryId }),
           ...(fields.title !== undefined && { title: fields.title }),
           ...(fields.description !== undefined && { description: fields.description }),
+          ...(fields.noteId !== undefined && { noteId: fields.noteId }),
           ...(fields.transactionDate !== undefined && {
             transactionDate: `${fields.transactionDate}T00:00:00.000Z`,
           }),
@@ -264,6 +272,19 @@ export class TransactionsService {
       select: { id: true },
     });
     if (!category) throw errors.notFound('Category not found');
+  }
+
+  /** Tagging a note works the same way: someone else's note is "not found". */
+  private async requireOwnedNote(
+    userId: string,
+    noteId: string,
+    tx: Prisma.TransactionClient,
+  ): Promise<void> {
+    const note = await tx.note.findFirst({
+      where: { id: noteId, userId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!note) throw errors.notFound('Note not found');
   }
 }
 

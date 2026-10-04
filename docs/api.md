@@ -144,6 +144,9 @@ Behaviour:
   **200** (not 201) — creation is idempotent for offline clients.
 - `PATCH` accepts `baseVersion`; a mismatch is **409 CONFLICT**, never a silent
   overwrite. A successful write increments `version`.
+- `POST`/`PATCH` accept a nullable `noteId` to tag one of the caller's notes on
+  the transaction. A foreign or deleted note is **404**; `noteId: null` clears
+  the tag. The response echoes `noteId`.
 - `DELETE` is a tombstone: the row keeps `deletedAt` and a bumped `version` so
   sync can announce the removal.
 - Any id owned by another user is **404**, not 403 — existence is never
@@ -180,7 +183,12 @@ Behaviour:
 - Notes are private to the caller; a foreign or deleted `noteId` is **404**
   (never 403 — existence is not disclosed).
 - `title` is 1–120 chars, `content` up to 5000 chars (`null` allowed).
-- Deletes are soft (`deletedAt`); the `version` counter bumps on every write so
+- Every response carries a `transactions` array (`{ id, title, transactionDate }`,
+  newest first) listing the live transactions the note is tagged on — this is
+  the "tagged on" indicator on the notes page.
+- Deletes are soft (`deletedAt`); deleting a note also clears `noteId` on every
+  transaction that referenced it and announces each one through the change feed,
+  so no dangling tag can survive. The `version` counter bumps on every write so
   the sync feed can adopt notes later without a schema change. Notes are **not**
   part of the Phase 5 sync feed yet.
 - Every mutation emits a `NOTE_CREATE` / `NOTE_UPDATE` / `NOTE_DELETE` audit

@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import type { Category, Transaction, TransactionTypeValue } from '../../shared/types';
+import type { Category, Note, Transaction, TransactionTypeValue } from '../../shared/types';
 import {
   createTransactionSchema,
   toFieldErrors,
@@ -16,10 +16,12 @@ export interface TransactionFormValues {
   description: string;
   transactionDate: string;
   categoryId: string;
+  noteId: string;
 }
 
 interface Props {
   categories: Category[];
+  notes: Note[];
   /** Present in edit mode; omitted when creating. */
   initialValue?: Transaction;
   submitting: boolean;
@@ -41,6 +43,7 @@ const TYPE_BUTTONS: ReadonlyArray<{ value: TransactionTypeValue; label: string }
  */
 export default function TransactionForm({
   categories,
+  notes,
   initialValue,
   submitting,
   banner,
@@ -54,6 +57,7 @@ export default function TransactionForm({
     description: initialValue?.description ?? '',
     transactionDate: initialValue?.transactionDate ?? todayIn(DEFAULT_TIMEZONE),
     categoryId: initialValue?.categoryId ?? '',
+    noteId: initialValue?.noteId ?? '',
   }));
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
 
@@ -64,6 +68,10 @@ export default function TransactionForm({
   const selectedCategoryId = visibleCategories.some((c) => c.id === values.categoryId)
     ? values.categoryId
     : (visibleCategories[0]?.id ?? '');
+
+  // A tag pointing at a note that no longer exists is dropped rather than
+  // sent back to the server as a dangling id.
+  const selectedNoteId = notes.some((n) => n.id === values.noteId) ? values.noteId : '';
 
   const errors = { ...localErrors, ...fieldErrors };
 
@@ -86,6 +94,7 @@ export default function TransactionForm({
       categoryId: selectedCategoryId,
       transactionDate: values.transactionDate,
       description: values.description.trim() === '' ? undefined : values.description.trim(),
+      noteId: selectedNoteId === '' ? null : selectedNoteId,
     });
 
     if (!parsed.success) {
@@ -175,6 +184,22 @@ export default function TransactionForm({
           {visibleCategories.map((category) => (
             <option key={category.id} value={category.id}>
               {category.name}
+            </option>
+          ))}
+        </Select>
+      </Field>
+
+      <Field label="Tag note" htmlFor="tx-note" error={errors.noteId} hint="Optional.">
+        <Select
+          id="tx-note"
+          name="noteId"
+          value={selectedNoteId}
+          onChange={(event) => update('noteId', event.target.value)}
+        >
+          <option value="">No note</option>
+          {notes.map((note) => (
+            <option key={note.id} value={note.id}>
+              {note.title}
             </option>
           ))}
         </Select>

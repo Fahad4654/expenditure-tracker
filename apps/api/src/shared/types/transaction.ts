@@ -20,6 +20,8 @@ export interface Transaction {
   categoryId: Uuid;
   title: string;
   description: string | null;
+  /** Note tagged on this transaction, `null` when none. */
+  noteId: Uuid | null;
   /** Calendar date in the owner's timezone: `YYYY-MM-DD`. */
   transactionDate: IsoDate;
   /** Server monotonic version — bumped on every write, used for conflict resolution. */
@@ -38,6 +40,7 @@ export interface CreateTransactionInput {
   categoryId: Uuid;
   title: string;
   description?: string | null;
+  noteId?: Uuid | null;
   transactionDate: IsoDate;
 }
 
@@ -48,6 +51,7 @@ export interface UpdateTransactionInput {
   categoryId?: Uuid;
   title?: string;
   description?: string | null;
+  noteId?: Uuid | null;
   transactionDate?: IsoDate;
 }
 

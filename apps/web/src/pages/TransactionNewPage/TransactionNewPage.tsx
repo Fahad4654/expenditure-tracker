@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import type { Category, Transaction } from '../../shared/types';
+import type { Category, Note, Transaction } from '../../shared/types';
 import type { CreateTransactionInputDto } from '../../shared/validation';
 import TransactionForm from '../../components/TransactionForm/TransactionForm';
 import { Button, Card, PageHeader, Spinner } from '../../components/ui';
@@ -18,8 +18,14 @@ export default function TransactionNewPage() {
   const [banner, setBanner] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  const categories = useAsync<Category[]>(
-    (signal) => apiFetch<Category[]>(API_ROUTES.categories.base, { signal }),
+  const initial = useAsync<{ categories: Category[]; notes: Note[] }>(
+    async (signal) => {
+      const [categories, notes] = await Promise.all([
+        apiFetch<Category[]>(API_ROUTES.categories.base, { signal }),
+        apiFetch<Note[]>(API_ROUTES.notes.base, { signal }),
+      ]);
+      return { categories, notes };
+    },
     [],
   );
 
@@ -54,15 +60,16 @@ export default function TransactionNewPage() {
       />
 
       <Card>
-        {categories.loading && !categories.data ? (
+        {initial.loading && !initial.data ? (
           <div className="flex justify-center py-10">
-            <Spinner label="Loading categories" />
+            <Spinner label="Loading form" />
           </div>
-        ) : categories.error ? (
-          <p className="text-sm text-rose-400">{categories.error.message}</p>
+        ) : initial.error ? (
+          <p className="text-sm text-rose-400">{initial.error.message}</p>
         ) : (
           <TransactionForm
-            categories={categories.data ?? []}
+            categories={initial.data?.categories ?? []}
+            notes={initial.data?.notes ?? []}
             submitting={submitting}
             banner={banner}
             fieldErrors={fieldErrors}

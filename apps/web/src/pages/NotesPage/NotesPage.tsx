@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import type { Note } from '../../shared/types';
 import { createNoteSchema, toFieldErrors } from '../../shared/validation';
 import {
@@ -14,8 +15,9 @@ import {
 } from '../../components/ui';
 import { API_ROUTES, apiFetch } from '../../lib/api';
 import { bannerFor, indexByPath, parseFormError } from '../../lib/errors';
-import { formatInstant } from '../../lib/format';
+import { formatDay, formatInstant } from '../../lib/format';
 import { useAsync } from '../../lib/useAsync';
+import { transactionPath } from '../../routes';
 
 /**
  * Notes: a private scratch space with list + inline create/edit/delete.
@@ -232,6 +234,22 @@ export default function NotesPage() {
                   ) : (
                     <div className="flex-1" />
                   )}
+                  {note.transactions.length > 0 ? (
+                    <div className="mt-3">
+                      <p className="text-xs text-slate-500">Tagged on</p>
+                      <div className="mt-1 flex flex-wrap gap-1.5">
+                        {note.transactions.map((transaction) => (
+                          <Link
+                            key={transaction.id}
+                            to={transactionPath(transaction.id)}
+                            className="max-w-full truncate rounded-full border border-emerald-900 bg-emerald-950/60 px-2 py-0.5 text-xs text-emerald-300 transition hover:border-emerald-700 hover:text-emerald-200"
+                          >
+                            {transaction.title} · {formatDay(transaction.transactionDate)}
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                   <p className="mt-3 text-xs text-slate-500">
                     Edited {formatInstant(note.updatedAt)}
                   </p>

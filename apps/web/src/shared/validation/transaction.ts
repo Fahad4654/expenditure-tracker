@@ -18,6 +18,8 @@ export const createTransactionSchema = z.object({
   categoryId: uuidSchema,
   title: z.string().trim().min(1).max(120),
   description: z.string().trim().max(1000).nullish(),
+  /** Optional note tagged on this transaction (owned by the caller). */
+  noteId: uuidSchema.nullish(),
   transactionDate: isoDateSchema,
 });
 
@@ -29,6 +31,8 @@ export const updateTransactionSchema = z
     categoryId: uuidSchema.optional(),
     title: z.string().trim().min(1).max(120).optional(),
     description: z.string().trim().max(1000).nullish(),
+    /** Tagged note — a UUID links it, `null` clears the tag. */
+    noteId: uuidSchema.nullish(),
     transactionDate: isoDateSchema.optional(),
     /** Version observed by the client — enables optimistic concurrency. */
     baseVersion: z.coerce.number().int().min(1).optional(),
