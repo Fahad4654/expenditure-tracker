@@ -113,4 +113,45 @@ void main() {
       isEmpty,
     );
   });
+
+  testWidgets('picking a category opens a searchable list', (tester) async {
+    await pumpApp(tester, signedIn: true, seed: (store) async {
+      store.applyServerCategoryUpsert(categoryJson());
+      store.applyServerCategoryUpsert(
+        categoryJson(id: 'cat-transport', name: 'Transport', icon: 'car'),
+      );
+    });
+
+    await tester.tap(find.widgetWithText(FloatingActionButton, 'Add'));
+    await settle(tester, pumps: 8);
+
+    final form = find.byType(TransactionFormPage);
+    expect(
+      find.descendant(of: form, matching: find.text('Food')),
+      findsOneWidget,
+      reason: 'the first matching category is preselected',
+    );
+
+    await tester.tap(find.descendant(of: form, matching: find.text('Food')));
+    await settle(tester);
+
+    final search = find.byKey(const ValueKey('category-search'));
+    expect(search, findsOneWidget);
+
+    await tester.enterText(search, 'trans');
+    await settle(tester);
+
+    expect(find.widgetWithText(ListTile, 'Transport'), findsOneWidget);
+    expect(find.widgetWithText(ListTile, 'Food'), findsNothing);
+
+    await tester.tap(find.widgetWithText(ListTile, 'Transport'));
+    await settle(tester);
+
+    expect(
+      find.descendant(of: form, matching: find.text('Transport')),
+      findsOneWidget,
+      reason: 'the picked category now shows in the form field',
+    );
+    expect(search, findsNothing);
+  });
 }

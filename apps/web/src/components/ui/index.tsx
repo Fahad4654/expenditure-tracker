@@ -129,7 +129,12 @@ export function Select({
   name,
   disabled,
   className,
-}: SelectHTMLAttributes<HTMLSelectElement>) {
+  searchable,
+  searchPlaceholder,
+}: SelectHTMLAttributes<HTMLSelectElement> & {
+  searchable?: boolean;
+  searchPlaceholder?: string;
+}) {
   const options = React.Children.toArray(children)
     .filter(
       (child): child is React.ReactElement<{ value?: string; children?: ReactNode; disabled?: boolean }> =>
@@ -160,6 +165,8 @@ export function Select({
       options={options}
       disabled={disabled}
       className={className}
+      searchable={searchable}
+      searchPlaceholder={searchPlaceholder}
     />
   );
 }

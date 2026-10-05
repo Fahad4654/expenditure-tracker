@@ -17,7 +17,13 @@ interface CustomSelectProps {
   disabled?: boolean;
   className?: string;
   required?: boolean;
+  /** Adds a filter box above the list — for long option sets (e.g. categories). */
+  searchable?: boolean;
+  searchPlaceholder?: string;
 }
+
+const SEARCH_INPUT_CLASS =
+  'w-full min-h-[40px] rounded-lg border border-slate-700/80 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25';
 
 export function CustomSelect({
   id,
@@ -28,12 +34,23 @@ export function CustomSelect({
   placeholder = 'Select an option',
   disabled = false,
   className = '',
+  searchable = false,
+  searchPlaceholder = 'Search…',
 }: CustomSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [query, setQuery] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   const selectedOption = options.find((opt) => opt.value === value);
+
+  const normalizedQuery = query.trim().toLowerCase();
+  // While filtering, disabled entries (placeholders) are dropped so a search
+  // never surfaces a row that cannot be picked.
+  const visibleOptions = normalizedQuery
+    ? options.filter((opt) => !opt.disabled && opt.label.toLowerCase().includes(normalizedQuery))
+    : options;
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -47,38 +64,83 @@ export function CustomSelect({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
+  const open = (highlightFirst = false) => {
+    setQuery('');
+    setHighlightedIndex(highlightFirst ? 0 : -1);
+    setIsOpen(true);
+  };
+
+  const close = (refocusTrigger = false) => {
+    setIsOpen(false);
+    setQuery('');
+    setHighlightedIndex(-1);
+    if (refocusTrigger) triggerRef.current?.focus();
+  };
+
+  const pick = (option?: SelectOption) => {
+    if (!option || option.disabled) return;
+    onChange(option.value);
+    close(true);
+  };
+
+  const handleTriggerKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
     if (disabled) return;
 
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       if (!isOpen) {
-        setIsOpen(true);
-        setHighlightedIndex(0);
+        open(true);
       } else {
-        setHighlightedIndex((prev) => (prev < options.length - 1 ? prev + 1 : 0));
+        setHighlightedIndex((prev) => (prev < visibleOptions.length - 1 ? prev + 1 : 0));
       }
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       if (!isOpen) {
-        setIsOpen(true);
-        setHighlightedIndex(options.length - 1);
+        open();
+        setHighlightedIndex(Math.max(visibleOptions.length - 1, 0));
       } else {
-        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : options.length - 1));
+        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : visibleOptions.length - 1));
       }
     } else if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      if (isOpen && highlightedIndex >= 0 && highlightedIndex < options.length) {
-        const option = options[highlightedIndex];
-        if (!option.disabled) {
-          onChange(option.value);
-          setIsOpen(false);
-        }
+      if (isOpen && highlightedIndex >= 0 && highlightedIndex < visibleOptions.length) {
+        pick(visibleOptions[highlightedIndex]);
       } else {
         setIsOpen((prev) => !prev);
       }
     } else if (e.key === 'Escape') {
-      setIsOpen(false);
+      if (isOpen) close();
+    }
+  };
+
+  // Typing lives here, so Space inserts a character instead of selecting.
+  const handleSearchKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightedIndex((prev) =>
+        visibleOptions.length === 0
+          ? -1
+          : prev < visibleOptions.length - 1
+            ? prev + 1
+            : 0,
+      );
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightedIndex((prev) =>
+        visibleOptions.length === 0
+          ? -1
+          : prev > 0
+            ? prev - 1
+            : visibleOptions.length - 1,
+      );
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      pick(visibleOptions[highlightedIndex] ?? visibleOptions[0]);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      close(true);
+    } else if (e.key === 'Tab') {
+      close();
     }
   };
 
@@ -87,12 +149,13 @@ export function CustomSelect({
       {name ? <input type="hidden" name={name} value={value} /> : null}
       <button
         id={id}
+        ref={triggerRef}
         type="button"
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
-        onClick={() => setIsOpen(!isOpen)}
-        onKeyDown={handleKeyDown}
+        onClick={() => (isOpen ? close() : open())}
+        onKeyDown={handleTriggerKeyDown}
         className="w-full min-h-[44px] sm:min-h-[40px] flex items-center justify-between gap-2 rounded-xl border border-slate-700/80 bg-slate-900/90 px-3.5 py-2.5 text-sm text-slate-100 outline-none transition-all duration-200 hover:border-slate-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.99]"
       >
         <span className="flex items-center gap-2 truncate">
@@ -122,12 +185,35 @@ export function CustomSelect({
         <div
           role="listbox"
           tabIndex={-1}
-          className="absolute left-0 right-0 top-full z-50 mt-1.5 max-h-60 overflow-y-auto rounded-xl border border-slate-700/90 bg-slate-900/95 p-1.5 shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-150"
+          className={`absolute left-0 right-0 top-full z-50 mt-1.5 ${
+            searchable ? 'max-h-72' : 'max-h-60'
+          } overflow-y-auto rounded-xl border border-slate-700/90 bg-slate-900/95 p-1.5 shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-150`}
         >
-          {options.length === 0 ? (
-            <div className="px-3 py-2.5 text-center text-xs text-slate-500">No options available</div>
+          {searchable ? (
+            <div className="sticky top-0 z-10 -mx-1.5 -mt-1.5 mb-1 bg-slate-900 px-1.5 pt-1.5 pb-1">
+              <input
+                type="text"
+                value={query}
+                placeholder={searchPlaceholder}
+                aria-label={searchPlaceholder}
+                autoFocus
+                onChange={(event) => {
+                  const next = event.target.value;
+                  setQuery(next);
+                  setHighlightedIndex(next.trim() === '' ? -1 : 0);
+                }}
+                onKeyDown={handleSearchKeyDown}
+                className={SEARCH_INPUT_CLASS}
+              />
+            </div>
+          ) : null}
+
+          {visibleOptions.length === 0 ? (
+            <div className="px-3 py-2.5 text-center text-xs text-slate-500">
+              {normalizedQuery ? `No matches for “${query.trim()}”` : 'No options available'}
+            </div>
           ) : (
-            options.map((opt, idx) => {
+            visibleOptions.map((opt, idx) => {
               const isSelected = opt.value === value;
               const isHighlighted = idx === highlightedIndex;
               return (
@@ -135,12 +221,7 @@ export function CustomSelect({
                   key={opt.value}
                   role="option"
                   aria-selected={isSelected}
-                  onClick={() => {
-                    if (!opt.disabled) {
-                      onChange(opt.value);
-                      setIsOpen(false);
-                    }
-                  }}
+                  onClick={() => pick(opt)}
                   onMouseEnter={() => setHighlightedIndex(idx)}
                   className={`flex cursor-pointer items-center justify-between min-h-[40px] px-3 py-2 rounded-lg text-sm transition-colors duration-150 ${
                     opt.disabled
@@ -162,7 +243,7 @@ export function CustomSelect({
                     <span>{opt.label}</span>
                   </span>
                   {isSelected ? (
-                    <svg className="h-4 w-4 shrink-0 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="h-4 w-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
                     </svg>
                   ) : null}

@@ -7,6 +7,7 @@ import '../../shared/models/transaction.dart';
 import '../../shared/formatters.dart';
 import '../../shared/money.dart';
 import '../../shared/utils/uuid.dart';
+import '../../shared/widgets/category_avatar.dart';
 import '../../shared/widgets/error_banner.dart';
 import '../../shared/widgets/loading_view.dart';
 
@@ -102,6 +103,26 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
     });
   }
 
+  /// Categories ordered so the ones matching the active type come first.
+  List<Category> get _orderedCategories => [..._categories]..sort((a, b) {
+      final aMatch = a.suggestedType == _type ? 0 : 1;
+      final bMatch = b.suggestedType == _type ? 0 : 1;
+      return aMatch != bMatch ? aMatch.compareTo(bMatch) : a.name.compareTo(b.name);
+    });
+
+  Future<void> _pickCategory() async {
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _CategoryPickerSheet(
+        categories: _orderedCategories,
+        selectedId: _categoryId,
+      ),
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _categoryId = picked);
+  }
+
   Future<void> _pickDate() async {
     final initial = DateTime.tryParse(_date) ?? DateTime.now();
     final picked = await showDatePicker(
@@ -185,11 +206,6 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
     final theme = Theme.of(context);
     final auth = AppScope.read(context).auth;
     final currency = auth.user?.defaultCurrency ?? 'BDT';
-    final orderedCategories = [..._categories]..sort((a, b) {
-        final aMatch = a.suggestedType == _type ? 0 : 1;
-        final bMatch = b.suggestedType == _type ? 0 : 1;
-        return aMatch != bMatch ? aMatch.compareTo(bMatch) : a.name.compareTo(b.name);
-      });
 
     return Scaffold(
       appBar: AppBar(title: Text(_isEdit ? 'Edit transaction' : 'Add transaction')),
@@ -269,25 +285,57 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
                             },
                           ),
                           const SizedBox(height: 16),
-                          DropdownButtonFormField<String?>(
+                          FormField<String>(
                             key: ValueKey('category-$_categoryId'),
                             initialValue: _categoryId,
-                            decoration: InputDecoration(
-                              labelText: 'Category',
-                              errorText: _serverErrors['categoryId'],
-                            ),
-                            items: [
-                              for (final category in orderedCategories)
-                                DropdownMenuItem<String?>(
-                                  value: category.id,
-                                  child: Text(
-                                    category.name,
-                                    overflow: TextOverflow.ellipsis,
+                            validator: (value) =>
+                                value == null ? 'Pick a category' : null,
+                            builder: (state) {
+                              final selected = _categories
+                                  .where((c) => c.id == _categoryId)
+                                  .firstOrNull;
+                              return InkWell(
+                                onTap: _pickCategory,
+                                borderRadius: BorderRadius.circular(12),
+                                child: InputDecorator(
+                                  decoration: InputDecoration(
+                                    labelText: 'Category',
+                                    errorText: state.errorText ??
+                                        _serverErrors['categoryId'],
+                                    suffixIcon: const Icon(
+                                      Icons.arrow_drop_down_rounded,
+                                    ),
                                   ),
+                                  child: selected == null
+                                      ? Text(
+                                          'Search categories…',
+                                          style: theme.textTheme.bodyMedium
+                                              ?.copyWith(
+                                            color: theme
+                                                .colorScheme.onSurfaceVariant,
+                                          ),
+                                        )
+                                      : Row(
+                                          children: [
+                                            CategoryAvatar(
+                                              color: selected.color,
+                                              icon: selected.icon,
+                                              size: 24,
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: Text(
+                                                selected.name,
+                                                overflow: TextOverflow.ellipsis,
+                                                style:
+                                                    theme.textTheme.bodyMedium,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                 ),
-                            ],
-                            onChanged: (value) => setState(() => _categoryId = value),
-                            validator: (value) => value == null ? 'Pick a category' : null,
+                              );
+                            },
                           ),
                           const SizedBox(height: 16),
                           TextFormField(
@@ -352,6 +400,131 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
                   ),
                 ),
               ),
+      ),
+    );
+  }
+}
+
+/// Searchable category list shown when the form's category field is tapped.
+class _CategoryPickerSheet extends StatefulWidget {
+  const _CategoryPickerSheet({
+    required this.categories,
+    required this.selectedId,
+  });
+
+  final List<Category> categories;
+  final String? selectedId;
+
+  @override
+  State<_CategoryPickerSheet> createState() => _CategoryPickerSheetState();
+}
+
+class _CategoryPickerSheetState extends State<_CategoryPickerSheet> {
+  final _searchController = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final query = _query.trim().toLowerCase();
+    final results = query.isEmpty
+        ? widget.categories
+        : widget.categories
+            .where((category) => category.name.toLowerCase().contains(query))
+            .toList();
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: SafeArea(
+        top: false,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.7,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: TextField(
+                  key: const ValueKey('category-search'),
+                  controller: _searchController,
+                  autofocus: true,
+                  textInputAction: TextInputAction.search,
+                  textCapitalization: TextCapitalization.sentences,
+                  onChanged: (value) => setState(() => _query = value),
+                  decoration: InputDecoration(
+                    hintText: 'Search categories…',
+                    prefixIcon: const Icon(Icons.search),
+                    isDense: true,
+                    suffixIcon: _query.isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: 'Clear',
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _query = '');
+                            },
+                          ),
+                  ),
+                ),
+              ),
+              Flexible(
+                child: results.isEmpty
+                    ? Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 24,
+                        ),
+                        child: Text(
+                          'No categories match “${_query.trim()}”.',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        shrinkWrap: true,
+                        padding: const EdgeInsets.only(bottom: 8),
+                        itemCount: results.length,
+                        itemBuilder: (context, index) {
+                          final category = results[index];
+                          final selected = category.id == widget.selectedId;
+                          return ListTile(
+                            dense: true,
+                            leading: CategoryAvatar(
+                              color: category.color,
+                              icon: category.icon,
+                              size: 32,
+                            ),
+                            title: Text(
+                              category.name,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            trailing: selected
+                                ? Icon(
+                                    Icons.check_rounded,
+                                    color: theme.colorScheme.primary,
+                                  )
+                                : null,
+                            onTap: () =>
+                                Navigator.of(context).pop(category.id),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

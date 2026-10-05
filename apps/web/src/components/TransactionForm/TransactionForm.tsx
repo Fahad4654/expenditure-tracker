@@ -175,6 +175,8 @@ export default function TransactionForm({
           id="tx-category"
           name="categoryId"
           required
+          searchable
+          searchPlaceholder="Search categories…"
           value={selectedCategoryId}
           onChange={(event) => update('categoryId', event.target.value)}
         >
