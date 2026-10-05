@@ -170,11 +170,18 @@ void main() {
     await tester.enterText(find.byType(TextFormField).at(0), '120.5');
     await tester.enterText(find.byType(TextFormField).at(1), 'Coffee');
 
-    await tester.tap(find.text('Tag note'));
+    await tester.tap(
+      find.ancestor(of: find.text('Tag note'), matching: find.byType(InkWell)),
+    );
     await settle(tester);
 
     final search = find.byKey(const ValueKey('note-search'));
     expect(search, findsOneWidget);
+    expect(
+      find.widgetWithText(ListTile, 'No note'),
+      findsNothing,
+      reason: 'the empty label is not offered as an option',
+    );
 
     await tester.enterText(search, 'groc');
     await settle(tester);
@@ -199,6 +206,42 @@ void main() {
     final created =
         app.store.listTransactions(const TransactionQuery(limit: 50)).items;
     expect(created.single.noteId, noteId);
+  });
+
+  testWidgets('clears the tagged note from the field', (tester) async {
+    final api = FakeApiClient();
+    api.onGet(ApiRoutes.notes, (_) => [noteJson()]);
+    await pumpApp(tester, api: api, signedIn: true, seed: (store) async {
+      store.applyServerCategoryUpsert(categoryJson());
+    });
+
+    await tester.tap(find.widgetWithText(FloatingActionButton, 'Add'));
+    await settle(tester, pumps: 8);
+
+    await tester.enterText(find.byType(TextFormField).at(0), '120.5');
+    await tester.enterText(find.byType(TextFormField).at(1), 'Coffee');
+
+    await tester.tap(
+      find.ancestor(of: find.text('Tag note'), matching: find.byType(InkWell)),
+    );
+    await settle(tester);
+    await tester.tap(find.widgetWithText(ListTile, 'Groceries'));
+    await settle(tester);
+
+    expect(find.byTooltip('Clear note'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Clear note'));
+    await settle(tester);
+
+    expect(find.byTooltip('Clear note'), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byType(TransactionFormPage),
+        matching: find.text('No note'),
+      ),
+      findsOneWidget,
+      reason: 'the field falls back to its empty label',
+    );
   });
 
   testWidgets('detail page shows the tagged note title', (tester) async {

@@ -131,9 +131,11 @@ export function Select({
   className,
   searchable,
   searchPlaceholder,
+  clearable,
 }: SelectHTMLAttributes<HTMLSelectElement> & {
   searchable?: boolean;
   searchPlaceholder?: string;
+  clearable?: boolean;
 }) {
   const options = React.Children.toArray(children)
     .filter(
@@ -167,6 +169,7 @@ export function Select({
       className={className}
       searchable={searchable}
       searchPlaceholder={searchPlaceholder}
+      clearable={clearable}
     />
   );
 }

@@ -1,5 +1,5 @@
 import type { Note } from '../../shared/types';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import AuthProvider from '../../auth/AuthProvider';
@@ -220,6 +220,11 @@ describe('NotesPage', () => {
     fireEvent.change(search, { target: { value: 'zzz' } });
     expect(screen.queryByRole('option')).toBeNull();
     expect(screen.getByText('No matches for “zzz”')).toBeTruthy();
+
+    fireEvent.change(search, { target: { value: '' } });
+    expect(
+      within(screen.getByRole('listbox')).queryByText('Tag a transaction…'),
+    ).toBeNull();
   });
 
   it('updates the tag set when saving an edit', async () => {

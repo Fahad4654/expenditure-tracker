@@ -174,9 +174,8 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
       context: context,
       searchHint: 'Search notes…',
       searchKey: const ValueKey('note-search'),
-      selectedId: _noteId ?? '',
+      selectedId: _noteId,
       options: [
-        const PickerOption(id: '', label: 'No note'),
         for (final note in _notes) PickerOption(id: note.id, label: note.title),
       ],
       emptyMessage: (query) {
@@ -186,8 +185,10 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
       },
     );
     if (picked == null || !mounted) return;
-    setState(() => _noteId = picked.isEmpty ? null : picked);
+    setState(() => _noteId = picked);
   }
+
+  void _clearNote() => setState(() => _noteId = null);
 
   Future<void> _pickDate() async {
     final initial = DateTime.tryParse(_date) ?? DateTime.now();
@@ -414,8 +415,19 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
                                 labelText: 'Tag note',
                                 helperText: _notesError,
                                 errorText: _serverErrors['noteId'],
-                                suffixIcon: const Icon(
-                                  Icons.arrow_drop_down_rounded,
+                                suffixIcon: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (_noteId != null)
+                                      IconButton(
+                                        tooltip: 'Clear note',
+                                        icon: const Icon(Icons.close_rounded),
+                                        onPressed: _clearNote,
+                                      ),
+                                    const Icon(
+                                      Icons.arrow_drop_down_rounded,
+                                    ),
+                                  ],
                                 ),
                               ),
                               child: _loadingNotes

@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 class PickerOption {
   const PickerOption({required this.id, required this.label, this.leading});
 
-  /// Returned when the row is picked. An empty string clears the selection.
+  /// Returned when the row is picked. Only real entries are listed, so this is
+  /// never empty — clearing a selection happens on the field itself.
   final String id;
   final String label;
 

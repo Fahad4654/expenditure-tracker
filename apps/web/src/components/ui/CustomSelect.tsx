@@ -20,6 +20,8 @@ interface CustomSelectProps {
   /** Adds a filter box above the list — for long option sets (e.g. categories). */
   searchable?: boolean;
   searchPlaceholder?: string;
+  /** Offers a × in the trigger so a picked value can be cleared again. */
+  clearable?: boolean;
 }
 
 const SEARCH_INPUT_CLASS =
@@ -36,6 +38,7 @@ export function CustomSelect({
   className = '',
   searchable = false,
   searchPlaceholder = 'Search…',
+  clearable = false,
 }: CustomSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -43,14 +46,18 @@ export function CustomSelect({
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  const selectedOption = options.find((opt) => opt.value === value);
+  // A disabled option ("Choose a category", "No note", "Tag a transaction…")
+  // is a placeholder, never a choice: its label backs the trigger's empty
+  // state and the empty-list message, but it is never listed.
+  const placeholderOption = options.find((opt) => opt.disabled);
+  const selectableOptions = options.filter((opt) => !opt.disabled);
+  const selectedOption = selectableOptions.find((opt) => opt.value === value);
+  const placeholderText = placeholderOption?.label ?? placeholder;
 
   const normalizedQuery = query.trim().toLowerCase();
-  // While filtering, disabled entries (placeholders) are dropped so a search
-  // never surfaces a row that cannot be picked.
   const visibleOptions = normalizedQuery
-    ? options.filter((opt) => !opt.disabled && opt.label.toLowerCase().includes(normalizedQuery))
-    : options;
+    ? selectableOptions.filter((opt) => opt.label.toLowerCase().includes(normalizedQuery))
+    : selectableOptions;
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -144,6 +151,8 @@ export function CustomSelect({
     }
   };
 
+  const showClear = clearable && !disabled && value !== '';
+
   return (
     <div ref={containerRef} className={`relative w-full ${className}`}>
       {name ? <input type="hidden" name={name} value={value} /> : null}
@@ -156,7 +165,9 @@ export function CustomSelect({
         aria-expanded={isOpen}
         onClick={() => (isOpen ? close() : open())}
         onKeyDown={handleTriggerKeyDown}
-        className="w-full min-h-[44px] sm:min-h-[40px] flex items-center justify-between gap-2 rounded-xl border border-slate-700/80 bg-slate-900/90 px-3.5 py-2.5 text-sm text-slate-100 outline-none transition-all duration-200 hover:border-slate-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.99]"
+        className={`w-full min-h-[44px] sm:min-h-[40px] flex items-center justify-between gap-2 rounded-xl border border-slate-700/80 bg-slate-900/90 px-3.5 py-2.5 text-sm text-slate-100 outline-none transition-all duration-200 hover:border-slate-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.99] ${
+          showClear ? 'pr-16' : ''
+        }`}
       >
         <span className="flex items-center gap-2 truncate">
           {selectedOption?.color ? (
@@ -166,7 +177,7 @@ export function CustomSelect({
             />
           ) : null}
           <span className={selectedOption ? 'text-slate-100 font-medium' : 'text-slate-500'}>
-            {selectedOption ? selectedOption.label : placeholder}
+            {selectedOption ? selectedOption.label : placeholderText}
           </span>
         </span>
         <svg
@@ -180,6 +191,23 @@ export function CustomSelect({
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
         </svg>
       </button>
+      {showClear ? (
+        <button
+          type="button"
+          aria-label="Clear"
+          onClick={() => onChange('')}
+          className="absolute right-8 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-700/70 hover:text-slate-200 focus-visible:outline-2 focus-visible:outline-emerald-500"
+        >
+          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2.5"
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+      ) : null}
 
       {isOpen ? (
         <div
@@ -210,7 +238,11 @@ export function CustomSelect({
 
           {visibleOptions.length === 0 ? (
             <div className="px-3 py-2.5 text-center text-xs text-slate-500">
-              {normalizedQuery ? `No matches for “${query.trim()}”` : 'No options available'}
+              {normalizedQuery
+                ? `No matches for “${query.trim()}”`
+                : placeholderOption
+                  ? placeholderOption.label
+                  : 'No options available'}
             </div>
           ) : (
             visibleOptions.map((opt, idx) => {

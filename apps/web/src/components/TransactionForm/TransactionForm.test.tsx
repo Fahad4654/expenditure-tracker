@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Category, Note } from '../../shared/types';
 import TransactionForm from './TransactionForm';
@@ -106,6 +106,16 @@ describe('TransactionForm category search', () => {
     expect(screen.queryByRole('listbox')).toBeNull();
     expect(trigger.textContent).toContain('Transport');
   });
+
+  it('keeps the placeholder row out of the option list', () => {
+    renderForm();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Category' }));
+
+    const listbox = within(screen.getByRole('listbox'));
+    expect(listbox.queryByText('Choose a category')).toBeNull();
+    expect(listbox.getAllByRole('option').length).toBeGreaterThan(0);
+  });
 });
 
 describe('TransactionForm tag-note search', () => {
@@ -135,5 +145,22 @@ describe('TransactionForm tag-note search', () => {
     const trigger = screen.getByRole('button', { name: 'Tag note' });
     expect(screen.queryByRole('listbox')).toBeNull();
     expect(trigger.textContent).toContain('Trip ideas');
+  });
+
+  it('keeps the placeholder row out of the list and clears a picked note', () => {
+    renderForm();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tag note' }));
+    const listbox = within(screen.getByRole('listbox'));
+    expect(listbox.queryByText('No note')).toBeNull();
+    expect(listbox.getAllByRole('option').length).toBe(2);
+
+    fireEvent.click(listbox.getByRole('option', { name: 'Groceries' }));
+    const trigger = screen.getByRole('button', { name: 'Tag note' });
+    expect(trigger.textContent).toContain('Groceries');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    expect(trigger.textContent).toContain('No note');
+    expect(screen.queryByRole('button', { name: 'Clear' })).toBeNull();
   });
 });

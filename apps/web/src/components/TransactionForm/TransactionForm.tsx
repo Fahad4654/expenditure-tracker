@@ -196,11 +196,14 @@ export default function TransactionForm({
           id="tx-note"
           name="noteId"
           searchable
+          clearable
           searchPlaceholder="Search notes…"
           value={selectedNoteId}
           onChange={(event) => update('noteId', event.target.value)}
         >
-          <option value="">No note</option>
+          <option value="" disabled>
+            No note
+          </option>
           {notes.map((note) => (
             <option key={note.id} value={note.id}>
               {note.title}
