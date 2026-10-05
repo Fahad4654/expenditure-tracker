@@ -234,9 +234,16 @@ export function PageHeader({
   );
 }
 
+/**
+ * Page section surface. Deliberately **no** `backdrop-blur`: a backdrop-filter
+ * makes the card a stacking context, so a dropdown inside one (filter selects,
+ * pickers) can only paint above later siblings — the transactions list would
+ * cover an open filter menu. Over the flat page background the blur was a
+ * visual no-op anyway.
+ */
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <section className={`rounded-2xl border border-slate-800/80 bg-slate-900/60 p-4 sm:p-6 backdrop-blur-sm ${className}`}>
+    <section className={`rounded-2xl border border-slate-800/80 bg-slate-900/60 p-4 sm:p-6 ${className}`}>
       {children}
     </section>
   );
