@@ -190,6 +190,38 @@ describe('NotesPage', () => {
     });
   });
 
+  it('filters the tag picker as the query is typed', async () => {
+    stubFetch((url, init) => {
+      const method = (init as RequestInit | undefined)?.method ?? 'GET';
+      if (url.endsWith('/auth/refresh')) return failAuth();
+      if (String(url).includes('/transactions?')) {
+        return okBody({
+          items: [
+            { id: '33333333-3333-4333-8333-333333333333', title: 'Weekly groceries', transactionDate: '2026-10-02' },
+            { id: '44444444-4444-4444-8444-444444444444', title: 'Rent', transactionDate: '2026-10-01' },
+          ],
+          meta: { page: 1, limit: 50, total: 2, totalPages: 1 },
+        });
+      }
+      if (method === 'GET' && url.endsWith('/notes')) return okBody([]);
+      return okBody([]);
+    });
+
+    renderNotes();
+    await waitFor(() => expect(screen.getByText('No notes yet')).toBeTruthy());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tagged transactions' }));
+    const search = screen.getByLabelText('Search transactions…');
+
+    fireEvent.change(search, { target: { value: 'rent' } });
+    expect(screen.getByRole('option', { name: 'Rent · 1 Oct 2026' })).toBeTruthy();
+    expect(screen.queryByRole('option', { name: /Weekly groceries/ })).toBeNull();
+
+    fireEvent.change(search, { target: { value: 'zzz' } });
+    expect(screen.queryByRole('option')).toBeNull();
+    expect(screen.getByText('No matches for “zzz”')).toBeTruthy();
+  });
+
   it('updates the tag set when saving an edit', async () => {
     const txKeep = '44444444-4444-4444-8444-444444444444';
     const txDrop = '33333333-3333-4333-8333-333333333333';

@@ -195,6 +195,8 @@ export default function TransactionForm({
         <Select
           id="tx-note"
           name="noteId"
+          searchable
+          searchPlaceholder="Search notes…"
           value={selectedNoteId}
           onChange={(event) => update('noteId', event.target.value)}
         >

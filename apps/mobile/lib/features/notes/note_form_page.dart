@@ -261,6 +261,7 @@ class _NoteFormPageState extends State<NoteFormPage> {
                       )
                     else ...[
                       TextField(
+                        key: const ValueKey('tag-transaction-search'),
                         controller: _tagSearchController,
                         onChanged: (_) => setState(() {}),
                         textInputAction: TextInputAction.search,

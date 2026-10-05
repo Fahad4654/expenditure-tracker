@@ -83,12 +83,16 @@ function TagPicker({
         id={id}
         value=""
         disabled={available.length === 0}
+        searchable
+        searchPlaceholder="Search transactions…"
         onChange={(event) => {
           const value = event.target.value;
           if (value && !selected.includes(value)) onChange([...selected, value]);
         }}
       >
-        <option value="">Tag a transaction…</option>
+        <option value="" disabled>
+          Tag a transaction…
+        </option>
         {available.map((transaction) => (
           <option key={transaction.id} value={transaction.id}>
             {`${transaction.title} · ${formatDay(transaction.transactionDate)}`}

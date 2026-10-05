@@ -14,6 +14,20 @@ Future<void> _seedOne(LocalStore store) async {
   store.applyServerTransactionUpsert(transactionJson());
 }
 
+Future<void> _seedTwo(LocalStore store) async {
+  store.applyServerCategoryUpsert(categoryJson());
+  store.applyServerTransactionUpsert(transactionJson());
+  store.applyServerTransactionUpsert(
+    transactionJson(
+      id: '55555555-5555-4555-8555-555555555555',
+      clientId: '55555555-5555-4555-8555-555555555556',
+      title: 'Monthly salary',
+      type: 'INCOME',
+      date: '2026-09-25',
+    ),
+  );
+}
+
 /// The submit button inside the pushed form — the empty state behind it also
 /// offers an "Add note" button.
 Finder _submitForm(WidgetTester tester) => find.descendant(
@@ -76,6 +90,30 @@ void main() {
         (request) => request.method == 'POST' && request.path == ApiRoutes.notes,
       );
       expect(posts, isEmpty);
+    });
+
+    testWidgets('filters tagged transactions as the search is typed',
+        (tester) async {
+      await pumpApp(tester, signedIn: true, seed: _seedTwo);
+
+      await tester.tap(find.text('Notes'));
+      await settle(tester, pumps: 8);
+
+      await tester.tap(find.byTooltip('Add note'));
+      await settle(tester, pumps: 8);
+
+      final search = find.byKey(const ValueKey('tag-transaction-search'));
+      expect(search, findsOneWidget);
+
+      await tester.enterText(search, 'salary');
+      await settle(tester);
+
+      expect(find.text('Monthly salary'), findsOneWidget);
+      expect(find.text('Lunch with Sam'), findsNothing);
+
+      await tester.enterText(search, 'zzz');
+      await settle(tester);
+      expect(find.text('No transactions match.'), findsOneWidget);
     });
 
     testWidgets('creates a note with the selected transaction tags',
