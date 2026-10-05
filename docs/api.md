@@ -172,6 +172,8 @@ Behaviour:
 - Deleting a category that still has non-deleted transactions is **409
   CONFLICT** — move or delete them first.
 - A duplicate `(userId, name)` is **409 CONFLICT**.
+- Every mutation emits a `CATEGORY_CREATE` / `CATEGORY_UPDATE` /
+  `CATEGORY_DELETE` audit line through `logEvent`.
 
 ### Notes
 

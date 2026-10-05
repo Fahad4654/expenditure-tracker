@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import type { Category, TransactionTypeValue } from '../../shared/types';
-import { createCategorySchema, toFieldErrors } from '../../shared/validation';
+import { createCategorySchema, updateCategorySchema, toFieldErrors } from '../../shared/validation';
 import {
   Button,
   Card,
@@ -11,8 +11,11 @@ import {
   Select,
   Spinner,
   TextInput,
+  labelClass,
 } from '../../components/ui';
+import CategoryAvatar from '../../components/CategoryAvatar/CategoryAvatar';
 import { API_ROUTES, apiFetch } from '../../lib/api';
+import { CATEGORY_COLORS, CATEGORY_ICON_TOKENS, categoryGlyph } from '../../lib/categoryIcons';
 import { bannerFor, indexByPath, parseFormError } from '../../lib/errors';
 import { useAsync } from '../../lib/useAsync';
 import { ROUTES } from '../../routes';
@@ -31,18 +34,45 @@ export default function CategoriesPage() {
 
   const [name, setName] = useState('');
   const [suggestedType, setSuggestedType] = useState<TransactionTypeValue>('EXPENSE');
+  const [color, setColor] = useState(CATEGORY_COLORS[0]);
+  const [icon, setIcon] = useState(CATEGORY_ICON_TOKENS[0]);
   const [createErrors, setCreateErrors] = useState<Record<string, string>>({});
   const [banner, setBanner] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  const [editType, setEditType] = useState<TransactionTypeValue>('EXPENSE');
+  const [editColor, setEditColor] = useState(CATEGORY_COLORS[0]);
+  const [editIcon, setEditIcon] = useState(CATEGORY_ICON_TOKENS[0]);
+  const [editErrors, setEditErrors] = useState<Record<string, string>>({});
+  const [savingEdit, setSavingEdit] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  function startEdit(category: Category) {
+    setBanner(null);
+    setEditErrors({});
+    setEditName(category.name);
+    setEditType(category.suggestedType);
+    setEditColor(category.color ?? CATEGORY_COLORS[0]);
+    setEditIcon(category.icon ?? CATEGORY_ICON_TOKENS[0]);
+    setEditingId(category.id);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditErrors({});
+  }
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBanner(null);
 
-    const parsed = createCategorySchema.safeParse({ name, suggestedType });
+    const parsed = createCategorySchema.safeParse({
+      name,
+      suggestedType,
+      icon,
+      color,
+    });
     if (!parsed.success) {
       setCreateErrors(indexByPath(toFieldErrors(parsed.error)));
       return;
@@ -65,23 +95,32 @@ export default function CategoriesPage() {
     }
   }
 
-  async function handleRename(category: Category) {
-    const parsed = createCategorySchema.pick({ name: true }).safeParse({ name: editName });
+  async function handleSave(category: Category) {
+    const parsed = updateCategorySchema.safeParse({
+      name: editName,
+      suggestedType: editType,
+      color: editColor,
+      icon: editIcon,
+    });
     if (!parsed.success) {
-      setBanner(indexByPath(toFieldErrors(parsed.error)).name ?? null);
+      setEditErrors(indexByPath(toFieldErrors(parsed.error)));
       return;
     }
 
+    setEditErrors({});
     setBanner(null);
+    setSavingEdit(true);
     try {
       const updated = await apiFetch<Category>(API_ROUTES.categories.byId(category.id), {
         method: 'PATCH',
-        body: JSON.stringify({ name: parsed.data.name }),
+        body: JSON.stringify(parsed.data),
       });
       list.setData((list.data ?? []).map((c) => (c.id === updated.id ? updated : c)));
       setEditingId(null);
     } catch (error) {
       setBanner(bannerFor(error));
+    } finally {
+      setSavingEdit(false);
     }
   }
 
@@ -137,6 +176,14 @@ export default function CategoriesPage() {
               ))}
             </Select>
           </Field>
+          <div className="sm:col-span-2">
+            <span className={labelClass}>Colour</span>
+            <ColourSwatches value={color} onChange={setColor} />
+          </div>
+          <div className="sm:col-span-2">
+            <span className={labelClass}>Icon</span>
+            <IconPicker value={icon} onChange={setIcon} />
+          </div>
           <div className="flex items-end sm:col-span-2">
             <Button type="submit" className="w-full sm:w-auto" disabled={submitting}>
               {submitting ? 'Adding…' : 'Add category'}
@@ -161,31 +208,12 @@ export default function CategoriesPage() {
               className="rounded-xl border border-slate-800 bg-slate-900/60 p-4"
             >
               <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <span
-                    aria-hidden
-                    className="h-3 w-3 rounded-full"
-                    style={{ backgroundColor: category.color ?? '#64748b' }}
-                  />
-                  {editingId === category.id ? (
-                    <input
-                      autoFocus
-                      aria-label={`Rename ${category.name}`}
-                      value={editName}
-                      maxLength={40}
-                      onChange={(event) => setEditName(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter') void handleRename(category);
-                        if (event.key === 'Escape') setEditingId(null);
-                      }}
-                      className="min-w-0 flex-1 max-w-[160px] rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-sm text-slate-100 outline-none focus:border-emerald-500"
-                    />
-                  ) : (
-                    <span className="font-medium text-slate-100">{category.name}</span>
-                  )}
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <CategoryAvatar color={category.color} icon={category.icon} size={36} />
+                  <span className="truncate font-medium text-slate-100">{category.name}</span>
                 </div>
                 {category.isSystem ? (
-                  <span className="rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-400">
+                  <span className="shrink-0 rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-400">
                     System
                   </span>
                 ) : null}
@@ -196,34 +224,86 @@ export default function CategoriesPage() {
                 {category.kind === 'USER' ? ' · yours' : ''}
               </p>
 
-              {!category.isSystem ? (
+              {!category.isSystem && editingId !== category.id ? (
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {editingId === category.id ? (
-                    <>
-                      <Button variant="primary" onClick={() => void handleRename(category)}>
-                        Save
-                      </Button>
-                      <Button variant="ghost" onClick={() => setEditingId(null)}>
-                        Cancel
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button
-                        variant="secondary"
-                        onClick={() => {
-                          setEditingId(category.id);
-                          setEditName(category.name);
-                        }}
-                      >
-                        Rename
-                      </Button>
-                      <Button variant="ghost" onClick={() => setPendingDeleteId(category.id)}>
-                        Delete
-                      </Button>
-                    </>
-                  )}
+                  <Button variant="secondary" onClick={() => startEdit(category)}>
+                    Edit
+                  </Button>
+                  <Button variant="ghost" onClick={() => setPendingDeleteId(category.id)}>
+                    Delete
+                  </Button>
                 </div>
+              ) : null}
+
+              {editingId === category.id ? (
+                <form
+                  aria-label={`Edit ${category.name}`}
+                  className="mt-3 grid gap-3"
+                  noValidate
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void handleSave(category);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Escape') cancelEdit();
+                  }}
+                >
+                  <Field label="Name" htmlFor="cat-edit-name" error={editErrors.name}>
+                    <TextInput
+                      id="cat-edit-name"
+                      maxLength={40}
+                      required
+                      autoFocus
+                      value={editName}
+                      onChange={(event) => setEditName(event.target.value)}
+                    />
+                  </Field>
+                  <Field
+                    label="Suggested type"
+                    htmlFor="cat-edit-type"
+                    error={editErrors.suggestedType}
+                  >
+                    <Select
+                      id="cat-edit-type"
+                      value={editType}
+                      onChange={(event) =>
+                        setEditType(event.target.value as TransactionTypeValue)
+                      }
+                    >
+                      {TYPE_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <div>
+                    <span className={labelClass}>Colour</span>
+                    <ColourSwatches value={editColor} onChange={setEditColor} />
+                    {editErrors.color ? (
+                      <p className="mt-1.5 text-xs font-medium text-rose-400" role="alert">
+                        {editErrors.color}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div>
+                    <span className={labelClass}>Icon</span>
+                    <IconPicker value={editIcon} onChange={setEditIcon} />
+                    {editErrors.icon ? (
+                      <p className="mt-1.5 text-xs font-medium text-rose-400" role="alert">
+                        {editErrors.icon}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="submit" variant="primary" disabled={savingEdit}>
+                      {savingEdit ? 'Saving…' : 'Save'}
+                    </Button>
+                    <Button type="button" variant="ghost" onClick={cancelEdit}>
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
               ) : null}
 
               {pendingDeleteId === category.id ? (
@@ -231,7 +311,7 @@ export default function CategoriesPage() {
                   <p className="text-rose-200">
                     Delete “{category.name}”? Categories still used by transactions are rejected.
                   </p>
-                  <div className="mt-2 flex gap-2">
+                  <div className="mt-2 flex flex-wrap gap-2">
                     <Button variant="danger" onClick={() => void handleDelete(category)}>
                       Delete
                     </Button>
@@ -246,5 +326,70 @@ export default function CategoriesPage() {
         </ul>
       )}
     </main>
+  );
+}
+
+/** Swatch row for the category colour — values are data, not theme colours. */
+function ColourSwatches({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (hex: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {CATEGORY_COLORS.map((hex) => (
+        <button
+          key={hex}
+          type="button"
+          aria-label={`Colour ${hex}`}
+          aria-pressed={value === hex}
+          onClick={() => onChange(hex)}
+          className={`flex h-9 w-9 items-center justify-center rounded-full border-2 transition ${
+            value === hex ? 'border-emerald-500' : 'border-transparent hover:border-slate-600'
+          }`}
+          style={{ backgroundColor: hex }}
+        >
+          {value === hex ? (
+            <svg
+              aria-hidden
+              className="h-4 w-4 text-white"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={3}
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          ) : null}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Glyph grid for the category icon; each option is labelled with its token. */
+function IconPicker({ value, onChange }: { value: string; onChange: (token: string) => void }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {CATEGORY_ICON_TOKENS.map((token) => (
+        <button
+          key={token}
+          type="button"
+          title={token}
+          aria-label={token}
+          aria-pressed={value === token}
+          onClick={() => onChange(token)}
+          className={`flex h-10 w-10 items-center justify-center rounded-xl text-lg transition ${
+            value === token
+              ? 'bg-emerald-500/15 ring-2 ring-emerald-500'
+              : 'bg-slate-900/60 ring-1 ring-slate-800 hover:bg-slate-800'
+          }`}
+        >
+          <span aria-hidden>{categoryGlyph(token)}</span>
+        </button>
+      ))}
+    </div>
   );
 }
