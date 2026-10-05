@@ -71,7 +71,7 @@ Future<void> _openCategories(WidgetTester tester) async {
 
 void main() {
   group('CategoriesPage', () {
-    testWidgets('edits the name, colour and icon of a personal category',
+    testWidgets('edits the name and colour of a personal category',
         (tester) async {
       final api = FakeApiClient();
       api.onGet(ApiRoutes.categories, (_) => _categories());
@@ -94,7 +94,6 @@ void main() {
       await tester.enterText(_nameField(), 'Vet bills');
       expect(_swatches(), findsNWidgets(12));
       await tester.tap(_swatches().at(1)); // #3B82F6
-      await tester.tap(find.byTooltip('car'));
       await settle(tester);
 
       await tester.tap(_saveButton());
@@ -106,7 +105,7 @@ void main() {
       final row = app.store.listCategories().singleWhere((c) => c.id == _ownId);
       expect(row.name, 'Vet bills');
       expect(row.color, '#3B82F6');
-      expect(row.icon, 'car');
+      expect(row.icon, 'pets', reason: 'a colour edit leaves the icon alone');
 
       final op = app.store.nextPushBatch().single;
       expect(op.operation, 'UPDATE');
@@ -114,11 +113,11 @@ void main() {
       expect(op.entityId, _ownId);
       expect(op.payload['name'], 'Vet bills');
       expect(op.payload['color'], '#3B82F6');
-      expect(op.payload['icon'], 'car');
+      expect(op.payload['icon'], 'pets');
       expect(op.payload['suggestedType'], 'EXPENSE');
     });
 
-    testWidgets('creates a category with a colour and icon', (tester) async {
+    testWidgets('creates a category with a colour', (tester) async {
       final api = FakeApiClient();
       api.onGet(ApiRoutes.categories, (_) => _categories());
       final app = await pumpApp(tester, api: api, signedIn: true, seed: _seed);
@@ -130,7 +129,6 @@ void main() {
 
       await tester.enterText(_nameField(), 'Coffee money');
       await tester.tap(_swatches().at(4)); // #8B5CF6
-      await tester.tap(find.byTooltip('bag'));
       await settle(tester);
 
       await tester.tap(_saveButton());
@@ -144,7 +142,7 @@ void main() {
           .singleWhere((c) => c.name == 'Coffee money');
       expect(created.kind, CategoryKind.user);
       expect(created.color, '#8B5CF6');
-      expect(created.icon, 'bag');
+      expect(created.icon, isNull);
 
       final op = app.store.nextPushBatch().single;
       expect(op.operation, 'CREATE');
@@ -152,7 +150,7 @@ void main() {
       expect(op.entityId, created.id);
       expect(op.payload['name'], 'Coffee money');
       expect(op.payload['color'], '#8B5CF6');
-      expect(op.payload['icon'], 'bag');
+      expect(op.payload.containsKey('icon'), isFalse);
     });
   });
 }

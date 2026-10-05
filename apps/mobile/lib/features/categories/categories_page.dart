@@ -276,7 +276,6 @@ class _CategoryFormDialogState extends State<_CategoryFormDialog> {
   late final TextEditingController _nameController;
   late TransactionType _type;
   late String _color;
-  late String _icon;
   String? _nameError;
 
   @override
@@ -286,7 +285,6 @@ class _CategoryFormDialogState extends State<_CategoryFormDialog> {
     _nameController = TextEditingController(text: existing?.name ?? '');
     _type = existing?.suggestedType ?? TransactionType.expense;
     _color = existing?.color ?? _palette.first;
-    _icon = existing?.icon ?? categoryIconTokens.first;
   }
 
   @override
@@ -306,12 +304,7 @@ class _CategoryFormDialogState extends State<_CategoryFormDialog> {
       return;
     }
     Navigator.of(context).pop(
-      CategoryInput(
-        name: name,
-        suggestedType: _type,
-        color: _color,
-        icon: _icon,
-      ),
+      CategoryInput(name: name, suggestedType: _type, color: _color),
     );
   }
 
@@ -379,29 +372,6 @@ class _CategoryFormDialogState extends State<_CategoryFormDialog> {
                             ? Icon(Icons.check, size: 18, color: Colors.white)
                             : null,
                       ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text('Icon', style: theme.textTheme.labelMedium),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  for (final token in categoryIconTokens)
-                    IconButton(
-                      tooltip: token,
-                      icon: Icon(iconForToken(token)),
-                      style: IconButton.styleFrom(
-                        backgroundColor: _icon == token
-                            ? theme.colorScheme.primaryContainer
-                            : null,
-                        foregroundColor: _icon == token
-                            ? theme.colorScheme.onPrimaryContainer
-                            : null,
-                      ),
-                      onPressed: () => setState(() => _icon = token),
                     ),
                 ],
               ),

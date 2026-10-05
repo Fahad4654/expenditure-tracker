@@ -95,7 +95,7 @@ describe('CategoriesPage', () => {
     expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull();
   });
 
-  it('edits name, suggested type, colour and icon together', async () => {
+  it('edits name, suggested type and colour together', async () => {
     const fetchMock = stubFetch((url, init) => {
       if (init?.method === 'PATCH') {
         return okBody(
@@ -103,7 +103,6 @@ describe('CategoriesPage', () => {
             name: 'Vet bills',
             suggestedType: 'INCOME',
             color: '#3B82F6',
-            icon: 'car',
           }),
         );
       }
@@ -121,7 +120,6 @@ describe('CategoriesPage', () => {
     fireEvent.click(within(form).getByRole('button', { name: 'Suggested type' }));
     fireEvent.click(within(form).getByRole('option', { name: 'Income' }));
     fireEvent.click(within(form).getByRole('button', { name: 'Colour #3B82F6' }));
-    fireEvent.click(within(form).getByRole('button', { name: 'car' }));
     fireEvent.click(within(form).getByRole('button', { name: 'Save' }));
 
     await waitFor(() => {
@@ -131,7 +129,6 @@ describe('CategoriesPage', () => {
         name: 'Vet bills',
         suggestedType: 'INCOME',
         color: '#3B82F6',
-        icon: 'car',
       });
     });
 
@@ -154,7 +151,7 @@ describe('CategoriesPage', () => {
     expect(fetchMock.mock.calls.filter(([, init]) => init?.method)).toHaveLength(0);
   });
 
-  it('creates a category with the chosen colour and icon', async () => {
+  it('creates a category with the chosen colour', async () => {
     const fetchMock = stubFetch((url, init) => {
       if (init?.method === 'POST') {
         return okBody(makeCategory({ id: 'cat-2', name: 'Vet care' }));
@@ -169,7 +166,6 @@ describe('CategoriesPage', () => {
       target: { value: 'Vet care' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Colour #0EA5E9' }));
-    fireEvent.click(screen.getByRole('button', { name: 'heart' }));
     fireEvent.click(screen.getByRole('button', { name: 'Add category' }));
 
     await waitFor(() => {
@@ -179,7 +175,6 @@ describe('CategoriesPage', () => {
         name: 'Vet care',
         suggestedType: 'EXPENSE',
         color: '#0EA5E9',
-        icon: 'heart',
       });
     });
   });

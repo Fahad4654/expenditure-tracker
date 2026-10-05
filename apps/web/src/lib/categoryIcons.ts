@@ -49,11 +49,6 @@ export const CATEGORY_ICON_GLYPHS: Record<string, string> = {
   dots: '⋯',
 };
 
-/** Token list in the order the pickers offer them (never empty). */
-export const CATEGORY_ICON_TOKENS: readonly [string, ...string[]] = Object.keys(
-  CATEGORY_ICON_GLYPHS,
-) as [string, ...string[]];
-
 /** Emoji for a token; unknown or missing tokens fall back to the tag glyph. */
 export function categoryGlyph(icon?: string | null): string {
   return (icon ? CATEGORY_ICON_GLYPHS[icon] : undefined) ?? '🏷️';

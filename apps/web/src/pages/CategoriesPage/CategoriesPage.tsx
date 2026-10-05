@@ -15,7 +15,7 @@ import {
 } from '../../components/ui';
 import CategoryAvatar from '../../components/CategoryAvatar/CategoryAvatar';
 import { API_ROUTES, apiFetch } from '../../lib/api';
-import { CATEGORY_COLORS, CATEGORY_ICON_TOKENS, categoryGlyph } from '../../lib/categoryIcons';
+import { CATEGORY_COLORS } from '../../lib/categoryIcons';
 import { bannerFor, indexByPath, parseFormError } from '../../lib/errors';
 import { useAsync } from '../../lib/useAsync';
 import { ROUTES } from '../../routes';
@@ -35,7 +35,6 @@ export default function CategoriesPage() {
   const [name, setName] = useState('');
   const [suggestedType, setSuggestedType] = useState<TransactionTypeValue>('EXPENSE');
   const [color, setColor] = useState(CATEGORY_COLORS[0]);
-  const [icon, setIcon] = useState(CATEGORY_ICON_TOKENS[0]);
   const [createErrors, setCreateErrors] = useState<Record<string, string>>({});
   const [banner, setBanner] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -43,7 +42,6 @@ export default function CategoriesPage() {
   const [editName, setEditName] = useState('');
   const [editType, setEditType] = useState<TransactionTypeValue>('EXPENSE');
   const [editColor, setEditColor] = useState(CATEGORY_COLORS[0]);
-  const [editIcon, setEditIcon] = useState(CATEGORY_ICON_TOKENS[0]);
   const [editErrors, setEditErrors] = useState<Record<string, string>>({});
   const [savingEdit, setSavingEdit] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -54,7 +52,6 @@ export default function CategoriesPage() {
     setEditName(category.name);
     setEditType(category.suggestedType);
     setEditColor(category.color ?? CATEGORY_COLORS[0]);
-    setEditIcon(category.icon ?? CATEGORY_ICON_TOKENS[0]);
     setEditingId(category.id);
   }
 
@@ -70,7 +67,6 @@ export default function CategoriesPage() {
     const parsed = createCategorySchema.safeParse({
       name,
       suggestedType,
-      icon,
       color,
     });
     if (!parsed.success) {
@@ -100,7 +96,6 @@ export default function CategoriesPage() {
       name: editName,
       suggestedType: editType,
       color: editColor,
-      icon: editIcon,
     });
     if (!parsed.success) {
       setEditErrors(indexByPath(toFieldErrors(parsed.error)));
@@ -179,10 +174,6 @@ export default function CategoriesPage() {
           <div className="sm:col-span-2">
             <span className={labelClass}>Colour</span>
             <ColourSwatches value={color} onChange={setColor} />
-          </div>
-          <div className="sm:col-span-2">
-            <span className={labelClass}>Icon</span>
-            <IconPicker value={icon} onChange={setIcon} />
           </div>
           <div className="flex items-end sm:col-span-2">
             <Button type="submit" className="w-full sm:w-auto" disabled={submitting}>
@@ -286,15 +277,6 @@ export default function CategoriesPage() {
                       </p>
                     ) : null}
                   </div>
-                  <div>
-                    <span className={labelClass}>Icon</span>
-                    <IconPicker value={editIcon} onChange={setEditIcon} />
-                    {editErrors.icon ? (
-                      <p className="mt-1.5 text-xs font-medium text-rose-400" role="alert">
-                        {editErrors.icon}
-                      </p>
-                    ) : null}
-                  </div>
                   <div className="flex flex-wrap gap-2">
                     <Button type="submit" variant="primary" disabled={savingEdit}>
                       {savingEdit ? 'Saving…' : 'Save'}
@@ -363,31 +345,6 @@ function ColourSwatches({
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
           ) : null}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-/** Glyph grid for the category icon; each option is labelled with its token. */
-function IconPicker({ value, onChange }: { value: string; onChange: (token: string) => void }) {
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {CATEGORY_ICON_TOKENS.map((token) => (
-        <button
-          key={token}
-          type="button"
-          title={token}
-          aria-label={token}
-          aria-pressed={value === token}
-          onClick={() => onChange(token)}
-          className={`flex h-10 w-10 items-center justify-center rounded-xl text-lg transition ${
-            value === token
-              ? 'bg-emerald-500/15 ring-2 ring-emerald-500'
-              : 'bg-slate-900/60 ring-1 ring-slate-800 hover:bg-slate-800'
-          }`}
-        >
-          <span aria-hidden>{categoryGlyph(token)}</span>
         </button>
       ))}
     </div>
