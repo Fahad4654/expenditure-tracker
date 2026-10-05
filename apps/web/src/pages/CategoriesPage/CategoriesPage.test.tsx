@@ -59,7 +59,7 @@ afterEach(() => {
 });
 
 describe('CategoriesPage', () => {
-  it('lists categories with an avatar and edit controls', async () => {
+  it('lists categories with a colour swatch and edit controls', async () => {
     stubFetch(() => okBody([makeCategory()]));
 
     renderPage();
@@ -67,7 +67,8 @@ describe('CategoriesPage', () => {
     const name = await screen.findByText('Pets');
     const card = name.closest('li');
     expect(card).toBeTruthy();
-    expect(within(card as HTMLElement).getByText('🐾')).toBeTruthy();
+    const dot = (card as HTMLElement).querySelector('span[aria-hidden]');
+    expect(dot?.style.backgroundColor).toBe('rgb(236, 72, 153)');
     expect(screen.getByRole('button', { name: 'Edit' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Delete' })).toBeTruthy();
   });

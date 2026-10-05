@@ -44,7 +44,6 @@ class TransactionTile extends StatelessWidget {
             children: [
               CategoryAvatar(
                 color: category?.color,
-                icon: category?.icon,
                 size: 40,
               ),
               const SizedBox(width: 12),

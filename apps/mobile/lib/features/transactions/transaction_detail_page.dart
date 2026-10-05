@@ -228,7 +228,6 @@ class _Details extends StatelessWidget {
                           if (category != null) ...[
                             CategoryAvatar(
                               color: category.color,
-                              icon: category.icon,
                               size: 28,
                             ),
                             const SizedBox(width: 8),

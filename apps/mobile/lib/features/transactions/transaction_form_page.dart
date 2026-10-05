@@ -156,7 +156,6 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
             label: category.name,
             leading: CategoryAvatar(
               color: category.color,
-              icon: category.icon,
               size: 32,
             ),
           ),
@@ -388,7 +387,6 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
                                           children: [
                                             CategoryAvatar(
                                               color: selected.color,
-                                              icon: selected.icon,
                                               size: 24,
                                             ),
                                             const SizedBox(width: 10),

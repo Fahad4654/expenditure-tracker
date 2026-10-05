@@ -13,9 +13,8 @@ import {
   TextInput,
   labelClass,
 } from '../../components/ui';
-import CategoryAvatar from '../../components/CategoryAvatar/CategoryAvatar';
 import { API_ROUTES, apiFetch } from '../../lib/api';
-import { CATEGORY_COLORS } from '../../lib/categoryIcons';
+import { CATEGORY_COLORS } from '../../lib/categoryColors';
 import { bannerFor, indexByPath, parseFormError } from '../../lib/errors';
 import { useAsync } from '../../lib/useAsync';
 import { ROUTES } from '../../routes';
@@ -200,7 +199,11 @@ export default function CategoriesPage() {
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-2.5">
-                  <CategoryAvatar color={category.color} icon={category.icon} size={36} />
+                  <span
+                    aria-hidden
+                    className="h-3 w-3 shrink-0 rounded-full"
+                    style={{ backgroundColor: category.color ?? '#64748b' }}
+                  />
                   <span className="truncate font-medium text-slate-100">{category.name}</span>
                 </div>
                 {category.isSystem ? (

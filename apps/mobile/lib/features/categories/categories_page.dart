@@ -195,7 +195,6 @@ class _SystemChip extends StatelessWidget {
       child: Chip(
         avatar: CategoryAvatar(
           color: category.color,
-          icon: category.icon,
           size: 24,
         ),
         label: Text(category.name),
@@ -224,7 +223,7 @@ class _CategoryRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          CategoryAvatar(color: category.color, icon: category.icon, size: 36),
+          CategoryAvatar(color: category.color, size: 36),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
