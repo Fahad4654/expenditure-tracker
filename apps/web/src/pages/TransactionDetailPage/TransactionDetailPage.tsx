@@ -105,6 +105,13 @@ export default function TransactionDetailPage() {
 
   return (
     <main className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-6 sm:py-10">
+      <Link
+        to={ROUTES.transactions}
+        className="mb-4 inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-200 transition-all duration-200 hover:border-slate-600 hover:bg-slate-800 active:bg-slate-950 sm:min-h-[40px]"
+      >
+        ← Back to transactions
+      </Link>
+
       <PageHeader
         title={editing ? 'Edit transaction' : transaction.title}
         subtitle={`${expense ? 'Expense' : 'Income'} · ${formatDay(transaction.transactionDate, {
@@ -209,13 +216,6 @@ export default function TransactionDetailPage() {
                 </div>
               </div>
             ) : null}
-
-            <Link
-              to={ROUTES.transactions}
-              className="inline-flex items-center gap-1 text-sm text-slate-400 transition hover:text-slate-200 min-h-[44px]"
-            >
-              ← Back to transactions
-            </Link>
           </div>
         )}
       </Card>
