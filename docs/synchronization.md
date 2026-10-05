@@ -77,6 +77,7 @@ Content-Type: application/json
         "title": "Lunch",
         "description": null,
         "transactionDate": "2026-10-01",
+        "noteId": null, // optional tagged note (nullable uuid, own note only)
       },
     },
   ],
@@ -221,6 +222,7 @@ needed in the common case.
 | **UPDATE after local DELETE**                          | `CONFLICT`, server tombstone wins (deletes must not disappear).                                                       |
 | **DELETE seen by another device**                      | Delivered as a `DELETE` change with a version; client hard-deletes locally **only after** the change is acknowledged. |
 | **Category deleted while a transaction references it** | `REJECTED: category_not_found` (FK is `RESTRICT`), client offers re-categorisation.                                   |
+| **Tagged note that is not the caller's or is deleted** | `REJECTED: note_not_found`; the tag is dropped and the client re-asks which note to attach.                           |
 | **Clock skew**                                         | Irrelevant — `version` and the `ChangeLog` cursor are server-authoritative.                                           |
 
 ### Why deletes are safe

@@ -2,8 +2,10 @@ import { HttpStatus } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errors } from '../src/common/http/api-error';
 import { SyncService } from '../src/sync/sync.service';
+import { transactionSyncPayloadSchema } from '../src/shared/validation/sync';
 
 const NOW = new Date('2026-10-01T00:00:00.000Z');
+const NOTE_ID = '99999999-9999-4999-8999-999999999999';
 
 type Spy = ReturnType<typeof vi.fn>;
 
@@ -11,6 +13,7 @@ interface PrismaMock {
   syncOperation: { findUnique: Spy; create: Spy };
   transaction: { findFirst: Spy; findUnique: Spy; update: Spy; count: Spy };
   category: { findFirst: Spy; findUnique: Spy; findMany: Spy; create: Spy; update: Spy };
+  note: { findFirst: Spy };
   changeLog: { findMany: Spy; create: Spy };
   device: { upsert: Spy };
   $transaction: Spy;
@@ -27,6 +30,7 @@ function buildPrisma(): PrismaMock {
       create: vi.fn(),
       update: vi.fn(),
     },
+    note: { findFirst: vi.fn() },
     changeLog: { findMany: vi.fn(), create: vi.fn() },
     device: { upsert: vi.fn() },
     $transaction: vi.fn(),
@@ -263,6 +267,119 @@ describe('SyncService', () => {
     });
   });
 
+  describe('note tagging', () => {
+    it('forwards the tagged noteId to the create', async () => {
+      prisma.syncOperation.findUnique.mockResolvedValue(null);
+      transactions.create.mockResolvedValue({
+        transaction: { id: 'tx-1', version: 1 },
+        created: true,
+      });
+
+      const op = createOp({ payload: { ...createOp().payload, noteId: NOTE_ID } });
+      const response = await service.push('user-1', pushDto([op]));
+
+      expect(response.results[0]).toMatchObject({ status: 'APPLIED' });
+      expect(transactions.create).toHaveBeenCalledWith(
+        'user-1',
+        expect.objectContaining({ noteId: NOTE_ID }),
+        expect.anything(),
+      );
+    });
+
+    it('reports a create whose note is not the caller’s as note_not_found', async () => {
+      prisma.syncOperation.findUnique.mockResolvedValue(null);
+      transactions.create
+        .mockRejectedValueOnce(errors.notFound('Note not found'))
+        .mockResolvedValueOnce({ transaction: { id: 'tx-2', version: 1 }, created: true });
+
+      const second = createOp({ operationId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' });
+      const response = await service.push('user-1', pushDto([createOp(), second]));
+
+      expect(response.results[0]).toMatchObject({
+        status: 'REJECTED',
+        reason: 'note_not_found',
+      });
+      expect(response.results[1]).toMatchObject({ status: 'APPLIED' });
+    });
+
+    it('writes the note tag on an update when the caller owns the note', async () => {
+      prisma.syncOperation.findUnique.mockResolvedValue(null);
+      prisma.transaction.findFirst.mockResolvedValue(prismaTransaction({ version: 1 }));
+      prisma.category.findFirst.mockResolvedValue({ id: 'cat-1' });
+      prisma.note.findFirst.mockResolvedValue({ id: NOTE_ID });
+      prisma.transaction.update.mockResolvedValue(
+        prismaTransaction({ version: 2, noteId: NOTE_ID }),
+      );
+
+      const op = createOp({
+        operation: 'UPDATE',
+        baseVersion: 1,
+        payload: { ...createOp().payload, noteId: NOTE_ID },
+      });
+      const response = await service.push('user-1', pushDto([op]));
+
+      expect(response.results[0]).toMatchObject({ status: 'APPLIED' });
+      expect(prisma.note.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ id: NOTE_ID, userId: 'user-1', deletedAt: null }),
+        }),
+      );
+      expect(prisma.transaction.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ noteId: NOTE_ID }) }),
+      );
+    });
+
+    it('rejects an update tagging somebody else’s note', async () => {
+      prisma.syncOperation.findUnique.mockResolvedValue(null);
+      prisma.transaction.findFirst.mockResolvedValue(prismaTransaction({ version: 1 }));
+      prisma.category.findFirst.mockResolvedValue({ id: 'cat-1' });
+      prisma.note.findFirst.mockResolvedValue(null);
+
+      const op = createOp({
+        operation: 'UPDATE',
+        baseVersion: 1,
+        payload: { ...createOp().payload, noteId: NOTE_ID },
+      });
+      const response = await service.push('user-1', pushDto([op]));
+
+      expect(response.results[0]).toMatchObject({
+        status: 'REJECTED',
+        reason: 'note_not_found',
+      });
+      expect(prisma.transaction.update).not.toHaveBeenCalled();
+    });
+
+    it('clears the tag on an explicit null and leaves it alone when the key is absent', async () => {
+      prisma.syncOperation.findUnique.mockResolvedValue(null);
+      prisma.transaction.findFirst.mockResolvedValue(prismaTransaction({ version: 1 }));
+      prisma.category.findFirst.mockResolvedValue({ id: 'cat-1' });
+      prisma.transaction.update.mockResolvedValue(prismaTransaction({ version: 2 }));
+
+      const cleared = createOp({
+        operation: 'UPDATE',
+        baseVersion: 1,
+        payload: { ...createOp().payload, noteId: null },
+      });
+      await service.push('user-1', pushDto([cleared]));
+
+      expect(prisma.note.findFirst).not.toHaveBeenCalled();
+      expect(prisma.transaction.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ noteId: null }) }),
+      );
+
+      prisma.transaction.update.mockClear();
+      const untouched = createOp({
+        operationId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+        operation: 'UPDATE',
+        baseVersion: 2,
+      });
+      await service.push('user-1', pushDto([untouched]));
+
+      const data = (prisma.transaction.update as Spy).mock.calls.at(-1)?.[0].data as object;
+      expect(data).not.toHaveProperty('noteId');
+    });
+  });
+
   describe('category operations', () => {
     it('rejects a create whose name is taken instead of hitting the unique constraint', async () => {
       prisma.syncOperation.findUnique.mockResolvedValue(null);
@@ -433,6 +550,34 @@ describe('SyncService', () => {
 
     await expect(service.push('user-1', pushDto([createOp()]))).rejects.toThrow('connection lost');
     expect(prisma.device.upsert).not.toHaveBeenCalled();
+  });
+
+  describe('payload validation', () => {
+    // The service-level tests above feed the raw payload straight through; this
+    // one exercises the Zod schema that `POST /sync` runs on every operation.
+    const base = {
+      clientId: '5d2f0000-0000-4000-8000-000000000001',
+      deviceId: 'device-a',
+      type: 'EXPENSE',
+      amount: '250.00',
+      currency: 'BDT',
+      categoryId: '5d2f0000-0000-4000-8000-000000000002',
+      title: 'Lunch',
+      description: null,
+      transactionDate: '2026-10-01',
+    };
+
+    it('accepts a nullable noteId in a transaction payload', () => {
+      expect(transactionSyncPayloadSchema.safeParse({ ...base, noteId: NOTE_ID }).success).toBe(
+        true,
+      );
+      expect(transactionSyncPayloadSchema.safeParse({ ...base, noteId: null }).success).toBe(true);
+    });
+
+    it('rejects a malformed noteId', () => {
+      const result = transactionSyncPayloadSchema.safeParse({ ...base, noteId: 'not-a-uuid' });
+      expect(result.success).toBe(false);
+    });
   });
 
   it('exposes the HTTP conflict status used by domain errors', () => {

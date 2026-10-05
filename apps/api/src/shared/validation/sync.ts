@@ -13,6 +13,7 @@ export const transactionSyncPayloadSchema = z.object({
   title: z.string().trim().min(1).max(120),
   description: z.string().trim().max(1000).nullish(),
   transactionDate: isoDateSchema,
+  noteId: uuidSchema.nullish(),
 });
 
 /** Payload accepted inside a sync operation for a CATEGORY entity. */

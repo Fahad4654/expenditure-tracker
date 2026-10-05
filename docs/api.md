@@ -315,6 +315,11 @@ baseVersion?, payload }`. It runs as one database transaction and returns:
 - A stale `baseVersion` still applies (last-write-wins) but is reported as
   `CONFLICT` with the authoritative entity; a server tombstone wins over a
   later `UPDATE`.
+- A `TRANSACTION` `CREATE`/`UPDATE` payload accepts a nullable `noteId`
+  (own untrashed note) exactly like the REST endpoints: a foreign or deleted
+  note rejects the operation with `reason: "note_not_found"`, `null` clears
+  the tag, and an omitted key (a payload queued before tagging existed) leaves
+  the tag untouched.
 - `GET /sync/changes?cursor=&limit=&deviceId=` pages the `ChangeLog`
   (`hasMore` when the page is full). A null cursor starts from the beginning
   and includes the shared system categories.

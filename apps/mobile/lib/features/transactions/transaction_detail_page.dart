@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../shared/formatters.dart';
 import '../../shared/money.dart';
 import '../../shared/models/category.dart';
+import '../../shared/models/note.dart';
 import '../../shared/models/transaction.dart';
 import '../../shared/widgets/category_avatar.dart';
 import '../../shared/widgets/confirm_dialog.dart';
@@ -29,6 +30,7 @@ class TransactionDetailPage extends StatefulWidget {
 class _TransactionDetailPageState extends State<TransactionDetailPage> {
   Transaction? _transaction;
   List<Category> _categories = [];
+  List<Note> _notes = [];
   bool _loading = true;
   bool _dirty = false;
   ApiError? _error;
@@ -48,6 +50,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     final scope = AppScope.read(context);
     Transaction? transaction;
     List<Category>? categories;
+    List<Note>? notes;
     ApiError? error;
 
     try {
@@ -60,11 +63,17 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     } on ApiError {
       // The category label is a nicety; the detail still renders without it.
     }
+    try {
+      notes = await scope.notes.list();
+    } on ApiError {
+      // Same for the tagged note title — the tag itself stays on the row.
+    }
 
     if (!mounted) return;
     setState(() {
       _transaction = transaction;
       _categories = categories ?? _categories;
+      _notes = notes ?? _notes;
       _loading = false;
       _error = error;
     });
@@ -145,17 +154,26 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   )
                 : transaction == null
                     ? const SizedBox.shrink()
-                    : _Details(transaction: transaction, categories: _categories),
+                    : _Details(
+                        transaction: transaction,
+                        categories: _categories,
+                        notes: _notes,
+                      ),
       ),
     );
   }
 }
 
 class _Details extends StatelessWidget {
-  const _Details({required this.transaction, required this.categories});
+  const _Details({
+    required this.transaction,
+    required this.categories,
+    required this.notes,
+  });
 
   final Transaction transaction;
   final List<Category> categories;
+  final List<Note> notes;
 
   @override
   Widget build(BuildContext context) {
@@ -164,6 +182,12 @@ class _Details extends StatelessWidget {
     final category =
         categories.where((c) => c.id == transaction.categoryId).firstOrNull;
     final typeLabel = transaction.type == TransactionType.income ? 'Income' : 'Expense';
+    // The tag stays visible even when its title cannot be resolved (offline,
+    // or the note was deleted upstream).
+    final noteTitle = transaction.noteId == null
+        ? null
+        : notes.where((note) => note.id == transaction.noteId).firstOrNull?.title ??
+            'Unknown note';
 
     return Center(
       child: SingleChildScrollView(
@@ -239,6 +263,10 @@ class _Details extends StatelessWidget {
                           transaction.description!,
                           style: theme.textTheme.bodyMedium,
                         ),
+                      ],
+                      if (noteTitle != null) ...[
+                        const SizedBox(height: 8),
+                        _MetaRow(label: 'Tagged note', value: noteTitle),
                       ],
                       const Divider(height: 28),
                       _MetaRow(label: 'Created', value: formatInstant(transaction.createdAt)),

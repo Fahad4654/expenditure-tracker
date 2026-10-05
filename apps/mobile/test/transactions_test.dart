@@ -1,10 +1,12 @@
 import 'package:expenditure_tracker/core/db/local_store.dart';
 import 'package:expenditure_tracker/core/network/api_routes.dart';
+import 'package:expenditure_tracker/features/transactions/transaction_detail_page.dart';
 import 'package:expenditure_tracker/features/transactions/transaction_form_page.dart';
 import 'package:expenditure_tracker/shared/models/transaction.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/fakes.dart';
 import 'support/fixtures.dart';
 import 'support/pump_app.dart';
 
@@ -153,5 +155,68 @@ void main() {
       reason: 'the picked category now shows in the form field',
     );
     expect(search, findsNothing);
+  });
+
+  testWidgets('tags a note on a new transaction', (tester) async {
+    final api = FakeApiClient();
+    api.onGet(ApiRoutes.notes, (_) => [noteJson()]);
+    final app = await pumpApp(tester, api: api, signedIn: true, seed: (store) async {
+      store.applyServerCategoryUpsert(categoryJson());
+    });
+
+    await tester.tap(find.widgetWithText(FloatingActionButton, 'Add'));
+    await settle(tester, pumps: 8);
+
+    await tester.enterText(find.byType(TextFormField).at(0), '120.5');
+    await tester.enterText(find.byType(TextFormField).at(1), 'Coffee');
+
+    await tester.tap(find.text('Tag note'));
+    await settle(tester);
+
+    final search = find.byKey(const ValueKey('note-search'));
+    expect(search, findsOneWidget);
+
+    await tester.enterText(search, 'groc');
+    await settle(tester);
+
+    expect(find.widgetWithText(ListTile, 'Groceries'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(ListTile, 'Groceries'));
+    await settle(tester);
+
+    expect(
+      find.descendant(
+        of: find.byType(TransactionFormPage),
+        matching: find.text('Groceries'),
+      ),
+      findsOneWidget,
+      reason: 'the picked note now shows in the form field',
+    );
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Add transaction'));
+    await settle(tester, pumps: 8);
+
+    final created =
+        app.store.listTransactions(const TransactionQuery(limit: 50)).items;
+    expect(created.single.noteId, noteId);
+  });
+
+  testWidgets('detail page shows the tagged note title', (tester) async {
+    final api = FakeApiClient();
+    api.onGet(ApiRoutes.notes, (_) => [noteJson()]);
+    await pumpApp(tester, api: api, signedIn: true, seed: (store) async {
+      store.applyServerCategoryUpsert(categoryJson());
+      store.applyServerTransactionUpsert(transactionJson(noteId: noteId));
+    });
+
+    await tester.tap(find.text('Transactions'));
+    await settle(tester, pumps: 8);
+
+    await tester.tap(find.text('Lunch with Sam'));
+    await settle(tester, pumps: 8);
+
+    expect(find.byType(TransactionDetailPage), findsOneWidget);
+    expect(find.text('Tagged note'), findsOneWidget);
+    expect(find.text('Groceries'), findsOneWidget);
   });
 }

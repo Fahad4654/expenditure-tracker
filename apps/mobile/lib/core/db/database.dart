@@ -7,7 +7,7 @@ import 'package:sqlite3/sqlite3.dart';
 class AppDatabase {
   AppDatabase._();
 
-  static const int schemaVersion = 1;
+  static const int schemaVersion = 2;
 
   /// Opens the database at [path] (or the app documents directory when
   /// omitted) and brings the schema up to [schemaVersion].
@@ -31,8 +31,20 @@ class AppDatabase {
     if (db.userVersion < 1) {
       db.execute('BEGIN');
       try {
-        db.execute(_v1);
+        db.execute(v1Schema);
         db.userVersion = 1;
+        db.execute('COMMIT');
+      } catch (_) {
+        db.execute('ROLLBACK');
+        rethrow;
+      }
+    }
+
+    if (db.userVersion < 2) {
+      db.execute('BEGIN');
+      try {
+        db.execute(v2Schema);
+        db.userVersion = 2;
         db.execute('COMMIT');
       } catch (_) {
         db.execute('ROLLBACK');
@@ -41,7 +53,8 @@ class AppDatabase {
     }
   }
 
-  static const String _v1 = '''
+  /// Bootstrap schema for a fresh install (version 1).
+  static const String v1Schema = '''
 CREATE TABLE users (
   id TEXT PRIMARY KEY,
   payload TEXT NOT NULL,
@@ -106,5 +119,10 @@ CREATE TABLE sync_metadata (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+''';
+
+  /// Transactions carry the note they are tagged on (`Transaction.noteId`).
+  static const String v2Schema = '''
+ALTER TABLE transactions ADD COLUMN note_id TEXT;
 ''';
 }

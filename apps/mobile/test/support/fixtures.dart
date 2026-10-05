@@ -71,6 +71,7 @@ Map<String, Object?> transactionJson({
   String categoryIdValue = categoryId,
   String date = '2026-10-01',
   String? description,
+  String? noteId,
   int version = 1,
 }) =>
     {
@@ -85,6 +86,7 @@ Map<String, Object?> transactionJson({
       'title': title,
       'description': description,
       'transactionDate': date,
+      'noteId': noteId,
       'version': version,
       'createdAt': '2026-10-01T10:00:00.000Z',
       'updatedAt': '2026-10-01T10:00:00.000Z',

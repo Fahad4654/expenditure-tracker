@@ -32,9 +32,17 @@ function syncCategoryPayload(category: PrismaCategory): Record<string, unknown> 
 function rejectionReason(error: unknown): string | null {
   if (!(error instanceof HttpException)) return null;
   const status = error.getStatus();
-  // The only 404 reachable while applying an operation is the category
-  // visibility check inside TransactionsService.create.
-  if (status === 404) return 'category_not_found';
+  // The 404s reachable while applying an operation are the category
+  // visibility check and the tagged-note ownership check inside
+  // TransactionsService.create — the message says which one failed.
+  if (status === 404) {
+    const response = error.getResponse();
+    const message =
+      typeof response === 'object' && response !== null && 'message' in response
+        ? String((response as { message?: unknown }).message ?? '')
+        : error.message;
+    return message.toLowerCase().includes('note') ? 'note_not_found' : 'category_not_found';
+  }
   if (status === 409) return 'conflict';
   const response = error.getResponse();
   if (typeof response === 'object' && response !== null && 'code' in response) {
@@ -307,6 +315,7 @@ export class SyncService {
       title: string;
       description?: string | null;
       transactionDate: string;
+      noteId?: string | null;
     };
 
     if (op.operation === 'CREATE') {
@@ -322,6 +331,7 @@ export class SyncService {
           title: payload.title,
           description: payload.description ?? null,
           transactionDate: payload.transactionDate,
+          noteId: payload.noteId ?? null,
         },
         tx,
       );
@@ -350,6 +360,14 @@ export class SyncService {
       if (!category) return rejected(op, 'category_not_found');
     }
 
+    if (payload.noteId) {
+      const note = await tx.note.findFirst({
+        where: { id: payload.noteId, userId, deletedAt: null },
+        select: { id: true },
+      });
+      if (!note) return rejected(op, 'note_not_found');
+    }
+
     const stale =
       op.baseVersion !== undefined && op.baseVersion !== row.version;
 
@@ -362,6 +380,9 @@ export class SyncService {
         categoryId: payload.categoryId,
         title: payload.title,
         description: payload.description ?? null,
+        // An absent key (a payload queued before note tagging existed) must
+        // leave the tag alone; `null` clears it.
+        ...(payload.noteId !== undefined && { noteId: payload.noteId }),
         transactionDate: `${payload.transactionDate}T00:00:00.000Z`,
         version: { increment: 1 },
       },

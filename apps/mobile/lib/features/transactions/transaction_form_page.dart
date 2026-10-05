@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app_scope.dart';
 import '../../core/network/api_error.dart';
 import '../../shared/models/category.dart';
+import '../../shared/models/note.dart';
 import '../../shared/models/transaction.dart';
 import '../../shared/formatters.dart';
 import '../../shared/money.dart';
@@ -10,6 +11,7 @@ import '../../shared/utils/uuid.dart';
 import '../../shared/widgets/category_avatar.dart';
 import '../../shared/widgets/error_banner.dart';
 import '../../shared/widgets/loading_view.dart';
+import '../../shared/widgets/searchable_picker_sheet.dart';
 
 /// Create or edit a transaction. One screen serves both modes so validation,
 /// category selection and server error mapping exist exactly once.
@@ -35,6 +37,10 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
   String? _categoryId;
   List<Category> _categories = [];
   bool _loadingCategories = true;
+  String? _noteId;
+  List<Note> _notes = [];
+  bool _loadingNotes = true;
+  String? _notesError;
   bool _saving = false;
   String? _submitError;
   Map<String, String> _serverErrors = {};
@@ -53,8 +59,10 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
       _descriptionController.text = existing.description ?? '';
       _date = existing.transactionDate;
       _categoryId = existing.categoryId;
+      _noteId = existing.noteId;
     }
     _loadCategories();
+    _loadNotes();
   }
 
   @override
@@ -86,6 +94,23 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
     }
   }
 
+  Future<void> _loadNotes() async {
+    try {
+      final notes = await AppScope.read(context).notes.list();
+      if (!mounted) return;
+      setState(() {
+        _notes = notes;
+        _loadingNotes = false;
+      });
+    } on ApiError catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _loadingNotes = false;
+        _notesError = error.message;
+      });
+    }
+  }
+
   String? _firstMatching(List<Category> categories, TransactionType type) {
     for (final category in categories) {
       if (category.suggestedType == type) return category.id;
@@ -110,17 +135,58 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
       return aMatch != bMatch ? aMatch.compareTo(bMatch) : a.name.compareTo(b.name);
     });
 
+  /// Resolved title for the tagged note. A note the list could not reach (or
+  /// one deleted upstream) keeps its id — the tag is never dropped silently.
+  String get _noteLabel {
+    if (_noteId == null) return 'No note';
+    return _notes.where((note) => note.id == _noteId).firstOrNull?.title ??
+        'Unknown note';
+  }
+
   Future<void> _pickCategory() async {
-    final picked = await showModalBottomSheet<String>(
+    final picked = await showSearchablePicker(
       context: context,
-      isScrollControlled: true,
-      builder: (_) => _CategoryPickerSheet(
-        categories: _orderedCategories,
-        selectedId: _categoryId,
-      ),
+      searchHint: 'Search categories…',
+      searchKey: const ValueKey('category-search'),
+      selectedId: _categoryId,
+      options: [
+        for (final category in _orderedCategories)
+          PickerOption(
+            id: category.id,
+            label: category.name,
+            leading: CategoryAvatar(
+              color: category.color,
+              icon: category.icon,
+              size: 32,
+            ),
+          ),
+      ],
+      emptyMessage: (query) => query.isEmpty
+          ? 'No categories for this type.'
+          : 'No categories match “$query”.',
     );
     if (picked == null || !mounted) return;
     setState(() => _categoryId = picked);
+  }
+
+  Future<void> _pickNote() async {
+    final picked = await showSearchablePicker(
+      context: context,
+      searchHint: 'Search notes…',
+      searchKey: const ValueKey('note-search'),
+      selectedId: _noteId ?? '',
+      options: [
+        const PickerOption(id: '', label: 'No note'),
+        for (final note in _notes) PickerOption(id: note.id, label: note.title),
+      ],
+      emptyMessage: (query) {
+        if (_notesError != null) return 'Notes could not be loaded.';
+        if (query.isEmpty) return 'No notes yet.';
+        return 'No notes match “$query”.';
+      },
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _noteId = picked.isEmpty ? null : picked);
   }
 
   Future<void> _pickDate() async {
@@ -162,6 +228,7 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
       title: _titleController.text.trim(),
       description: description.isEmpty ? null : description,
       transactionDate: _date,
+      noteId: _noteId,
       baseVersion: widget.existing?.version,
       clientId: _isEdit ? null : generateUuidV4(),
     );
@@ -182,6 +249,7 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
         'title',
         'description',
         'transactionDate',
+        'noteId',
       };
       final fieldErrors = <String, String>{
         for (final detail in error.details)
@@ -338,6 +406,39 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
                             },
                           ),
                           const SizedBox(height: 16),
+                          InkWell(
+                            onTap: _loadingNotes ? null : _pickNote,
+                            borderRadius: BorderRadius.circular(12),
+                            child: InputDecorator(
+                              decoration: InputDecoration(
+                                labelText: 'Tag note',
+                                helperText: _notesError,
+                                errorText: _serverErrors['noteId'],
+                                suffixIcon: const Icon(
+                                  Icons.arrow_drop_down_rounded,
+                                ),
+                              ),
+                              child: _loadingNotes
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : Text(
+                                      _noteLabel,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.bodyMedium
+                                          ?.copyWith(
+                                        color: _noteId == null
+                                            ? theme.colorScheme.onSurfaceVariant
+                                            : null,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
                           TextFormField(
                             controller: _descriptionController,
                             textCapitalization: TextCapitalization.sentences,
@@ -400,131 +501,6 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
                   ),
                 ),
               ),
-      ),
-    );
-  }
-}
-
-/// Searchable category list shown when the form's category field is tapped.
-class _CategoryPickerSheet extends StatefulWidget {
-  const _CategoryPickerSheet({
-    required this.categories,
-    required this.selectedId,
-  });
-
-  final List<Category> categories;
-  final String? selectedId;
-
-  @override
-  State<_CategoryPickerSheet> createState() => _CategoryPickerSheetState();
-}
-
-class _CategoryPickerSheetState extends State<_CategoryPickerSheet> {
-  final _searchController = TextEditingController();
-  String _query = '';
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final query = _query.trim().toLowerCase();
-    final results = query.isEmpty
-        ? widget.categories
-        : widget.categories
-            .where((category) => category.name.toLowerCase().contains(query))
-            .toList();
-
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: SafeArea(
-        top: false,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.7,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: TextField(
-                  key: const ValueKey('category-search'),
-                  controller: _searchController,
-                  autofocus: true,
-                  textInputAction: TextInputAction.search,
-                  textCapitalization: TextCapitalization.sentences,
-                  onChanged: (value) => setState(() => _query = value),
-                  decoration: InputDecoration(
-                    hintText: 'Search categories…',
-                    prefixIcon: const Icon(Icons.search),
-                    isDense: true,
-                    suffixIcon: _query.isEmpty
-                        ? null
-                        : IconButton(
-                            tooltip: 'Clear',
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() => _query = '');
-                            },
-                          ),
-                  ),
-                ),
-              ),
-              Flexible(
-                child: results.isEmpty
-                    ? Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 24,
-                        ),
-                        child: Text(
-                          'No categories match “${_query.trim()}”.',
-                          textAlign: TextAlign.center,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      )
-                    : ListView.builder(
-                        shrinkWrap: true,
-                        padding: const EdgeInsets.only(bottom: 8),
-                        itemCount: results.length,
-                        itemBuilder: (context, index) {
-                          final category = results[index];
-                          final selected = category.id == widget.selectedId;
-                          return ListTile(
-                            dense: true,
-                            leading: CategoryAvatar(
-                              color: category.color,
-                              icon: category.icon,
-                              size: 32,
-                            ),
-                            title: Text(
-                              category.name,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            trailing: selected
-                                ? Icon(
-                                    Icons.check_rounded,
-                                    color: theme.colorScheme.primary,
-                                  )
-                                : null,
-                            onTap: () =>
-                                Navigator.of(context).pop(category.id),
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

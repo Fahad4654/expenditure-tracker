@@ -29,6 +29,7 @@ class Transaction {
     required this.createdAt,
     required this.updatedAt,
     required this.deletedAt,
+    this.noteId,
     this.syncStatus = 'SYNCED',
   });
 
@@ -51,6 +52,11 @@ class Transaction {
 
   /// Calendar date in the owner's timezone: `YYYY-MM-DD`.
   final IsoDate transactionDate;
+
+  /// Note this transaction is tagged on — the link lives on the transaction
+  /// (one note per transaction), mirroring `Transaction.noteId` on the API.
+  final String? noteId;
+
   final int version;
   final IsoDateTime createdAt;
   final IsoDateTime updatedAt;
@@ -70,6 +76,7 @@ class Transaction {
       title: map['title']! as String,
       description: map['description'] as String?,
       transactionDate: map['transactionDate']! as String,
+      noteId: map['noteId'] as String?,
       version: (map['version']! as num).toInt(),
       createdAt: map['createdAt']! as String,
       updatedAt: map['updatedAt']! as String,
@@ -88,6 +95,7 @@ class TransactionInput {
     required this.title,
     required this.description,
     required this.transactionDate,
+    this.noteId,
     this.clientId,
     this.baseVersion,
   });
@@ -98,6 +106,9 @@ class TransactionInput {
   final String title;
   final String? description;
   final IsoDate transactionDate;
+
+  /// Note to tag this transaction on. `null` clears an existing tag.
+  final String? noteId;
 
   /// Client-generated UUID — makes create retries idempotent.
   final Uuid? clientId;
@@ -113,6 +124,7 @@ class TransactionInput {
         'title': title,
         'description': description,
         'transactionDate': transactionDate,
+        'noteId': noteId,
         if (baseVersion != null) 'baseVersion': baseVersion,
       };
 }

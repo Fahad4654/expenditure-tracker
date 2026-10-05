@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sqlite3/sqlite3.dart';
 
 import 'package:expenditure_tracker/core/db/database.dart';
 import 'package:expenditure_tracker/core/db/local_store.dart';
@@ -18,6 +20,7 @@ TransactionInput input({
   TransactionType type = TransactionType.expense,
   String? clientId,
   String? description,
+  String? noteId,
 }) =>
     TransactionInput(
       type: type,
@@ -26,6 +29,7 @@ TransactionInput input({
       title: title,
       description: description,
       transactionDate: date,
+      noteId: noteId,
       clientId: clientId,
     );
 
@@ -45,7 +49,7 @@ void main() {
   tearDown(() => harness.cleanup());
 
   group('schema', () {
-    test('opens at version 1 with the Phase 5 tables', () async {
+    test('opens at the current version with the Phase 5 tables', () async {
       final store = harness.store;
       expect(store.db.userVersion, AppDatabase.schemaVersion);
       final tables = store.db
@@ -62,6 +66,38 @@ void main() {
           'sync_metadata',
         ]),
       );
+    });
+
+    test('a v1 database gains note_id without losing its rows', () {
+      ensureHostSqlite();
+      final dir = Directory.systemTemp.createTempSync('migrate_v1');
+      addTearDown(() {
+        if (dir.existsSync()) dir.deleteSync(recursive: true);
+      });
+      final db = sqlite3.open('${dir.path}/legacy.db');
+      addTearDown(db.dispose);
+
+      db.execute(AppDatabase.v1Schema);
+      db.execute(
+        'INSERT INTO transactions (client_id, server_id, user_id, type, amount, '
+        'amount_minor, currency, category_id, title, description, transaction_date, '
+        'version, sync_status, created_at, updated_at) '
+        "VALUES ('c1', 's1', 'u1', 'EXPENSE', '12.50', 1250, 'BDT', 'cat-food', "
+        "'Coffee', NULL, '2026-10-01', 1, 'SYNCED', "
+        "'2026-10-01T10:00:00.000Z', '2026-10-01T10:00:00.000Z')",
+      );
+      db.userVersion = 1;
+
+      AppDatabase.migrate(db);
+
+      expect(db.userVersion, AppDatabase.schemaVersion);
+      final columns =
+          db.select('PRAGMA table_info(transactions)').map((row) => row['name']);
+      expect(columns, contains('note_id'));
+      final row = db.select('SELECT client_id, title, note_id FROM transactions').single;
+      expect(row['client_id'], 'c1');
+      expect(row['title'], 'Coffee');
+      expect(row['note_id'], isNull, reason: 'pre-existing rows stay untagged');
     });
   });
 
@@ -103,6 +139,7 @@ void main() {
         'title': 'Coffee',
         'description': 'Ole',
         'transactionDate': '2026-10-01',
+        'noteId': null,
       });
       expect(envelope['baseVersion'], 1);
       expect(DateTime.tryParse(envelope['timestamp']! as String), isNotNull);
@@ -137,6 +174,56 @@ void main() {
       expect(update.operation, 'UPDATE');
       expect(update.baseVersion, 1);
       expect((update.payload['amount']! as String), '99.00');
+    });
+
+    test('create with a note tag stores and queues noteId', () async {
+      final store = harness.store;
+      final clientId = store.createTransaction(
+        userId: 'user-1',
+        input: input(noteId: 'note-1'),
+      );
+
+      expect(store.getTransaction(clientId)!.noteId, 'note-1');
+      expect(store.nextPushBatch().single.payload['noteId'], 'note-1');
+    });
+
+    test('update clears the note tag when noteId is null', () async {
+      final store = harness.store;
+      final clientId = store.createTransaction(
+        userId: 'user-1',
+        input: input(noteId: 'note-1'),
+      );
+      store.completeOperations(store.nextPushBatch().map((o) => o.operationId).toList());
+
+      store.updateTransaction(clientId, input(title: 'Tea'));
+
+      expect(store.getTransaction(clientId)!.noteId, isNull);
+      final update = store.nextPushBatch().single;
+      expect(update.operation, 'UPDATE');
+      expect(update.payload['noteId'], isNull);
+    });
+
+    test('a pulled transaction keeps the note it is tagged on', () async {
+      final store = harness.store;
+      store.applyServerTransactionUpsert({
+        'id': 'srv-9',
+        'clientId': 'client-9',
+        'userId': 'user-1',
+        'type': 'INCOME',
+        'amount': '50000.00',
+        'currency': 'BDT',
+        'categoryId': 'cat-salary',
+        'title': 'Salary',
+        'description': null,
+        'transactionDate': '2026-09-25',
+        'noteId': 'note-7',
+        'version': 3,
+        'createdAt': '2026-09-25T10:00:00.000Z',
+        'updatedAt': '2026-09-25T10:00:00.000Z',
+        'deletedAt': null,
+      });
+
+      expect(store.getTransaction('client-9')!.noteId, 'note-7');
     });
 
     test('update with a baseVersion of the second version bumps correctly', () async {

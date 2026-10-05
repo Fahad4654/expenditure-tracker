@@ -305,8 +305,8 @@ class LocalStore {
     _tx(() {
       db.execute(
         'INSERT INTO transactions (client_id, server_id, user_id, type, amount, amount_minor, '
-        "currency, category_id, title, description, transaction_date, version, sync_status, "
-        "created_at, updated_at) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'PENDING', ?, ?)",
+        "currency, category_id, title, description, transaction_date, note_id, version, sync_status, "
+        "created_at, updated_at) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'PENDING', ?, ?)",
         [
           clientId,
           userId,
@@ -318,6 +318,7 @@ class LocalStore {
           input.title,
           input.description,
           input.transactionDate,
+          input.noteId,
           now,
           now,
         ],
@@ -336,6 +337,7 @@ class LocalStore {
           'title': input.title,
           'description': input.description,
           'transactionDate': input.transactionDate,
+          'noteId': input.noteId,
         },
       );
     });
@@ -355,8 +357,8 @@ class LocalStore {
       final now = _now();
       db.execute(
         'UPDATE transactions SET type = ?, amount = ?, amount_minor = ?, category_id = ?, '
-        "title = ?, description = ?, transaction_date = ?, sync_status = 'PENDING', updated_at = ? "
-        'WHERE client_id = ?',
+        "title = ?, description = ?, transaction_date = ?, note_id = ?, sync_status = 'PENDING', "
+        'updated_at = ? WHERE client_id = ?',
         [
           input.type.wire,
           amount,
@@ -365,6 +367,7 @@ class LocalStore {
           input.title,
           input.description,
           input.transactionDate,
+          input.noteId,
           now,
           clientId,
         ],
@@ -382,6 +385,7 @@ class LocalStore {
           'title': input.title,
           'description': input.description,
           'transactionDate': input.transactionDate,
+          'noteId': input.noteId,
         },
       );
     });
@@ -428,14 +432,14 @@ class LocalStore {
       final version = (payload['version'] as num?)?.toInt() ?? 1;
       db.execute(
         'INSERT INTO transactions (client_id, server_id, user_id, type, amount, amount_minor, '
-        'currency, category_id, title, description, transaction_date, version, sync_status, '
-        'created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) '
+        'currency, category_id, title, description, transaction_date, note_id, version, sync_status, '
+        'created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) '
         'ON CONFLICT(client_id) DO UPDATE SET server_id = excluded.server_id, '
         'user_id = excluded.user_id, type = excluded.type, amount = excluded.amount, '
         'amount_minor = excluded.amount_minor, currency = excluded.currency, '
         'category_id = excluded.category_id, title = excluded.title, '
         'description = excluded.description, transaction_date = excluded.transaction_date, '
-        'version = excluded.version, sync_status = excluded.sync_status, '
+        'note_id = excluded.note_id, version = excluded.version, sync_status = excluded.sync_status, '
         'updated_at = excluded.updated_at',
         [
           clientId,
@@ -449,6 +453,7 @@ class LocalStore {
           payload['title'],
           payload['description'],
           _dateOnly(payload['transactionDate']! as String),
+          payload['noteId'],
           version,
           status,
           payload['createdAt'],
@@ -725,6 +730,7 @@ class LocalStore {
         title: row['title']! as String,
         description: row['description'] as String?,
         transactionDate: row['transaction_date']! as String,
+        noteId: row['note_id'] as String?,
         version: (row['version']! as num).toInt(),
         createdAt: row['created_at']! as String,
         updatedAt: row['updated_at']! as String,
