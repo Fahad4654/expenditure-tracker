@@ -10,7 +10,7 @@ function jsonResponse(body: unknown, status = 200): Response {
   return {
     ok: status >= 200 && status < 300,
     status,
-    json: async () => body,
+    json: () => Promise.resolve(body),
   } as unknown as Response;
 }
 
@@ -39,9 +39,14 @@ const session: AuthSession = {
 
 type Router = (url: string, init?: RequestInit) => Response;
 
+function urlOf(input: RequestInfo | URL): string {
+  if (typeof input === 'string') return input;
+  return input instanceof URL ? input.href : input.url;
+}
+
 function stubFetch(route: Router) {
   const mock = vi.fn((input: RequestInfo | URL, init?: RequestInit) =>
-    Promise.resolve(route(String(input), init)),
+    Promise.resolve(route(urlOf(input), init)),
   );
   vi.stubGlobal('fetch', mock);
   return mock;
@@ -60,7 +65,7 @@ function renderLogin() {
   );
 }
 
-async function fillAndSubmit(email: string, password: string) {
+function fillAndSubmit(email: string, password: string) {
   fireEvent.change(screen.getByLabelText('Email'), { target: { value: email } });
   fireEvent.change(screen.getByLabelText('Password'), { target: { value: password } });
   fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
@@ -105,7 +110,7 @@ describe('LoginPage', () => {
     renderLogin();
     await waitFor(() => expect(screen.getByLabelText('Email')).toBeTruthy());
 
-    await fillAndSubmit('ada@example.com', 'wrong-password');
+    fillAndSubmit('ada@example.com', 'wrong-password');
 
     expect(await screen.findByText('Invalid email or password')).toBeTruthy();
     expect(screen.queryByText('dashboard-content')).toBeNull();
@@ -126,11 +131,11 @@ describe('LoginPage', () => {
     renderLogin();
     await waitFor(() => expect(screen.getByLabelText('Email')).toBeTruthy());
 
-    await fillAndSubmit('ada@example.com', 'correct-horse1');
+    fillAndSubmit('ada@example.com', 'correct-horse1');
 
     expect(await screen.findByText('dashboard-content')).toBeTruthy();
     expect(window.localStorage.getItem(STORAGE_KEYS.accessToken)).toBe('access-1');
-    expect(mock.mock.calls.filter(([url]) => String(url).endsWith('/auth/login'))).toHaveLength(1);
+    expect(mock.mock.calls.filter(([url]) => urlOf(url).endsWith('/auth/login'))).toHaveLength(1);
   });
 
   it('toggles password visibility with the show password button', async () => {
@@ -139,7 +144,7 @@ describe('LoginPage', () => {
     renderLogin();
     await waitFor(() => expect(screen.getByLabelText('Password')).toBeTruthy());
 
-    const input = screen.getByLabelText('Password') as HTMLInputElement;
+    const input = screen.getByLabelText<HTMLInputElement>('Password');
     expect(input.type).toBe('password');
 
     fireEvent.click(screen.getByRole('button', { name: 'Show password' }));
@@ -175,7 +180,7 @@ describe('LoginPage', () => {
     );
 
     await waitFor(() => expect(screen.getByLabelText('Email')).toBeTruthy());
-    await fillAndSubmit('ada@example.com', 'correct-horse1');
+    fillAndSubmit('ada@example.com', 'correct-horse1');
 
     expect(await screen.findByText('transactions-content')).toBeTruthy();
   });

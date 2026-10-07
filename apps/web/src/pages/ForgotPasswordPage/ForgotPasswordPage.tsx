@@ -69,7 +69,7 @@ export default function ForgotPasswordPage() {
     setSubmitting(true);
     try {
       await resetPassword(parsed.data);
-      navigate(ROUTES.dashboard, { replace: true });
+      await navigate(ROUTES.dashboard, { replace: true });
     } catch (error) {
       setFields(parseFormError(error).fields);
       setBanner(bannerFor(error));
@@ -144,12 +144,7 @@ export default function ForgotPasswordPage() {
                 : 'Send code'}
         </Button>
 
-        <Field
-          label="New password"
-          htmlFor="password"
-          error={fields.password}
-          hint={PASSWORD_HINT}
-        >
+        <Field label="New password" htmlFor="password" error={fields.password} hint={PASSWORD_HINT}>
           <PasswordInput
             id="password"
             name="password"

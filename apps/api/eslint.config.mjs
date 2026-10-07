@@ -8,9 +8,18 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   {
     files: ['**/*.ts'],
+    extends: [...tseslint.configs.recommendedTypeChecked],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
+  {
+    files: ['**/*.ts'],
     languageOptions: {
       globals: { ...globals.node },
-      parserOptions: { projectService: false },
     },
     rules: {
       // NOTE: `consistent-type-imports` is deliberately NOT enabled — NestJS

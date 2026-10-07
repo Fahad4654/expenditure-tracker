@@ -9,7 +9,7 @@ function jsonResponse(body: unknown, status = 200): Response {
   return {
     ok: status >= 200 && status < 300,
     status,
-    json: async () => body,
+    json: () => Promise.resolve(body),
   } as unknown as Response;
 }
 
@@ -35,9 +35,19 @@ function makeReport(overrides: Partial<BugReport> = {}): BugReport {
 
 type Router = (url: string, init?: RequestInit) => Response;
 
+function urlOf(input: RequestInfo | URL): string {
+  if (typeof input === 'string') return input;
+  return input instanceof URL ? input.href : input.url;
+}
+
+function bodyText(init: RequestInit | undefined): string {
+  const body = init?.body;
+  return typeof body === 'string' ? body : '';
+}
+
 function stubFetch(route: Router) {
   const mock = vi.fn((input: RequestInfo | URL, init?: RequestInit) =>
-    Promise.resolve(route(String(input), init)),
+    Promise.resolve(route(urlOf(input), init)),
   );
   vi.stubGlobal('fetch', mock);
   return mock;
@@ -88,14 +98,14 @@ describe('BugReportsPage', () => {
     expect(screen.getAllByRole('alert').length).toBeGreaterThan(0);
     const posts = mock.mock.calls.filter(
       ([url, init]) =>
-        String(url).endsWith('/bug-reports') && (init as RequestInit)?.method === 'POST',
+        urlOf(url).endsWith('/bug-reports') && (init as RequestInit)?.method === 'POST',
     );
     expect(posts).toHaveLength(0);
   });
 
   it('creates a report, tagging it as coming from the web client', async () => {
     const mock = stubFetch((url, init) => {
-      const method = (init as RequestInit | undefined)?.method ?? 'GET';
+      const method = init?.method ?? 'GET';
       if (url.endsWith('/auth/refresh')) return failAuth();
       if (url.endsWith('/bug-reports') && method === 'POST') {
         return okBody(
@@ -120,10 +130,10 @@ describe('BugReportsPage', () => {
 
     const post = mock.mock.calls.find(
       ([url, init]) =>
-        String(url).endsWith('/bug-reports') && (init as RequestInit)?.method === 'POST',
+        urlOf(url).endsWith('/bug-reports') && (init as RequestInit)?.method === 'POST',
     );
     expect(post).toBeDefined();
-    expect(JSON.parse(String((post![1] as RequestInit).body))).toEqual({
+    expect(JSON.parse(bodyText(post![1]))).toEqual({
       title: 'Wrong balance',
       description: 'Balance is off by one taka.',
       severity: 'MEDIUM',
@@ -134,7 +144,7 @@ describe('BugReportsPage', () => {
 
   it('lets the caller pick a severity from the system select', async () => {
     const mock = stubFetch((url, init) => {
-      const method = (init as RequestInit | undefined)?.method ?? 'GET';
+      const method = init?.method ?? 'GET';
       if (url.endsWith('/auth/refresh')) return failAuth();
       if (url.endsWith('/bug-reports') && method === 'POST') {
         return okBody(makeReport({ id: 'bug-3', title: 'Crashes on launch' }));
@@ -158,10 +168,10 @@ describe('BugReportsPage', () => {
     await waitFor(() => {
       const post = mock.mock.calls.find(
         ([url, init]) =>
-          String(url).endsWith('/bug-reports') && (init as RequestInit)?.method === 'POST',
+          urlOf(url).endsWith('/bug-reports') && (init as RequestInit)?.method === 'POST',
       );
       expect(post).toBeDefined();
-      expect(JSON.parse(String((post![1] as RequestInit).body))).toMatchObject({
+      expect(JSON.parse(bodyText(post![1]))).toMatchObject({
         title: 'Crashes on launch',
         severity: 'CRITICAL',
       });
@@ -170,7 +180,7 @@ describe('BugReportsPage', () => {
 
   it('deletes a report after an inline confirmation', async () => {
     const mock = stubFetch((url, init) => {
-      const method = (init as RequestInit | undefined)?.method ?? 'GET';
+      const method = init?.method ?? 'GET';
       if (url.endsWith('/auth/refresh')) return failAuth();
       if (String(url).endsWith('/bug-reports/bug-1') && method === 'DELETE') {
         return okBody(makeReport());
@@ -190,7 +200,7 @@ describe('BugReportsPage', () => {
 
     const call = mock.mock.calls.find(
       ([url, init]) =>
-        String(url).endsWith('/bug-reports/bug-1') && (init as RequestInit)?.method === 'DELETE',
+        urlOf(url).endsWith('/bug-reports/bug-1') && (init as RequestInit)?.method === 'DELETE',
     );
     expect(call).toBeDefined();
   });

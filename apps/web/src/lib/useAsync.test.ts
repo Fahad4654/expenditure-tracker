@@ -48,7 +48,7 @@ describe('useAsync', () => {
     expect(result.current.data).toBe('first');
     expect(loader).toHaveBeenCalledTimes(2);
 
-    await act(async () => resolveSecond('second'));
+    await act(() => Promise.resolve(resolveSecond('second')));
     await waitFor(() => expect(result.current.data).toBe('second'));
     expect(result.current.loading).toBe(false);
   });

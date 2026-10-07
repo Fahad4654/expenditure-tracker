@@ -1,5 +1,6 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import type { Server } from 'http';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
@@ -15,6 +16,10 @@ import { PrismaService } from '../src/prisma/prisma.module';
 describe('health + response envelope', () => {
   let app: INestApplication;
   let prismaMock: { $queryRaw: () => Promise<unknown> };
+
+  function api() {
+    return request(app.getHttpServer() as Server);
+  }
 
   beforeEach(async () => {
     prismaMock = { $queryRaw: vi.fn().mockResolvedValue([{ '?column?': 1 }]) };
@@ -36,21 +41,26 @@ describe('health + response envelope', () => {
   });
 
   it('GET /health/live returns the success envelope', async () => {
-    const res = await request(app.getHttpServer()).get('/health/live').expect(200);
+    const res = await api().get('/health/live').expect(200);
     expect(res.body).toMatchObject({ ok: true, data: { status: 'ok' } });
-    expect(typeof res.body.data.uptimeSeconds).toBe('number');
+    const body = res.body as { data: { uptimeSeconds: number } };
+    expect(typeof body.data.uptimeSeconds).toBe('number');
   });
 
   it('GET /health/ready reports dependency checks', async () => {
-    const res = await request(app.getHttpServer()).get('/health/ready').expect(200);
-    expect(res.body.ok).toBe(true);
-    expect(res.body.data.checks.postgres).toMatchObject({ status: 'up' });
-    expect(typeof res.body.data.checks.postgres.latencyMs).toBe('number');
+    const res = await api().get('/health/ready').expect(200);
+    const body = res.body as {
+      ok: boolean;
+      data: { checks: { postgres: { status: string; latencyMs: number } } };
+    };
+    expect(body.ok).toBe(true);
+    expect(body.data.checks.postgres).toMatchObject({ status: 'up' });
+    expect(typeof body.data.checks.postgres.latencyMs).toBe('number');
   });
 
   it('GET /health/ready returns 503 envelope when the database is down', async () => {
     prismaMock.$queryRaw = vi.fn().mockRejectedValue(new Error('connection refused'));
-    const res = await request(app.getHttpServer()).get('/health/ready').expect(503);
+    const res = await api().get('/health/ready').expect(503);
     expect(res.body).toMatchObject({
       ok: false,
       error: { code: 'SERVICE_UNAVAILABLE' },
@@ -60,7 +70,7 @@ describe('health + response envelope', () => {
   });
 
   it('unknown routes return the failure envelope with a stable code', async () => {
-    const res = await request(app.getHttpServer()).get('/does-not-exist').expect(404);
+    const res = await api().get('/does-not-exist').expect(404);
     expect(res.body).toMatchObject({ ok: false, error: { code: 'NOT_FOUND' } });
   });
 });

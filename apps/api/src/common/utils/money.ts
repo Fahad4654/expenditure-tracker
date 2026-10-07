@@ -46,5 +46,13 @@ export function sumFromAggregate(value: unknown): DecimalString {
     // float arithmetic is ever performed.
     return normalizeAmount(value.toFixed(2));
   }
-  return normalizeAmount(String(value));
+  if (typeof value === 'string' || typeof value === 'bigint') {
+    return normalizeAmount(value.toString());
+  }
+  // `Prisma.Decimal` (and anything else decimal-shaped) knows how to print
+  // itself; anything else would stringify to `[object Object]`.
+  if (typeof value === 'object') {
+    return normalizeAmount((value as DecimalLike).toString());
+  }
+  return '0.00';
 }

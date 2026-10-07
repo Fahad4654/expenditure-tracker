@@ -7,7 +7,16 @@ import {
 } from '../../shared/validation';
 import { indexByPath } from '../../lib/errors';
 import { DEFAULT_TIMEZONE, todayIn } from '../../lib/format';
-import { Button, CustomDatePicker, ErrorBanner, Field, Select, TextInput, inputClass, labelClass } from '../ui';
+import {
+  Button,
+  CustomDatePicker,
+  ErrorBanner,
+  Field,
+  Select,
+  TextInput,
+  inputClass,
+  labelClass,
+} from '../ui';
 
 export interface TransactionFormValues {
   type: TransactionTypeValue;
@@ -28,7 +37,7 @@ interface Props {
   banner: string | null;
   fieldErrors: Record<string, string>;
   /** Receives a schema-validated payload; the page adds idempotency/version. */
-  onSubmit(payload: CreateTransactionInputDto): void;
+  onSubmit: (payload: CreateTransactionInputDto) => void;
 }
 
 const TYPE_BUTTONS: ReadonlyArray<{ value: TransactionTypeValue; label: string }> = [
@@ -230,7 +239,11 @@ export default function TransactionForm({
       </Field>
 
       <div className="flex gap-3 pt-1">
-        <Button type="submit" className="w-full sm:w-auto" disabled={submitting || visibleCategories.length === 0}>
+        <Button
+          type="submit"
+          className="w-full sm:w-auto"
+          disabled={submitting || visibleCategories.length === 0}
+        >
           {submitting ? 'Saving…' : initialValue ? 'Save changes' : 'Add transaction'}
         </Button>
       </div>

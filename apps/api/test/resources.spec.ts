@@ -120,8 +120,8 @@ describe('CategoriesService', () => {
       $transaction: vi.fn(),
       changeLog: { create: vi.fn() },
     };
-    prisma.$transaction.mockImplementation(async (fn: unknown) =>
-      typeof fn === 'function' ? fn(prisma) : fn,
+    prisma.$transaction.mockImplementation((fn: unknown) =>
+      typeof fn === 'function' ? (fn as (tx: unknown) => unknown)(prisma) : fn,
     );
     service = new CategoriesService(prisma as never);
   });
@@ -133,10 +133,8 @@ describe('CategoriesService', () => {
 
     expect(list.map((c) => c.name)).toEqual(['Food', 'Coffee']);
     expect(list[0]).toMatchObject({ isSystem: true, kind: 'SYSTEM' });
-    expect(prisma.category.findMany.mock.calls[0]![0].where.OR).toEqual([
-      { isSystem: true, userId: null },
-      { userId: 'user-1' },
-    ]);
+    const listArgs = prisma.category.findMany.mock.calls[0]![0] as { where: { OR: unknown } };
+    expect(listArgs.where.OR).toEqual([{ isSystem: true, userId: null }, { userId: 'user-1' }]);
   });
 
   it('maps a duplicate name to 409 rather than leaking Prisma', async () => {
@@ -150,7 +148,8 @@ describe('CategoriesService', () => {
 
     await service.create('user-1', { name: 'Coffee', suggestedType: 'EXPENSE' } as never);
 
-    expect(prisma.category.create.mock.calls[0]![0].data).toMatchObject({
+    const createArgs = prisma.category.create.mock.calls[0]![0] as { data: unknown };
+    expect(createArgs.data).toMatchObject({
       userId: 'user-1',
       kind: 'USER',
       isSystem: false,
@@ -160,22 +159,14 @@ describe('CategoriesService', () => {
   it('refuses to mutate a system category', async () => {
     prisma.category.findUnique.mockResolvedValue(systemCategory());
 
-    await expectRejection(
-      service.update('user-1', 'sys-1', { name: 'Hacked' } as never),
-      403,
-      'FORBIDDEN',
-    );
+    await expectRejection(service.update('user-1', 'sys-1', { name: 'Hacked' }), 403, 'FORBIDDEN');
     expect(prisma.category.update).not.toHaveBeenCalled();
   });
 
   it('reports another user’s category as missing', async () => {
     prisma.category.findUnique.mockResolvedValue(ownCategory({ userId: 'user-2' }));
 
-    await expectRejection(
-      service.update('user-1', 'own-1', { name: 'Stolen' } as never),
-      404,
-      'NOT_FOUND',
-    );
+    await expectRejection(service.update('user-1', 'own-1', { name: 'Stolen' }), 404, 'NOT_FOUND');
   });
 
   it('reports a tombstoned category as missing', async () => {
@@ -201,7 +192,8 @@ describe('CategoriesService', () => {
     const deleted = await service.remove('user-1', 'own-1');
 
     expect(deleted.id).toBe('own-1');
-    expect(prisma.category.update.mock.calls[0]![0].data.deletedAt).toBeInstanceOf(Date);
+    const updateArgs = prisma.category.update.mock.calls[0]![0] as { data: { deletedAt: unknown } };
+    expect(updateArgs.data.deletedAt).toBeInstanceOf(Date);
   });
 
   it('bumps the version and announces category mutations in the change feed', async () => {
@@ -226,7 +218,8 @@ describe('CategoriesService', () => {
 
     await service.remove('user-1', 'own-1');
 
-    expect(prisma.category.update.mock.calls[0]![0].data.version).toEqual({ increment: 1 });
+    const updateArgs = prisma.category.update.mock.calls[0]![0] as { data: { version: unknown } };
+    expect(updateArgs.data.version).toEqual({ increment: 1 });
     expect(prisma.changeLog.create).toHaveBeenLastCalledWith({
       data: {
         userId: 'user-1',
@@ -239,7 +232,6 @@ describe('CategoriesService', () => {
     });
   });
 });
-
 
 describe('TransactionsService', () => {
   let prisma: {
@@ -267,8 +259,8 @@ describe('TransactionsService', () => {
       $transaction: vi.fn(),
       changeLog: { create: vi.fn() },
     };
-    prisma.$transaction.mockImplementation(async (fn: unknown) =>
-      typeof fn === 'function' ? fn(prisma) : fn,
+    prisma.$transaction.mockImplementation((fn: unknown) =>
+      typeof fn === 'function' ? (fn as (tx: unknown) => unknown)(prisma) : fn,
     );
     users = {
       financeDefaults: vi.fn().mockResolvedValue({
@@ -325,10 +317,8 @@ describe('TransactionsService', () => {
       transactionDate: '2026-09-30',
     } as never);
 
-    expect(prisma.category.findFirst.mock.calls[0]![0].where.OR).toEqual([
-      { isSystem: true, userId: null },
-      { userId: 'user-1' },
-    ]);
+    const findArgs = prisma.category.findFirst.mock.calls[0]![0] as { where: { OR: unknown } };
+    expect(findArgs.where.OR).toEqual([{ isSystem: true, userId: null }, { userId: 'user-1' }]);
   });
 
   it('loses the race on clientId gracefully and returns the winner', async () => {
@@ -361,14 +351,15 @@ describe('TransactionsService', () => {
     prisma.transaction.findFirst.mockResolvedValue({ version: 4 });
 
     const error = await expectRejection(
-      service.update('user-1', 'tx-1', { title: 'New', baseVersion: 1 } as never),
+      service.update('user-1', 'tx-1', { title: 'New', baseVersion: 1 }),
       409,
       'CONFLICT',
     );
     expect(error.getResponse()).toMatchObject({
-      message: expect.stringContaining('expected version 1, found 4'),
+      message: expect.stringContaining('expected version 1, found 4') as unknown,
     });
-    expect(prisma.transaction.updateMany.mock.calls[0]![0].where).toMatchObject({
+    const whereArgs = prisma.transaction.updateMany.mock.calls[0]![0] as { where: unknown };
+    expect(whereArgs.where).toMatchObject({
       id: 'tx-1',
       userId: 'user-1',
       version: 1,
@@ -381,7 +372,7 @@ describe('TransactionsService', () => {
     prisma.transaction.findFirst.mockResolvedValue(null);
 
     await expectRejection(
-      service.update('user-1', 'tx-1', { title: 'New', baseVersion: 1 } as never),
+      service.update('user-1', 'tx-1', { title: 'New', baseVersion: 1 }),
       404,
       'NOT_FOUND',
     );
@@ -395,10 +386,11 @@ describe('TransactionsService', () => {
     const updated = await service.update('user-1', 'tx-1', {
       baseVersion: 1,
       title: 'New',
-    } as never);
+    });
 
     expect(updated.version).toBe(2);
-    expect(prisma.transaction.updateMany.mock.calls[0]![0].data).toMatchObject({
+    const updateArgs = prisma.transaction.updateMany.mock.calls[0]![0] as { data: unknown };
+    expect(updateArgs.data).toMatchObject({
       title: 'New',
       version: { increment: 1 },
     });
@@ -412,7 +404,10 @@ describe('TransactionsService', () => {
     const deleted = await service.remove('user-1', 'tx-1');
 
     expect(deleted.deletedAt).toBe(NOW.toISOString());
-    expect(prisma.transaction.updateMany.mock.calls[0]![0].data.deletedAt).toBeInstanceOf(Date);
+    const updateArgs = prisma.transaction.updateMany.mock.calls[0]![0] as {
+      data: { deletedAt: unknown };
+    };
+    expect(updateArgs.data.deletedAt).toBeInstanceOf(Date);
   });
 
   it('rejects deleting a row that is not visible to the caller', async () => {
@@ -434,7 +429,7 @@ describe('TransactionsService', () => {
     } as never);
 
     expect(users.financeDefaults).toHaveBeenCalledWith('user-1');
-    const where = prisma.transaction.count.mock.calls[0]![0].where;
+    const where = (prisma.transaction.count.mock.calls[0]![0] as { where: unknown }).where;
     expect(where).toMatchObject({
       userId: 'user-1',
       deletedAt: null,
@@ -490,7 +485,7 @@ describe('TransactionsService', () => {
     prisma.transaction.updateMany.mockResolvedValue({ count: 1 });
     prisma.transaction.findFirst.mockResolvedValue(transactionRecord({ version: 2 }));
 
-    await service.update('user-1', 'tx-1', { baseVersion: 1, title: 'New' } as never);
+    await service.update('user-1', 'tx-1', { baseVersion: 1, title: 'New' });
 
     expect(prisma.changeLog.create).toHaveBeenCalledWith({
       data: {
@@ -539,12 +534,14 @@ describe('TransactionsService', () => {
       transactionDate: '2026-09-30',
     } as never);
 
-    expect(prisma.note.findFirst.mock.calls[0]![0].where).toMatchObject({
+    const noteArgs = prisma.note.findFirst.mock.calls[0]![0] as { where: unknown };
+    expect(noteArgs.where).toMatchObject({
       id: 'note-1',
       userId: 'user-1',
       deletedAt: null,
     });
-    expect(prisma.transaction.create.mock.calls[0]![0].data.noteId).toBe('note-1');
+    const createArgs = prisma.transaction.create.mock.calls[0]![0] as { data: { noteId: unknown } };
+    expect(createArgs.data.noteId).toBe('note-1');
     expect(result.transaction.noteId).toBe('note-1');
   });
 
@@ -572,7 +569,7 @@ describe('TransactionsService', () => {
     prisma.note.findFirst.mockResolvedValue(null);
 
     await expectRejection(
-      service.update('user-1', 'tx-1', { noteId: 'someone-elses-note' } as never),
+      service.update('user-1', 'tx-1', { noteId: 'someone-elses-note' }),
       404,
       'NOT_FOUND',
     );
@@ -584,10 +581,11 @@ describe('TransactionsService', () => {
     prisma.transaction.updateMany.mockResolvedValue({ count: 1 });
     prisma.transaction.findFirst.mockResolvedValue(transactionRecord({ version: 2 }));
 
-    await service.update('user-1', 'tx-1', { baseVersion: 1, noteId: null } as never);
+    await service.update('user-1', 'tx-1', { baseVersion: 1, noteId: null });
 
     expect(prisma.note.findFirst).not.toHaveBeenCalled();
-    expect(prisma.transaction.updateMany.mock.calls[0]![0].data).toMatchObject({
+    const updateArgs = prisma.transaction.updateMany.mock.calls[0]![0] as { data: unknown };
+    expect(updateArgs.data).toMatchObject({
       noteId: null,
     });
   });

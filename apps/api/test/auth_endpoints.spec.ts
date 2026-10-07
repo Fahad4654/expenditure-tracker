@@ -1,6 +1,7 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
+import type { Server } from 'http';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthController } from '../src/auth/auth.controller';
@@ -16,6 +17,10 @@ import { PrismaService } from '../src/prisma/prisma.module';
 import { COOKIE_NAMES } from '../src/shared/config';
 import { errors } from '../src/common/http/api-error';
 
+interface ErrorEnvelope {
+  error: { code: string; details?: unknown };
+}
+
 /**
  * Endpoint tests for the email-OTP and Google auth flows. DB-free: Prisma,
  * the mailer and the Google verifier are mocked; passwords are real Argon2
@@ -28,6 +33,10 @@ describe('auth endpoints: email OTP + Google', () => {
   let tokens: ReturnType<typeof tokensMock>;
   let mailer: { deliveryEnabled: boolean; sendOtpCode: ReturnType<typeof vi.fn> };
   let google: { verify: ReturnType<typeof vi.fn> };
+
+  function api() {
+    return request(app.getHttpServer() as Server);
+  }
 
   const CONFIG: Record<string, unknown> = {
     env: 'test',
@@ -88,7 +97,7 @@ describe('auth endpoints: email OTP + Google', () => {
       },
       $transaction: undefined as unknown as ReturnType<typeof vi.fn>,
     };
-    mock.$transaction = vi.fn(async (fn: (tx: unknown) => unknown) => fn(mock));
+    mock.$transaction = vi.fn((fn: (tx: unknown) => unknown) => fn(mock));
     return mock;
   }
 
@@ -160,15 +169,19 @@ describe('auth endpoints: email OTP + Google', () => {
 
   describe('POST /auth/otp/send', () => {
     it('issues a challenge with devCode while mail delivery is off', async () => {
-      const res = await request(app.getHttpServer())
+      const res = await api()
         .post('/auth/otp/send')
         .send({ email: 'alice@example.com', purpose: 'REGISTER' })
         .expect(200);
 
-      expect(res.body.ok).toBe(true);
-      expect(res.body.data).toMatchObject({ email: 'alice@example.com', resendAfterSeconds: 60 });
-      expect(res.body.data.devCode).toMatch(/^\d{6}$/);
-      expect(res.body.data.expiresAt).toBeTruthy();
+      const body = res.body as {
+        ok: boolean;
+        data: { email: string; resendAfterSeconds: number; devCode: string; expiresAt: string };
+      };
+      expect(body.ok).toBe(true);
+      expect(body.data).toMatchObject({ email: 'alice@example.com', resendAfterSeconds: 60 });
+      expect(body.data.devCode).toMatch(/^\d{6}$/);
+      expect(body.data.expiresAt).toBeTruthy();
       expect(mailer.sendOtpCode).toHaveBeenCalledWith(
         'alice@example.com',
         expect.stringMatching(/^\d{6}$/),
@@ -183,23 +196,25 @@ describe('auth endpoints: email OTP + Google', () => {
     it('rate-limits a resend inside the cooldown window', async () => {
       prisma.otpCode.findFirst.mockResolvedValue({ createdAt: new Date() });
 
-      const res = await request(app.getHttpServer())
+      const res = await api()
         .post('/auth/otp/send')
         .send({ email: 'alice@example.com', purpose: 'REGISTER' })
         .expect(429);
 
-      expect(res.body.error).toMatchObject({ code: 'RATE_LIMITED' });
+      const body = res.body as ErrorEnvelope;
+      expect(body.error).toMatchObject({ code: 'RATE_LIMITED' });
       expect(prisma.otpCode.create).not.toHaveBeenCalled();
     });
 
     it('rejects an invalid purpose with the validation envelope', async () => {
-      const res = await request(app.getHttpServer())
+      const res = await api()
         .post('/auth/otp/send')
         .send({ email: 'alice@example.com', purpose: 'WHATEVER' })
         .expect(422);
 
-      expect(res.body.error).toMatchObject({ code: 'VALIDATION_ERROR' });
-      expect(res.body.error.details).toEqual(
+      const body = res.body as ErrorEnvelope;
+      expect(body.error).toMatchObject({ code: 'VALIDATION_ERROR' });
+      expect(body.error.details).toEqual(
         expect.arrayContaining([expect.objectContaining({ path: 'purpose' })]),
       );
     });
@@ -209,16 +224,23 @@ describe('auth endpoints: email OTP + Google', () => {
     it('consumes the code atomically and issues a verified session', async () => {
       prisma.user.findUnique.mockResolvedValue(null);
       prisma.otpCode.findFirst.mockResolvedValue(await otpRow('123456'));
-      prisma.user.create.mockImplementation(async ({ data }: never) => userRecord(data));
+      prisma.user.create.mockImplementation(({ data }: never) => userRecord(data));
 
-      const res = await request(app.getHttpServer())
+      const res = await api()
         .post('/auth/register')
-        .send({ name: 'Alice', email: 'alice@example.com', password: 'Passw0rd-123', code: '123456' })
+        .send({
+          name: 'Alice',
+          email: 'alice@example.com',
+          password: 'Passw0rd-123',
+          code: '123456',
+        })
         .expect(201);
 
       expect(prisma.otpCode.findFirst).toHaveBeenCalled();
-      expect(prisma.user.create.mock.calls[0]![0].data).toMatchObject({ emailVerified: true });
-      expect(res.body.data).toMatchObject({ accessToken: 'access-1' });
+      const createArgs = prisma.user.create.mock.calls[0]![0] as { data: unknown };
+      expect(createArgs.data).toMatchObject({ emailVerified: true });
+      const body = res.body as { data: unknown };
+      expect(body.data).toMatchObject({ accessToken: 'access-1' });
       const cookies = res.headers['set-cookie'] as unknown as string[];
       expect(cookies.join(';')).toContain(`${COOKIE_NAMES.refreshToken}=`);
       expect(cookies.join(';')).toContain(`${COOKIE_NAMES.csrfToken}=`);
@@ -228,15 +250,16 @@ describe('auth endpoints: email OTP + Google', () => {
       prisma.user.findUnique.mockResolvedValue(null);
       prisma.otpCode.findFirst.mockResolvedValue(await otpRow('111111'));
 
-      const res = await request(app.getHttpServer())
+      const res = await api()
         .post('/auth/register')
         .send({ name: 'Alice', email: 'a@example.com', password: 'Passw0rd-123', code: '999999' })
         .expect(400);
 
-      expect(res.body.error).toMatchObject({ code: 'OTP_INVALID' });
+      const body = res.body as ErrorEnvelope;
+      expect(body.error).toMatchObject({ code: 'OTP_INVALID' });
       expect(prisma.user.create).not.toHaveBeenCalled();
       expect(prisma.otpCode.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ attempts: 1 }) }),
+        expect.objectContaining({ data: expect.objectContaining({ attempts: 1 }) as unknown }),
       );
     });
 
@@ -246,12 +269,13 @@ describe('auth endpoints: email OTP + Google', () => {
         await otpRow('123456', { expiresAt: new Date(Date.now() - 1000) }),
       );
 
-      const res = await request(app.getHttpServer())
+      const res = await api()
         .post('/auth/register')
         .send({ name: 'Alice', email: 'a@example.com', password: 'Passw0rd-123', code: '123456' })
         .expect(400);
 
-      expect(res.body.error).toMatchObject({ code: 'OTP_EXPIRED' });
+      const body = res.body as ErrorEnvelope;
+      expect(body.error).toMatchObject({ code: 'OTP_EXPIRED' });
       expect(prisma.user.create).not.toHaveBeenCalled();
     });
 
@@ -259,23 +283,25 @@ describe('auth endpoints: email OTP + Google', () => {
       prisma.user.findUnique.mockResolvedValue(null);
       prisma.otpCode.findFirst.mockResolvedValue(await otpRow('111111', { attempts: 5 }));
 
-      const res = await request(app.getHttpServer())
+      const res = await api()
         .post('/auth/register')
         .send({ name: 'Alice', email: 'a@example.com', password: 'Passw0rd-123', code: '111111' })
         .expect(400);
 
-      expect(res.body.error).toMatchObject({ code: 'OTP_TOO_MANY_ATTEMPTS' });
+      const body = res.body as ErrorEnvelope;
+      expect(body.error).toMatchObject({ code: 'OTP_TOO_MANY_ATTEMPTS' });
       expect(prisma.user.create).not.toHaveBeenCalled();
     });
 
     it('requires the code field', async () => {
-      const res = await request(app.getHttpServer())
+      const res = await api()
         .post('/auth/register')
         .send({ name: 'Alice', email: 'a@example.com', password: 'Passw0rd-123' })
         .expect(422);
 
-      expect(res.body.error).toMatchObject({ code: 'VALIDATION_ERROR' });
-      expect(res.body.error.details).toEqual(
+      const body = res.body as ErrorEnvelope;
+      expect(body.error).toMatchObject({ code: 'VALIDATION_ERROR' });
+      expect(body.error.details).toEqual(
         expect.arrayContaining([expect.objectContaining({ path: 'code' })]),
       );
     });
@@ -285,13 +311,14 @@ describe('auth endpoints: email OTP + Google', () => {
     it('answers with the same challenge shape for an unknown email', async () => {
       prisma.user.findFirst.mockResolvedValue(null);
 
-      const res = await request(app.getHttpServer())
+      const res = await api()
         .post('/auth/forgot-password')
         .send({ email: 'ghost@example.com' })
         .expect(200);
 
-      expect(res.body.data).toMatchObject({ email: 'ghost@example.com', resendAfterSeconds: 60 });
-      expect(res.body.data).not.toHaveProperty('devCode');
+      const body = res.body as { data: unknown };
+      expect(body.data).toMatchObject({ email: 'ghost@example.com', resendAfterSeconds: 60 });
+      expect(body.data).not.toHaveProperty('devCode');
       expect(prisma.otpCode.create).not.toHaveBeenCalled();
       expect(mailer.sendOtpCode).not.toHaveBeenCalled();
     });
@@ -299,14 +326,17 @@ describe('auth endpoints: email OTP + Google', () => {
     it('emails a code for a real account', async () => {
       prisma.user.findFirst.mockResolvedValue(userRecord());
 
-      const res = await request(app.getHttpServer())
+      const res = await api()
         .post('/auth/forgot-password')
         .send({ email: 'alice@example.com' })
         .expect(200);
 
-      expect(res.body.data.devCode).toMatch(/^\d{6}$/);
+      const body = res.body as { data: { devCode: string } };
+      expect(body.data.devCode).toMatch(/^\d{6}$/);
       expect(prisma.otpCode.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ purpose: 'PASSWORD_RESET' }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ purpose: 'PASSWORD_RESET' }) as unknown,
+        }),
       );
       expect(mailer.sendOtpCode).toHaveBeenCalledWith(
         'alice@example.com',
@@ -322,18 +352,22 @@ describe('auth endpoints: email OTP + Google', () => {
       prisma.otpCode.findFirst.mockResolvedValue(
         await otpRow('123456', { purpose: 'PASSWORD_RESET' }),
       );
-      prisma.user.update.mockImplementation(async ({ data }: never) => userRecord(data));
+      prisma.user.update.mockImplementation(({ data }: never) => userRecord(data));
 
-      const res = await request(app.getHttpServer())
+      const res = await api()
         .post('/auth/reset-password')
         .send({ email: 'alice@example.com', code: '123456', password: 'BrandNew-456' })
         .expect(200);
 
       expect(tokens.revokeAllFamiliesForUser).toHaveBeenCalledWith('user-1');
-      const stored = prisma.user.update.mock.calls[0]![0].data.passwordHash as string;
+      const updateArgs = prisma.user.update.mock.calls[0]![0] as {
+        data: { passwordHash: string };
+      };
+      const stored = updateArgs.data.passwordHash;
       expect(stored).not.toContain('BrandNew-456');
       await expect(passwords.verify(stored, 'BrandNew-456')).resolves.toBe(true);
-      expect(res.body.data).toMatchObject({ accessToken: 'access-1' });
+      const body = res.body as { data: unknown };
+      expect(body.data).toMatchObject({ accessToken: 'access-1' });
       const cookies = res.headers['set-cookie'] as unknown as string[];
       expect(cookies.join(';')).toContain(`${COOKIE_NAMES.refreshToken}=`);
     });
@@ -344,12 +378,13 @@ describe('auth endpoints: email OTP + Google', () => {
         await otpRow('111111', { purpose: 'PASSWORD_RESET' }),
       );
 
-      const res = await request(app.getHttpServer())
+      const res = await api()
         .post('/auth/reset-password')
         .send({ email: 'alice@example.com', code: '222222', password: 'BrandNew-456' })
         .expect(400);
 
-      expect(res.body.error).toMatchObject({ code: 'OTP_INVALID' });
+      const body = res.body as ErrorEnvelope;
+      expect(body.error).toMatchObject({ code: 'OTP_INVALID' });
       expect(prisma.user.update).not.toHaveBeenCalled();
       expect(tokens.revokeAllFamiliesForUser).not.toHaveBeenCalled();
     });
@@ -365,20 +400,22 @@ describe('auth endpoints: email OTP + Google', () => {
         picture: 'https://example.com/bob.png',
       });
       prisma.user.findFirst.mockResolvedValue(null);
-      prisma.user.create.mockImplementation(async ({ data }: never) => userRecord(data));
+      prisma.user.create.mockImplementation(({ data }: never) => userRecord(data));
 
-      const res = await request(app.getHttpServer())
+      const res = await api()
         .post('/auth/google')
         .send({ idToken: 'a-firebase-id-token-abcdefghij' })
         .expect(200);
 
       expect(google.verify).toHaveBeenCalledWith('a-firebase-id-token-abcdefghij');
-      expect(prisma.user.create.mock.calls[0]![0].data).toMatchObject({
+      const createArgs = prisma.user.create.mock.calls[0]![0] as { data: unknown };
+      expect(createArgs.data).toMatchObject({
         email: 'bob@example.com',
         googleId: 'firebase-uid-1',
         emailVerified: true,
       });
-      expect(res.body.data).toMatchObject({ accessToken: 'access-1' });
+      const body = res.body as { data: unknown };
+      expect(body.data).toMatchObject({ accessToken: 'access-1' });
       const cookies = res.headers['set-cookie'] as unknown as string[];
       expect(cookies.join(';')).toContain(`${COOKIE_NAMES.refreshToken}=`);
     });
@@ -392,15 +429,16 @@ describe('auth endpoints: email OTP + Google', () => {
         picture: null,
       });
       prisma.user.findFirst.mockResolvedValue(userRecord({ googleId: null }));
-      prisma.user.update.mockImplementation(async ({ data }: never) => userRecord(data));
+      prisma.user.update.mockImplementation(({ data }: never) => userRecord(data));
 
-      await request(app.getHttpServer())
+      await api()
         .post('/auth/google')
         .send({ idToken: 'a-firebase-id-token-abcdefghij' })
         .expect(200);
 
       expect(prisma.user.create).not.toHaveBeenCalled();
-      expect(prisma.user.update.mock.calls[0]![0].data).toMatchObject({
+      const updateArgs = prisma.user.update.mock.calls[0]![0] as { data: unknown };
+      expect(updateArgs.data).toMatchObject({
         googleId: 'firebase-uid-1',
         emailVerified: true,
       });
@@ -409,12 +447,13 @@ describe('auth endpoints: email OTP + Google', () => {
     it('returns 401 for a bad Firebase token', async () => {
       google.verify.mockRejectedValue(errors.unauthorized('Google ID token is invalid or expired'));
 
-      const res = await request(app.getHttpServer())
+      const res = await api()
         .post('/auth/google')
         .send({ idToken: 'garbage-token-not-valid-xyz' })
         .expect(401);
 
-      expect(res.body.error).toMatchObject({ code: 'UNAUTHORIZED' });
+      const body = res.body as ErrorEnvelope;
+      expect(body.error).toMatchObject({ code: 'UNAUTHORIZED' });
       expect(prisma.user.findFirst).not.toHaveBeenCalled();
     });
   });

@@ -7,6 +7,17 @@ import { errors } from '../http/api-error';
 type CookieJar = Request & { cookies?: Record<string, string | undefined> };
 
 /**
+ * `cookie-parser` widens `req.cookies` to `any`, so every read is narrowed here
+ * before it reaches the comparison below.
+ */
+function readCookie(request: Request, name: string): string | undefined {
+  const jar: unknown = request.cookies;
+  if (typeof jar !== 'object' || jar === null) return undefined;
+  const value = (jar as Record<string, unknown>)[name];
+  return typeof value === 'string' ? value : undefined;
+}
+
+/**
  * Double-submit CSRF check for endpoints authenticated by the refresh cookie.
  *
  * Only applies when the refresh token actually arrived in a cookie — a client
@@ -17,12 +28,11 @@ type CookieJar = Request & { cookies?: Record<string, string | undefined> };
 export class CookieCsrfGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<CookieJar>();
-    const cookies = request.cookies ?? {};
 
-    const refreshFromCookie = cookies[COOKIE_NAMES.refreshToken];
+    const refreshFromCookie = readCookie(request, COOKIE_NAMES.refreshToken);
     if (!refreshFromCookie) return true;
 
-    const expected = cookies[COOKIE_NAMES.csrfToken];
+    const expected = readCookie(request, COOKIE_NAMES.csrfToken);
     const received = request.headers['x-csrf-token'];
 
     if (!expected || typeof received !== 'string' || !constantTimeEqual(expected, received)) {

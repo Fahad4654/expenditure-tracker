@@ -37,10 +37,12 @@ function rejectionReason(error: unknown): string | null {
   // TransactionsService.create — the message says which one failed.
   if (status === 404) {
     const response = error.getResponse();
-    const message =
-      typeof response === 'object' && response !== null && 'message' in response
-        ? String((response as { message?: unknown }).message ?? '')
-        : error.message;
+    let message = error.message;
+    if (typeof response === 'object' && response !== null && 'message' in response) {
+      const raw = (response as { message?: unknown }).message;
+      message =
+        typeof raw === 'string' ? raw : Array.isArray(raw) ? (raw as string[]).join('; ') : '';
+    }
     return message.toLowerCase().includes('note') ? 'note_not_found' : 'category_not_found';
   }
   if (status === 409) return 'conflict';
@@ -52,10 +54,7 @@ function rejectionReason(error: unknown): string | null {
   return 'rejected';
 }
 
-function rejected(
-  op: SyncOperationInputDto,
-  reason: string,
-): SyncOperationResult {
+function rejected(op: SyncOperationInputDto, reason: string): SyncOperationResult {
   return {
     operationId: op.operationId,
     entityId: op.entityId,
@@ -111,7 +110,13 @@ export class SyncService {
         results.push(await this.applyOperation(tx, userId, dto.deviceId, op));
       }
 
-      const pull = await this.pullChanges(tx, userId, dto.deviceId, dto.cursor ?? null, SYNC_DEFAULTS.maxOperationsPerBatch);
+      const pull = await this.pullChanges(
+        tx,
+        userId,
+        dto.deviceId,
+        dto.cursor ?? null,
+        SYNC_DEFAULTS.maxOperationsPerBatch,
+      );
 
       await tx.device.upsert({
         where: { id: dto.deviceId },
@@ -192,8 +197,7 @@ export class SyncService {
 
     // The cursor advances past every examined row — including own-device rows
     // that were filtered out — so a page of own writes cannot stall the pull.
-    const cursor =
-      rows.length > 0 ? rows[rows.length - 1]!.id.toString() : (cursorRaw ?? '0');
+    const cursor = rows.length > 0 ? rows[rows.length - 1]!.id.toString() : (cursorRaw ?? '0');
     return { changes, cursor, hasMore: rows.length === limit };
   }
 
@@ -368,8 +372,7 @@ export class SyncService {
       if (!note) return rejected(op, 'note_not_found');
     }
 
-    const stale =
-      op.baseVersion !== undefined && op.baseVersion !== row.version;
+    const stale = op.baseVersion !== undefined && op.baseVersion !== row.version;
 
     const updated = await tx.transaction.update({
       where: { id: row.id },

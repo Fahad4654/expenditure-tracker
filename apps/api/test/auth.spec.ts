@@ -77,7 +77,7 @@ function prismaMock() {
     },
     $transaction: undefined as unknown as ReturnType<typeof vi.fn>,
   };
-  prisma.$transaction = vi.fn(async (fn: (tx: unknown) => unknown) => fn(prisma));
+  prisma.$transaction = vi.fn((fn: (tx: unknown) => unknown) => fn(prisma));
   return prisma;
 }
 
@@ -111,7 +111,7 @@ describe('AuthService.register', () => {
   let otps: ReturnType<typeof otpsMock>;
   let auth: AuthService;
 
-  beforeEach(async () => {
+  beforeEach(() => {
     prisma = prismaMock();
     tokens = tokensMock();
     otps = otpsMock();
@@ -131,17 +131,23 @@ describe('AuthService.register', () => {
     prisma.user.create.mockResolvedValue(userRecord({ passwordHash: hash }));
 
     const result = await auth.register(
-      { name: 'Alice', email: 'alice@example.com', password: PASSWORD, code: '123456' } as never,
+      { name: 'Alice', email: 'alice@example.com', password: PASSWORD, code: '123456' },
       CONTEXT,
     );
 
-    expect(otps.consumeEmailOtp).toHaveBeenCalledWith(expect.anything(), 'alice@example.com', 'REGISTER', '123456');
+    expect(otps.consumeEmailOtp).toHaveBeenCalledWith(
+      expect.anything(),
+      'alice@example.com',
+      'REGISTER',
+      '123456',
+    );
     expect(result.session).toMatchObject({ accessToken: 'access-1', expiresIn: 900 });
     expect(result.session.user).toMatchObject({ email: 'alice@example.com' });
     expect(result.csrfToken).toBeTruthy();
     expect(tokens.issueRefreshToken).toHaveBeenCalledWith('user-1', CONTEXT);
     // Defaults come from config, not from the request.
-    expect(prisma.user.create.mock.calls[0]![0].data).toMatchObject({
+    const createArgs = prisma.user.create.mock.calls[0]![0] as { data: unknown };
+    expect(createArgs.data).toMatchObject({
       defaultCurrency: 'BDT',
       timezone: 'Asia/Dhaka',
     });
@@ -149,14 +155,15 @@ describe('AuthService.register', () => {
 
   it('hashes the password before it reaches the database', async () => {
     prisma.user.findUnique.mockResolvedValue(null);
-    prisma.user.create.mockImplementation(async ({ data }: never) => userRecord(data));
+    prisma.user.create.mockImplementation(({ data }: never) => userRecord(data));
 
     await auth.register(
-      { name: 'A', email: 'a@example.com', password: PASSWORD, code: '123456' } as never,
+      { name: 'A', email: 'a@example.com', password: PASSWORD, code: '123456' },
       CONTEXT,
     );
 
-    const stored = prisma.user.create.mock.calls[0]![0].data.passwordHash as string;
+    const createArgs = prisma.user.create.mock.calls[0]![0] as { data: { passwordHash: string } };
+    const stored = createArgs.data.passwordHash;
     expect(stored).not.toContain(PASSWORD);
     await expect(passwords.verify(stored, PASSWORD)).resolves.toBe(true);
   });
@@ -166,7 +173,7 @@ describe('AuthService.register', () => {
 
     await expectRejection(
       auth.register(
-        { name: 'A', email: 'taken@example.com', password: PASSWORD, code: '123456' } as never,
+        { name: 'A', email: 'taken@example.com', password: PASSWORD, code: '123456' },
         CONTEXT,
       ),
       409,
@@ -200,14 +207,14 @@ describe('AuthService.login', () => {
   it('returns the same code for a wrong password and a missing account', async () => {
     prisma.user.findUnique.mockResolvedValue(userRecord({ passwordHash: hash }));
     await expectRejection(
-      auth.login({ email: 'alice@example.com', password: 'nope-nope' } as never, CONTEXT),
+      auth.login({ email: 'alice@example.com', password: 'nope-nope' }, CONTEXT),
       401,
       'INVALID_CREDENTIALS',
     );
 
     prisma.user.findUnique.mockResolvedValue(null);
     await expectRejection(
-      auth.login({ email: 'ghost@example.com', password: PASSWORD } as never, CONTEXT),
+      auth.login({ email: 'ghost@example.com', password: PASSWORD }, CONTEXT),
       401,
       'INVALID_CREDENTIALS',
     );
@@ -218,7 +225,7 @@ describe('AuthService.login', () => {
     const spy = vi.spyOn(passwords, 'verifyAgainstDummy').mockResolvedValue(false);
 
     await expectRejection(
-      auth.login({ email: 'ghost@example.com', password: PASSWORD } as never, CONTEXT),
+      auth.login({ email: 'ghost@example.com', password: PASSWORD }, CONTEXT),
       401,
       'INVALID_CREDENTIALS',
     );
@@ -232,7 +239,7 @@ describe('AuthService.login', () => {
     // Third failure reaches maxFailedAttempts = 3: the counter resets and the
     // lock starts.
     await expectRejection(
-      auth.login({ email: 'alice@example.com', password: 'nope-nope' } as never, CONTEXT),
+      auth.login({ email: 'alice@example.com', password: 'nope-nope' }, CONTEXT),
       401,
       'INVALID_CREDENTIALS',
     );
@@ -240,8 +247,8 @@ describe('AuthService.login', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           failedLogins: 0,
-          lockedUntil: expect.any(Date),
-        }),
+          lockedUntil: expect.any(Date) as unknown,
+        }) as unknown,
       }),
     );
   });
@@ -256,7 +263,7 @@ describe('AuthService.login', () => {
     );
 
     await expectRejection(
-      auth.login({ email: 'alice@example.com', password: PASSWORD } as never, CONTEXT),
+      auth.login({ email: 'alice@example.com', password: PASSWORD }, CONTEXT),
       429,
       'ACCOUNT_LOCKED',
     );
@@ -266,15 +273,12 @@ describe('AuthService.login', () => {
   it('issues a session and resets the counter on success', async () => {
     prisma.user.findUnique.mockResolvedValue(userRecord({ passwordHash: hash, failedLogins: 2 }));
 
-    const result = await auth.login(
-      { email: 'alice@example.com', password: PASSWORD } as never,
-      CONTEXT,
-    );
+    const result = await auth.login({ email: 'alice@example.com', password: PASSWORD }, CONTEXT);
 
     expect(result.session.accessToken).toBe('access-1');
     expect(prisma.user.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: { failedLogins: 0, lockedUntil: null, lastLoginAt: expect.any(Date) },
+        data: { failedLogins: 0, lockedUntil: null, lastLoginAt: expect.any(Date) as unknown },
       }),
     );
   });
@@ -285,7 +289,7 @@ describe('AuthService.login', () => {
     );
 
     await expectRejection(
-      auth.login({ email: 'alice@example.com', password: PASSWORD } as never, CONTEXT),
+      auth.login({ email: 'alice@example.com', password: PASSWORD }, CONTEXT),
       401,
       'INVALID_CREDENTIALS',
     );

@@ -69,7 +69,7 @@ export default function TransactionDetailPage() {
     setBanner(null);
     try {
       await apiFetch(API_ROUTES.transactions.byId(id), { method: 'DELETE' });
-      navigate(ROUTES.transactions, { replace: true });
+      await navigate(ROUTES.transactions, { replace: true });
     } catch (error) {
       setConfirmingDelete(false);
       setBanner(bannerFor(error));
@@ -207,10 +207,18 @@ export default function TransactionDetailPage() {
                   removal.
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <Button variant="danger" className="flex-1 sm:flex-none" onClick={() => void handleDelete()}>
+                  <Button
+                    variant="danger"
+                    className="flex-1 sm:flex-none"
+                    onClick={() => void handleDelete()}
+                  >
                     Yes, delete
                   </Button>
-                  <Button variant="ghost" className="flex-1 sm:flex-none" onClick={() => setConfirmingDelete(false)}>
+                  <Button
+                    variant="ghost"
+                    className="flex-1 sm:flex-none"
+                    onClick={() => setConfirmingDelete(false)}
+                  >
                     Cancel
                   </Button>
                 </div>

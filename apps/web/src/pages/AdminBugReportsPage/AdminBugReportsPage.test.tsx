@@ -9,7 +9,7 @@ function jsonResponse(body: unknown, status = 200): Response {
   return {
     ok: status >= 200 && status < 300,
     status,
-    json: async () => body,
+    json: () => Promise.resolve(body),
   } as unknown as Response;
 }
 
@@ -38,9 +38,19 @@ function makeReport(overrides: Partial<AdminBugReport> = {}): AdminBugReport {
 
 type Router = (url: string, init?: RequestInit) => Response;
 
+function urlOf(input: RequestInfo | URL): string {
+  if (typeof input === 'string') return input;
+  return input instanceof URL ? input.href : input.url;
+}
+
+function bodyText(init: RequestInit | undefined): string {
+  const body = init?.body;
+  return typeof body === 'string' ? body : '';
+}
+
 function stubFetch(route: Router) {
   const mock = vi.fn((input: RequestInfo | URL, init?: RequestInit) =>
-    Promise.resolve(route(String(input), init)),
+    Promise.resolve(route(urlOf(input), init)),
   );
   vi.stubGlobal('fetch', mock);
   return mock;
@@ -110,7 +120,7 @@ describe('AdminBugReportsPage', () => {
 
   it('moves a report through triage with a PATCH to the admin route', async () => {
     const mock = stubFetch((url, init) => {
-      const method = (init as RequestInit | undefined)?.method ?? 'GET';
+      const method = init?.method ?? 'GET';
       if (url.endsWith('/auth/refresh')) return failAuth();
       if (String(url).endsWith('/admin/bug-reports/bug-1') && method === 'PATCH') {
         return okBody(makeReport({ status: 'IN_PROGRESS' }));
@@ -127,11 +137,11 @@ describe('AdminBugReportsPage', () => {
     await waitFor(() => {
       const patch = mock.mock.calls.find(
         ([url, init]) =>
-          String(url).endsWith('/admin/bug-reports/bug-1') &&
+          urlOf(url).endsWith('/admin/bug-reports/bug-1') &&
           (init as RequestInit)?.method === 'PATCH',
       );
       expect(patch).toBeDefined();
-      expect(JSON.parse(String((patch![1] as RequestInit).body))).toEqual({
+      expect(JSON.parse(bodyText(patch![1]))).toEqual({
         status: 'IN_PROGRESS',
       });
     });
@@ -139,7 +149,7 @@ describe('AdminBugReportsPage', () => {
     expect(
       mock.mock.calls.some(
         ([url, init]) =>
-          String(url).endsWith('/admin/bug-reports/bug-1') &&
+          urlOf(url).endsWith('/admin/bug-reports/bug-1') &&
           (init as RequestInit)?.method === 'PATCH',
       ),
     ).toBe(true);
@@ -150,7 +160,7 @@ describe('AdminBugReportsPage', () => {
 
   it('surfaces an admin rejection instead of silently dropping the change', async () => {
     const mock = stubFetch((url, init) => {
-      const method = (init as RequestInit | undefined)?.method ?? 'GET';
+      const method = init?.method ?? 'GET';
       if (url.endsWith('/auth/refresh')) return failAuth();
       if (String(url).endsWith('/admin/bug-reports/bug-1') && method === 'PATCH') {
         return jsonResponse(
@@ -171,7 +181,7 @@ describe('AdminBugReportsPage', () => {
     expect(
       mock.mock.calls.some(
         ([url, init]) =>
-          String(url).endsWith('/admin/bug-reports/bug-1') &&
+          urlOf(url).endsWith('/admin/bug-reports/bug-1') &&
           (init as RequestInit)?.method === 'PATCH',
       ),
     ).toBe(true);

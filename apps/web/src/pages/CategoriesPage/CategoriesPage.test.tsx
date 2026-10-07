@@ -8,7 +8,7 @@ function jsonResponse(body: unknown, status = 200): Response {
   return {
     ok: status >= 200 && status < 300,
     status,
-    json: async () => body,
+    json: () => Promise.resolve(body),
   } as unknown as Response;
 }
 
@@ -32,9 +32,14 @@ function makeCategory(overrides: Partial<Category> = {}): Category {
 
 type Router = (url: string, init?: RequestInit) => Response;
 
+function urlOf(input: RequestInfo | URL): string {
+  if (typeof input === 'string') return input;
+  return input instanceof URL ? input.href : input.url;
+}
+
 function stubFetch(route: Router) {
   const mock = vi.fn((input: RequestInfo | URL, init?: RequestInit) =>
-    Promise.resolve(route(String(input), init)),
+    Promise.resolve(route(urlOf(input), init)),
   );
   vi.stubGlobal('fetch', mock);
   return mock;
@@ -48,8 +53,9 @@ function renderPage() {
   );
 }
 
-function bodyOf(call: [input: RequestInfo | URL, init?: RequestInit] | undefined) {
-  return JSON.parse(String(call?.[1]?.body ?? '{}'));
+function bodyOf(call: [input: RequestInfo | URL, init?: RequestInit] | undefined): unknown {
+  const body = call?.[1]?.body;
+  return JSON.parse(typeof body === 'string' ? body : '{}');
 }
 
 afterEach(() => {
@@ -144,9 +150,11 @@ describe('CategoriesPage', () => {
     renderPage();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Edit' }));
-    fireEvent.click(within(screen.getByRole('form', { name: 'Edit Pets' })).getByRole('button', {
-      name: 'Cancel',
-    }));
+    fireEvent.click(
+      within(screen.getByRole('form', { name: 'Edit Pets' })).getByRole('button', {
+        name: 'Cancel',
+      }),
+    );
 
     expect(screen.queryByRole('form', { name: 'Edit Pets' })).toBeNull();
     expect(fetchMock.mock.calls.filter(([, init]) => init?.method)).toHaveLength(0);

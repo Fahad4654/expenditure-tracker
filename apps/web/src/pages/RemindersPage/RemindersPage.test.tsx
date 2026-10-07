@@ -9,7 +9,7 @@ function jsonResponse(body: unknown, status = 200): Response {
   return {
     ok: status >= 200 && status < 300,
     status,
-    json: async () => body,
+    json: () => Promise.resolve(body),
   } as unknown as Response;
 }
 
@@ -33,9 +33,19 @@ function makeReminder(overrides: Partial<Reminder> = {}): Reminder {
 
 type Router = (url: string, init?: RequestInit) => Response;
 
+function urlOf(input: RequestInfo | URL): string {
+  if (typeof input === 'string') return input;
+  return input instanceof URL ? input.href : input.url;
+}
+
+function bodyText(init: RequestInit | undefined): string {
+  const body = init?.body;
+  return typeof body === 'string' ? body : '';
+}
+
 function stubFetch(route: Router) {
   const mock = vi.fn((input: RequestInfo | URL, init?: RequestInit) =>
-    Promise.resolve(route(String(input), init)),
+    Promise.resolve(route(urlOf(input), init)),
   );
   vi.stubGlobal('fetch', mock);
   return mock;
@@ -84,12 +94,10 @@ describe('RemindersPage', () => {
 
   it('marks a reminder completed with a single PATCH', async () => {
     const mock = stubFetch((url, init) => {
-      const method = (init as RequestInit | undefined)?.method ?? 'GET';
+      const method = init?.method ?? 'GET';
       if (url.endsWith('/auth/refresh')) return failAuth();
       if (String(url).includes('/reminders/') && method === 'PATCH') {
-        return okBody(
-          makeReminder({ completedAt: '2026-10-03T12:00:00.000Z' }),
-        );
+        return okBody(makeReminder({ completedAt: '2026-10-03T12:00:00.000Z' }));
       }
       return okBody([makeReminder()]);
     });
@@ -102,11 +110,9 @@ describe('RemindersPage', () => {
     fireEvent.click(toggle);
 
     await waitFor(() => {
-      const patch = mock.mock.calls.find(
-        ([, init]) => (init as RequestInit | undefined)?.method === 'PATCH',
-      );
+      const patch = mock.mock.calls.find(([, init]) => init?.method === 'PATCH');
       expect(patch).toBeDefined();
-      expect(JSON.parse(String((patch![1] as RequestInit).body))).toEqual({ completed: true });
+      expect(JSON.parse(bodyText(patch![1]))).toEqual({ completed: true });
     });
   });
 
@@ -124,14 +130,14 @@ describe('RemindersPage', () => {
     expect(screen.getAllByRole('alert').length).toBeGreaterThan(0);
     const posts = mock.mock.calls.filter(
       ([url, init]) =>
-        String(url).endsWith('/reminders') && (init as RequestInit)?.method === 'POST',
+        urlOf(url).endsWith('/reminders') && (init as RequestInit)?.method === 'POST',
     );
     expect(posts).toHaveLength(0);
   });
 
   it('creates a reminder with a date and a picked time', async () => {
     const mock = stubFetch((url, init) => {
-      const method = (init as RequestInit | undefined)?.method ?? 'GET';
+      const method = init?.method ?? 'GET';
       if (url.endsWith('/auth/refresh')) return failAuth();
       if (url.endsWith('/reminders') && method === 'POST') {
         return okBody(makeReminder({ dueDate: '2026-10-15', dueTime: '18:30' }));
@@ -159,10 +165,10 @@ describe('RemindersPage', () => {
     await waitFor(() => {
       const post = mock.mock.calls.find(
         ([url, init]) =>
-          String(url).endsWith('/reminders') && (init as RequestInit)?.method === 'POST',
+          urlOf(url).endsWith('/reminders') && (init as RequestInit)?.method === 'POST',
       );
       expect(post).toBeDefined();
-      const body = JSON.parse(String((post![1] as RequestInit).body));
+      const body = JSON.parse(bodyText(post![1])) as { dueDate: string };
       expect(body).toMatchObject({ title: 'Pay internet bill', dueTime: '18:30' });
       expect(body.dueDate).toMatch(/^\d{4}-\d{2}-15$/);
     });

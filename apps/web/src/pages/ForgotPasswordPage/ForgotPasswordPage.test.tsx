@@ -10,7 +10,7 @@ function jsonResponse(body: unknown, status = 200): Response {
   return {
     ok: status >= 200 && status < 300,
     status,
-    json: async () => body,
+    json: () => Promise.resolve(body),
   } as unknown as Response;
 }
 
@@ -39,9 +39,14 @@ const session: AuthSession = {
 
 type Router = (url: string, init?: RequestInit) => Response;
 
+function urlOf(input: RequestInfo | URL): string {
+  if (typeof input === 'string') return input;
+  return input instanceof URL ? input.href : input.url;
+}
+
 function stubFetch(route: Router) {
   const mock = vi.fn((input: RequestInfo | URL, init?: RequestInit) =>
-    Promise.resolve(route(String(input), init)),
+    Promise.resolve(route(urlOf(input), init)),
   );
   vi.stubGlobal('fetch', mock);
   return mock;
@@ -66,7 +71,10 @@ function apiRoute(url: string): Response {
     });
   }
   if (url.endsWith('/auth/reset-password')) return jsonResponse({ ok: true, data: session });
-  return jsonResponse({ ok: false, error: { code: 'NOT_FOUND', message: 'unexpected ' + url } }, 404);
+  return jsonResponse(
+    { ok: false, error: { code: 'NOT_FOUND', message: 'unexpected ' + url } },
+    404,
+  );
 }
 
 function renderForgot() {
@@ -112,7 +120,7 @@ describe('ForgotPasswordPage', () => {
 
     await waitFor(() => expect(screen.getAllByRole('alert').length).toBeGreaterThan(0));
     const resetCalls = mock.mock.calls.filter(([url]) =>
-      String(url).endsWith('/auth/reset-password'),
+      urlOf(url).endsWith('/auth/reset-password'),
     );
     expect(resetCalls).toHaveLength(0);
   });

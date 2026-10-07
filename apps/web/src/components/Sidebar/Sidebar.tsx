@@ -44,7 +44,7 @@ export default function Sidebar({
 
   async function handleLogout() {
     await logout();
-    navigate(ROUTES.home, { replace: true });
+    await navigate(ROUTES.home, { replace: true });
   }
 
   return (

@@ -10,7 +10,7 @@ function jsonResponse(body: unknown, status = 200): Response {
   return {
     ok: status >= 200 && status < 300,
     status,
-    json: async () => body,
+    json: () => Promise.resolve(body),
   } as unknown as Response;
 }
 
@@ -46,9 +46,14 @@ const challenge = {
 
 type Router = (url: string, init?: RequestInit) => Response;
 
+function urlOf(input: RequestInfo | URL): string {
+  if (typeof input === 'string') return input;
+  return input instanceof URL ? input.href : input.url;
+}
+
 function stubFetch(route: Router) {
   const mock = vi.fn((input: RequestInfo | URL, init?: RequestInit) =>
-    Promise.resolve(route(String(input), init)),
+    Promise.resolve(route(urlOf(input), init)),
   );
   vi.stubGlobal('fetch', mock);
   return mock;
@@ -64,7 +69,10 @@ function apiRoute(url: string): Response {
   }
   if (url.endsWith('/auth/otp/send')) return jsonResponse({ ok: true, data: challenge });
   if (url.endsWith('/auth/register')) return jsonResponse({ ok: true, data: session });
-  return jsonResponse({ ok: false, error: { code: 'NOT_FOUND', message: 'unexpected ' + url } }, 404);
+  return jsonResponse(
+    { ok: false, error: { code: 'NOT_FOUND', message: 'unexpected ' + url } },
+    404,
+  );
 }
 
 function renderRegister() {
@@ -105,7 +113,7 @@ describe('RegisterPage', () => {
     await waitFor(() =>
       expect(screen.getByRole('alert').textContent).toMatch(/verification code/i),
     );
-    const registerCalls = mock.mock.calls.filter(([url]) => String(url).endsWith('/auth/register'));
+    const registerCalls = mock.mock.calls.filter(([url]) => urlOf(url).endsWith('/auth/register'));
     expect(registerCalls).toHaveLength(0);
   });
 

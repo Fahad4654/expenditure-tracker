@@ -12,7 +12,7 @@ function jsonResponse(body: unknown, status = 200): Response {
   return {
     ok: status >= 200 && status < 300,
     status,
-    json: async () => body,
+    json: () => Promise.resolve(body),
   } as unknown as Response;
 }
 
@@ -45,9 +45,19 @@ function makeSession(name = 'Ada'): AuthSession {
 
 type Router = (url: string, init?: RequestInit) => Response;
 
+function urlOf(input: RequestInfo | URL): string {
+  if (typeof input === 'string') return input;
+  return input instanceof URL ? input.href : input.url;
+}
+
+function bodyText(init: RequestInit | undefined): string {
+  const body = init?.body;
+  return typeof body === 'string' ? body : '';
+}
+
 function stubFetch(route: Router) {
   const mock = vi.fn((input: RequestInfo | URL, init?: RequestInit) =>
-    Promise.resolve(route(String(input), init)),
+    Promise.resolve(route(urlOf(input), init)),
   );
   vi.stubGlobal('fetch', mock);
   return mock;
@@ -150,9 +160,9 @@ describe('AuthProvider', () => {
 
     await waitFor(() => expect(screen.getByTestId('user').textContent).toBe('Grace'));
 
-    const call = mock.mock.calls.find(([url]) => String(url).endsWith('/auth/refresh'));
+    const call = mock.mock.calls.find(([url]) => urlOf(url).endsWith('/auth/refresh'));
     expect(call).toBeDefined();
-    expect(JSON.parse(String((call![1] as RequestInit).body))).toEqual({
+    expect(JSON.parse(bodyText(call![1]))).toEqual({
       refreshToken: 'refresh-1',
     });
     expect(window.localStorage.getItem(STORAGE_KEYS.refreshToken)).toBe('refresh-1');
@@ -178,7 +188,7 @@ describe('AuthProvider', () => {
     expect(screen.getByTestId('user').textContent).toBe('Lin');
     expect(window.localStorage.getItem(STORAGE_KEYS.accessToken)).toBe('access-1');
 
-    const loginCall = mock.mock.calls.find(([url]) => String(url).endsWith('/auth/login'));
+    const loginCall = mock.mock.calls.find(([url]) => urlOf(url).endsWith('/auth/login'));
     expect(loginCall).toBeDefined();
     expect((loginCall![1] as RequestInit).method).toBe('POST');
   });

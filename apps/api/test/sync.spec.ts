@@ -35,8 +35,8 @@ function buildPrisma(): PrismaMock {
     device: { upsert: vi.fn() },
     $transaction: vi.fn(),
   };
-  prisma.$transaction.mockImplementation(async (fn: unknown) =>
-    typeof fn === 'function' ? fn(prisma) : fn,
+  prisma.$transaction.mockImplementation((fn: unknown) =>
+    typeof fn === 'function' ? (fn as (tx: unknown) => unknown)(prisma) : fn,
   );
   return prisma;
 }
@@ -154,7 +154,7 @@ describe('SyncService', () => {
             operationId: createOp().operationId,
             status: 'APPLIED',
             deviceId: 'device-a',
-          }),
+          }) as unknown,
         }),
       );
       expect(prisma.device.upsert).toHaveBeenCalled();
@@ -176,7 +176,9 @@ describe('SyncService', () => {
       expect(response.results[1]).toMatchObject({ status: 'APPLIED' });
       expect(prisma.syncOperation.create).toHaveBeenNthCalledWith(
         1,
-        expect.objectContaining({ data: expect.objectContaining({ status: 'REJECTED' }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ status: 'REJECTED' }) as unknown,
+        }),
       );
     });
   });
@@ -210,11 +212,17 @@ describe('SyncService', () => {
         entity: { version: 4 },
       });
       expect(prisma.transaction.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ version: { increment: 1 } }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ version: { increment: 1 } }) as unknown,
+        }),
       );
       expect(prisma.changeLog.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ kind: 'UPSERT', version: 4, deviceId: 'device-a' }),
+          data: expect.objectContaining({
+            kind: 'UPSERT',
+            version: 4,
+            deviceId: 'device-a',
+          }) as unknown,
         }),
       );
     });
@@ -232,7 +240,9 @@ describe('SyncService', () => {
       expect(response.results[0]!.entity).toMatchObject({ deletedAt: NOW.toISOString() });
       expect(prisma.transaction.update).not.toHaveBeenCalled();
       expect(prisma.syncOperation.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ status: 'CONFLICT' }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ status: 'CONFLICT' }) as unknown,
+        }),
       );
     });
 
@@ -246,14 +256,18 @@ describe('SyncService', () => {
       expect(response.results[0]).toMatchObject({ status: 'APPLIED' });
       expect(prisma.transaction.update).not.toHaveBeenCalled();
       expect(prisma.syncOperation.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ status: 'APPLIED' }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ status: 'APPLIED' }) as unknown,
+        }),
       );
     });
 
     it('tombstones a delete and announces it in the change feed', async () => {
       prisma.syncOperation.findUnique.mockResolvedValue(null);
       prisma.transaction.findFirst.mockResolvedValue(prismaTransaction());
-      prisma.transaction.update.mockResolvedValue(prismaTransaction({ version: 2, deletedAt: NOW }));
+      prisma.transaction.update.mockResolvedValue(
+        prismaTransaction({ version: 2, deletedAt: NOW }),
+      );
 
       const op = createOp({ operation: 'DELETE' });
       const response = await service.push('user-1', pushDto([op]));
@@ -261,7 +275,7 @@ describe('SyncService', () => {
       expect(response.results[0]).toMatchObject({ status: 'APPLIED' });
       expect(prisma.changeLog.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ kind: 'DELETE', version: 2 }),
+          data: expect.objectContaining({ kind: 'DELETE', version: 2 }) as unknown,
         }),
       );
     });
@@ -321,11 +335,15 @@ describe('SyncService', () => {
       expect(response.results[0]).toMatchObject({ status: 'APPLIED' });
       expect(prisma.note.findFirst).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ id: NOTE_ID, userId: 'user-1', deletedAt: null }),
+          where: expect.objectContaining({
+            id: NOTE_ID,
+            userId: 'user-1',
+            deletedAt: null,
+          }) as unknown,
         }),
       );
       expect(prisma.transaction.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ noteId: NOTE_ID }) }),
+        expect.objectContaining({ data: expect.objectContaining({ noteId: NOTE_ID }) as unknown }),
       );
     });
 
@@ -364,7 +382,7 @@ describe('SyncService', () => {
 
       expect(prisma.note.findFirst).not.toHaveBeenCalled();
       expect(prisma.transaction.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ noteId: null }) }),
+        expect.objectContaining({ data: expect.objectContaining({ noteId: null }) as unknown }),
       );
 
       prisma.transaction.update.mockClear();
@@ -375,7 +393,8 @@ describe('SyncService', () => {
       });
       await service.push('user-1', pushDto([untouched]));
 
-      const data = (prisma.transaction.update as Spy).mock.calls.at(-1)?.[0].data as object;
+      const lastCall = prisma.transaction.update.mock.calls.at(-1);
+      const data = lastCall ? (lastCall[0] as { data: object }).data : undefined;
       expect(data).not.toHaveProperty('noteId');
     });
   });
@@ -413,14 +432,16 @@ describe('SyncService', () => {
       expect(response.results[0]).toMatchObject({ status: 'APPLIED' });
       expect(prisma.category.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ id: 'cat-client-1', userId: 'user-1' }),
+          data: expect.objectContaining({ id: 'cat-client-1', userId: 'user-1' }) as unknown,
         }),
       );
     });
 
     it('refuses to touch system categories', async () => {
       prisma.syncOperation.findUnique.mockResolvedValue(null);
-      prisma.category.findUnique.mockResolvedValue(prismaCategory({ isSystem: true, userId: null }));
+      prisma.category.findUnique.mockResolvedValue(
+        prismaCategory({ isSystem: true, userId: null }),
+      );
 
       const op = createOp({
         entityType: 'CATEGORY',
@@ -440,7 +461,11 @@ describe('SyncService', () => {
       prisma.category.findUnique.mockResolvedValue(prismaCategory());
       prisma.transaction.count.mockResolvedValue(2);
 
-      const op = createOp({ entityType: 'CATEGORY', entityId: 'cat-server-1', operation: 'DELETE' });
+      const op = createOp({
+        entityType: 'CATEGORY',
+        entityId: 'cat-server-1',
+        operation: 'DELETE',
+      });
       const response = await service.push('user-1', pushDto([op]));
 
       expect(response.results[0]).toMatchObject({ status: 'REJECTED', reason: 'category_in_use' });
@@ -451,22 +476,36 @@ describe('SyncService', () => {
   describe('pull', () => {
     it('excludes the pulling device’s own writes but still advances the cursor', async () => {
       prisma.changeLog.findMany.mockResolvedValue([
-        { id: BigInt(11), deviceId: 'device-a', entityType: 'TRANSACTION', entityId: 'tx-1', kind: 'UPSERT' },
-        { id: BigInt(12), deviceId: 'device-b', entityType: 'TRANSACTION', entityId: 'tx-2', kind: 'UPSERT' },
+        {
+          id: BigInt(11),
+          deviceId: 'device-a',
+          entityType: 'TRANSACTION',
+          entityId: 'tx-1',
+          kind: 'UPSERT',
+        },
+        {
+          id: BigInt(12),
+          deviceId: 'device-b',
+          entityType: 'TRANSACTION',
+          entityId: 'tx-2',
+          kind: 'UPSERT',
+        },
       ]);
-      prisma.transaction.findUnique.mockResolvedValue(prismaTransaction({ id: 'tx-2', clientId: 'client-2' }));
+      prisma.transaction.findUnique.mockResolvedValue(
+        prismaTransaction({ id: 'tx-2', clientId: 'client-2' }),
+      );
 
       const response = await service.pull('user-1', {
         cursor: '10',
         limit: 200,
         deviceId: 'device-a',
-      } as never);
+      });
 
       expect(response.changes).toHaveLength(1);
       expect(response.changes[0]).toMatchObject({
         entityId: 'tx-2',
         operation: 'UPSERT',
-        payload: expect.objectContaining({ clientId: 'client-2' }),
+        payload: expect.objectContaining({ clientId: 'client-2' }) as unknown,
       });
       expect(response.cursor).toBe('12');
       expect(response.hasMore).toBe(false);
@@ -481,12 +520,12 @@ describe('SyncService', () => {
         cursor: null,
         limit: 200,
         deviceId: 'device-a',
-      } as never);
+      });
 
       expect(response.changes[0]).toMatchObject({
         entityId: 'sys-1',
         operation: 'UPSERT',
-        payload: expect.objectContaining({ isSystem: true }),
+        payload: expect.objectContaining({ isSystem: true }) as unknown,
       });
       expect(response.cursor).toBe('0');
       expect(response.hasMore).toBe(false);
@@ -508,7 +547,7 @@ describe('SyncService', () => {
         cursor: '0',
         limit: 200,
         deviceId: 'device-a',
-      } as never);
+      });
 
       expect(response.hasMore).toBe(true);
       expect(response.cursor).toBe('200');
@@ -516,7 +555,13 @@ describe('SyncService', () => {
 
     it('turns a tombstoned entity into a DELETE change', async () => {
       prisma.changeLog.findMany.mockResolvedValue([
-        { id: BigInt(21), deviceId: 'device-b', entityType: 'TRANSACTION', entityId: 'tx-1', kind: 'UPSERT' },
+        {
+          id: BigInt(21),
+          deviceId: 'device-b',
+          entityType: 'TRANSACTION',
+          entityId: 'tx-1',
+          kind: 'UPSERT',
+        },
       ]);
       prisma.transaction.findUnique.mockResolvedValue(
         prismaTransaction({ deletedAt: NOW, version: 5 }),
@@ -526,20 +571,21 @@ describe('SyncService', () => {
         cursor: '20',
         limit: 200,
         deviceId: 'device-a',
-      } as never);
+      });
 
       expect(response.changes[0]).toMatchObject({ operation: 'DELETE', version: 5 });
     });
   });
 
   it('serialises nothing from the batch when the transaction aborts', async () => {
-    prisma.$transaction.mockImplementation(async (fn: (t: unknown) => Promise<unknown>) =>
-      fn(prisma).then(
-        (value) => value,
-        (error: unknown) => {
-          throw error;
-        },
-      ),
+    prisma.$transaction.mockImplementation(
+      (fn: (t: unknown) => Promise<unknown>) =>
+        fn(prisma).then(
+          (value) => value,
+          (error: unknown) => {
+            throw error;
+          },
+        ) as unknown,
     );
     prisma.syncOperation.findUnique.mockResolvedValue(null);
     transactions.create.mockResolvedValue({ transaction: { id: 'tx-1' }, created: true });

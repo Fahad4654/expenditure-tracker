@@ -79,7 +79,8 @@ describe('BugReportsService', () => {
       description: 'The monthly report chart is blank for October.',
     } as never);
 
-    expect(prisma.bugReport.create.mock.calls[0]![0].data).toMatchObject({
+    const createArgs = prisma.bugReport.create.mock.calls[0]![0] as { data: unknown };
+    expect(createArgs.data).toMatchObject({
       userId: 'user-1',
       title: 'Chart renders empty',
       description: 'The monthly report chart is blank for October.',
@@ -107,7 +108,8 @@ describe('BugReportsService', () => {
       platform: 'android',
     } as never);
 
-    expect(prisma.bugReport.create.mock.calls[0]![0].data).toMatchObject({
+    const createArgs = prisma.bugReport.create.mock.calls[0]![0] as { data: unknown };
+    expect(createArgs.data).toMatchObject({
       severity: 'CRITICAL',
       area: 'Dashboard',
       appVersion: '1.4.0',
@@ -124,7 +126,7 @@ describe('BugReportsService', () => {
       status: 'RESOLVED',
     } as never);
 
-    const data = prisma.bugReport.create.mock.calls[0]![0].data;
+    const data = (prisma.bugReport.create.mock.calls[0]![0] as { data: unknown }).data;
     expect(data).not.toHaveProperty('status');
   });
 
@@ -148,11 +150,14 @@ describe('BugReportsService', () => {
 
     const deleted = await service.remove('user-1', 'bug-1');
 
-    expect(prisma.bugReport.update.mock.calls[0]![0]).toMatchObject({
+    const updateArgs = prisma.bugReport.update.mock.calls[0]![0] as {
+      data: { deletedAt: unknown };
+    };
+    expect(updateArgs).toMatchObject({
       where: { id: 'bug-1' },
       data: { version: { increment: 1 } },
     });
-    expect(prisma.bugReport.update.mock.calls[0]![0].data.deletedAt).toBeInstanceOf(Date);
+    expect(updateArgs.data.deletedAt).toBeInstanceOf(Date);
     expect(deleted.id).toBe('bug-1');
   });
 

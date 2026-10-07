@@ -56,8 +56,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       status = exception.getStatus();
       code = STATUS_TO_CODE[status] ?? 'INTERNAL_ERROR';
       const body = exception.getResponse();
-      const parsed: HttpExceptionBody =
-        typeof body === 'string' ? { message: body } : (body as HttpExceptionBody);
+      const parsed: HttpExceptionBody = typeof body === 'string' ? { message: body } : body;
       message = Array.isArray(parsed.message)
         ? parsed.message.join('; ')
         : (parsed.message ?? exception.message);
@@ -74,11 +73,11 @@ export class HttpExceptionFilter implements ExceptionFilter {
         `${request.method} ${request.url} -> ${status}`,
         exception instanceof Error ? exception.stack : String(exception),
       );
-    } else if (status >= 500) {
+    } else if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
       // Expected dependency failures (e.g. readiness probes) — not a crash.
       this.logger.warn(`${request.method} ${request.url} -> ${status} ${message}`);
-    } else if (status === 429) {
-      this.logger.warn(`${request.method} ${request.url} -> 429 rate limited`);
+    } else if (status === HttpStatus.TOO_MANY_REQUESTS) {
+      this.logger.warn(`${request.method} ${request.url} -> ${status} rate limited`);
     }
 
     response.status(status).json({

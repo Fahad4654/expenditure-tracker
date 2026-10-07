@@ -33,7 +33,7 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       await login(parsed.data);
-      navigate(returnTo, { replace: true });
+      await navigate(returnTo, { replace: true });
     } catch (error) {
       setFields(parseFormError(error).fields);
       setBanner(bannerFor(error));
@@ -46,7 +46,7 @@ export default function LoginPage() {
     setBanner(null);
     setFields({});
     await googleSignIn(idToken);
-    navigate(returnTo, { replace: true });
+    await navigate(returnTo, { replace: true });
   }
 
   return (

@@ -45,7 +45,7 @@ describe('date arithmetic', () => {
   });
 
   it('rejects malformed dates instead of computing with NaN', () => {
-    expect(() => addDays('not-a-date' as never, 1)).toThrow(/Invalid ISO date/);
+    expect(() => addDays('not-a-date', 1)).toThrow(/Invalid ISO date/);
   });
 
   it('resolves "today" in the user timezone, not the server one', () => {

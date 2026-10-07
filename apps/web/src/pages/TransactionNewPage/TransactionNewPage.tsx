@@ -18,16 +18,13 @@ export default function TransactionNewPage() {
   const [banner, setBanner] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  const initial = useAsync<{ categories: Category[]; notes: Note[] }>(
-    async (signal) => {
-      const [categories, notes] = await Promise.all([
-        apiFetch<Category[]>(API_ROUTES.categories.base, { signal }),
-        apiFetch<Note[]>(API_ROUTES.notes.base, { signal }),
-      ]);
-      return { categories, notes };
-    },
-    [],
-  );
+  const initial = useAsync<{ categories: Category[]; notes: Note[] }>(async (signal) => {
+    const [categories, notes] = await Promise.all([
+      apiFetch<Category[]>(API_ROUTES.categories.base, { signal }),
+      apiFetch<Note[]>(API_ROUTES.notes.base, { signal }),
+    ]);
+    return { categories, notes };
+  }, []);
 
   async function handleSubmit(payload: CreateTransactionInputDto) {
     setSubmitting(true);
@@ -38,7 +35,7 @@ export default function TransactionNewPage() {
         method: 'POST',
         body: JSON.stringify({ ...payload, clientId }),
       });
-      navigate(`/transactions/${created.id}`, { replace: true });
+      await navigate(`/transactions/${created.id}`, { replace: true });
     } catch (error) {
       setFieldErrors(parseFormError(error).fields);
       setBanner(bannerFor(error));

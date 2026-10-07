@@ -24,7 +24,8 @@ const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
   secondary:
     'border border-slate-700 bg-slate-900 text-slate-200 hover:border-slate-600 hover:bg-slate-800 active:bg-slate-950',
   ghost: 'text-slate-300 hover:bg-slate-800/80 hover:text-slate-100 active:bg-slate-800',
-  danger: 'border border-rose-800 bg-rose-950/60 text-rose-300 hover:bg-rose-900/60 active:bg-rose-950',
+  danger:
+    'border border-rose-800 bg-rose-950/60 text-rose-300 hover:bg-rose-900/60 active:bg-rose-950',
 };
 
 export function Button({
@@ -97,17 +98,34 @@ export function PasswordInput({ className = '', ...props }: InputHTMLAttributes<
         className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-xl text-slate-400 transition-colors hover:text-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
       >
         {visible ? (
-          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <svg
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth="1.5"
               d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"
             />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="1.5"
+              d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+            />
           </svg>
         ) : (
-          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <svg
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -139,14 +157,25 @@ export function Select({
 }) {
   const options = React.Children.toArray(children)
     .filter(
-      (child): child is React.ReactElement<{ value?: string; children?: ReactNode; disabled?: boolean }> =>
-        React.isValidElement(child) && child.type === 'option',
+      (
+        child,
+      ): child is React.ReactElement<{
+        value?: string;
+        children?: ReactNode;
+        disabled?: boolean;
+      }> => React.isValidElement(child) && child.type === 'option',
     )
-    .map((child) => ({
-      value: String(child.props.value ?? ''),
-      label: String(child.props.children ?? child.props.value ?? ''),
-      disabled: Boolean(child.props.disabled),
-    }));
+    .map((child) => {
+      const raw = child.props.children;
+      return {
+        value: String(child.props.value ?? ''),
+        label:
+          typeof raw === 'string' || typeof raw === 'number'
+            ? String(raw)
+            : String(child.props.value ?? ''),
+        disabled: Boolean(child.props.disabled),
+      };
+    });
 
   const handleChange = (val: string) => {
     if (onChange) {
@@ -243,9 +272,10 @@ export function PageHeader({
  */
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <section className={`rounded-2xl border border-slate-800/80 bg-slate-900/60 p-4 sm:p-6 ${className}`}>
+    <section
+      className={`rounded-2xl border border-slate-800/80 bg-slate-900/60 p-4 sm:p-6 ${className}`}
+    >
       {children}
     </section>
   );
 }
-

@@ -84,8 +84,8 @@ describe('NotesService', () => {
       changeLog: { create: vi.fn() },
       $transaction: vi.fn(),
     };
-    prisma.$transaction.mockImplementation(async (fn: unknown) =>
-      typeof fn === 'function' ? fn(prisma) : fn,
+    prisma.$transaction.mockImplementation((fn: unknown) =>
+      typeof fn === 'function' ? (fn as (tx: unknown) => unknown)(prisma) : fn,
     );
     service = new NotesService(prisma as never);
   });
@@ -105,9 +105,10 @@ describe('NotesService', () => {
   it('creates a note scoped to the caller with an empty body stored as null', async () => {
     prisma.note.create.mockResolvedValue(noteRecord({ content: null }));
 
-    const created = await service.create('user-1', { title: 'Groceries' } as never);
+    const created = await service.create('user-1', { title: 'Groceries' });
 
-    expect(prisma.note.create.mock.calls[0]![0].data).toMatchObject({
+    const createArgs = prisma.note.create.mock.calls[0]![0] as { data: unknown };
+    expect(createArgs.data).toMatchObject({
       userId: 'user-1',
       title: 'Groceries',
       content: null,
@@ -120,7 +121,7 @@ describe('NotesService', () => {
     prisma.note.findUnique.mockResolvedValue(noteRecord({ userId: 'user-2' }));
 
     await expectRejection(
-      service.update('user-1', 'note-1', { title: 'Stolen' } as never),
+      service.update('user-1', 'note-1', { title: 'Stolen' }),
       404,
       'NOT_FOUND',
     );
@@ -138,13 +139,14 @@ describe('NotesService', () => {
     prisma.note.findUnique.mockResolvedValue(noteRecord());
     prisma.note.update.mockResolvedValue(noteRecord({ title: 'Groceries list', version: 2 }));
 
-    const updated = await service.update('user-1', 'note-1', { title: 'Groceries list' } as never);
+    const updated = await service.update('user-1', 'note-1', { title: 'Groceries list' });
 
-    expect(prisma.note.update.mock.calls[0]![0].data).toMatchObject({
+    const updateArgs = prisma.note.update.mock.calls[0]![0] as { data: unknown };
+    expect(updateArgs.data).toMatchObject({
       title: 'Groceries list',
       version: { increment: 1 },
     });
-    expect(prisma.note.update.mock.calls[0]![0].data).not.toHaveProperty('content');
+    expect(updateArgs.data).not.toHaveProperty('content');
     expect(updated.title).toBe('Groceries list');
   });
 
@@ -155,8 +157,11 @@ describe('NotesService', () => {
 
     const deleted = await service.remove('user-1', 'note-1');
 
-    expect(prisma.note.update.mock.calls[0]![0].data.deletedAt).toBeInstanceOf(Date);
-    expect(prisma.note.update.mock.calls[0]![0].data.version).toEqual({ increment: 1 });
+    const updateArgs = prisma.note.update.mock.calls[0]![0] as {
+      data: { deletedAt: unknown; version: unknown };
+    };
+    expect(updateArgs.data.deletedAt).toBeInstanceOf(Date);
+    expect(updateArgs.data.version).toEqual({ increment: 1 });
     expect(deleted.id).toBe('note-1');
   });
 
@@ -165,15 +170,24 @@ describe('NotesService', () => {
       noteRecord({
         transactions: [
           { id: 'tx-old', title: 'Rent', transactionDate: new Date('2026-09-01T00:00:00.000Z') },
-          { id: 'tx-new', title: 'Groceries', transactionDate: new Date('2026-10-02T00:00:00.000Z') },
+          {
+            id: 'tx-new',
+            title: 'Groceries',
+            transactionDate: new Date('2026-10-02T00:00:00.000Z'),
+          },
         ],
       }),
     ]);
 
     const list = await service.list('user-1');
 
-    const include = prisma.note.findMany.mock.calls[0]![0].include;
-    expect(include.transactions.where).toMatchObject({ userId: 'user-1', deletedAt: null });
+    const listArgs = prisma.note.findMany.mock.calls[0]![0] as {
+      include: { transactions: { where: unknown } };
+    };
+    expect(listArgs.include.transactions.where).toMatchObject({
+      userId: 'user-1',
+      deletedAt: null,
+    });
     expect(list[0]!.transactions).toEqual([
       { id: 'tx-new', title: 'Groceries', transactionDate: '2026-10-02' },
       { id: 'tx-old', title: 'Rent', transactionDate: '2026-09-01' },
@@ -185,26 +199,25 @@ describe('NotesService', () => {
     prisma.transaction.findMany
       .mockResolvedValueOnce([{ id: 'tx-1' }, { id: 'tx-2' }]) // owned & live
       .mockResolvedValueOnce([]); // currently tagged with this new note
-    prisma.transaction.update.mockImplementation(async (args: { where: { id: string } }) => ({
+    prisma.transaction.update.mockImplementation((args: { where: { id: string } }) => ({
       id: args.where.id,
       version: 2,
     }));
-    prisma.note.findUnique.mockImplementation(
-      async (args: { include?: unknown }) =>
-        args.include
-          ? noteRecord({
-              transactions: [
-                { id: 'tx-2', title: 'B', transactionDate: NOW },
-                { id: 'tx-1', title: 'A', transactionDate: NOW },
-              ],
-            })
-          : noteRecord(),
+    prisma.note.findUnique.mockImplementation((args: { include?: unknown }) =>
+      args.include
+        ? noteRecord({
+            transactions: [
+              { id: 'tx-2', title: 'B', transactionDate: NOW },
+              { id: 'tx-1', title: 'A', transactionDate: NOW },
+            ],
+          })
+        : noteRecord(),
     );
 
     const created = await service.create('user-1', {
       title: 'Groceries',
       transactionIds: ['tx-1', 'tx-2'],
-    } as never);
+    });
 
     expect(prisma.transaction.update).toHaveBeenCalledTimes(2);
     expect(prisma.transaction.update.mock.calls[0]![0]).toMatchObject({
@@ -223,7 +236,7 @@ describe('NotesService', () => {
       service.create('user-1', {
         title: 'Groceries',
         transactionIds: ['tx-1', 'tx-2'],
-      } as never),
+      }),
       404,
       'NOT_FOUND',
     );
@@ -232,29 +245,25 @@ describe('NotesService', () => {
   });
 
   it('replaces the tag set on update, clearing dropped transactions', async () => {
-    prisma.note.findUnique.mockImplementation(
-      async (args: { include?: unknown }) =>
-        args.include
-          ? noteRecord({
-              transactions: [{ id: 'tx-keep', title: 'Rent', transactionDate: NOW }],
-            })
-          : noteRecord(),
+    prisma.note.findUnique.mockImplementation((args: { include?: unknown }) =>
+      args.include
+        ? noteRecord({
+            transactions: [{ id: 'tx-keep', title: 'Rent', transactionDate: NOW }],
+          })
+        : noteRecord(),
     );
     prisma.note.update.mockResolvedValue(noteRecord({ version: 2 }));
     prisma.transaction.findMany
       .mockResolvedValueOnce([{ id: 'tx-keep' }]) // owned & live
-      .mockResolvedValueOnce([
-        { id: 'tx-keep' },
-        { id: 'tx-drop' },
-      ]); // currently tagged with the note
-    prisma.transaction.update.mockImplementation(async (args: { where: { id: string } }) => ({
+      .mockResolvedValueOnce([{ id: 'tx-keep' }, { id: 'tx-drop' }]); // currently tagged with the note
+    prisma.transaction.update.mockImplementation((args: { where: { id: string } }) => ({
       id: args.where.id,
       version: 3,
     }));
 
     const updated = await service.update('user-1', 'note-1', {
       transactionIds: ['tx-keep'],
-    } as never);
+    });
 
     expect(prisma.transaction.update).toHaveBeenCalledTimes(1);
     expect(prisma.transaction.update.mock.calls[0]![0]).toMatchObject({
@@ -266,35 +275,31 @@ describe('NotesService', () => {
   });
 
   it('clears every tag when transactionIds is sent as null on update', async () => {
-    prisma.note.findUnique.mockImplementation(
-      async (args: { include?: unknown }) =>
-        args.include
-          ? noteRecord({ transactions: [] })
-          : noteRecord(),
+    prisma.note.findUnique.mockImplementation((args: { include?: unknown }) =>
+      args.include ? noteRecord({ transactions: [] }) : noteRecord(),
     );
     prisma.note.update.mockResolvedValue(noteRecord({ version: 2 }));
     // No ids to validate, so the first query is the currently-tagged set.
-    prisma.transaction.findMany.mockResolvedValueOnce([
-      { id: 'tx-1' },
-      { id: 'tx-2' },
-    ]);
-    prisma.transaction.update.mockImplementation(async (args: { where: { id: string } }) => ({
+    prisma.transaction.findMany.mockResolvedValueOnce([{ id: 'tx-1' }, { id: 'tx-2' }]);
+    prisma.transaction.update.mockImplementation((args: { where: { id: string } }) => ({
       id: args.where.id,
       version: 3,
     }));
 
-    await service.update('user-1', 'note-1', { transactionIds: null } as never);
+    await service.update('user-1', 'note-1', { transactionIds: null });
 
     expect(prisma.transaction.update).toHaveBeenCalledTimes(2);
-    expect(prisma.transaction.update.mock.calls[0]![0].data).toMatchObject({ noteId: null });
-    expect(prisma.transaction.update.mock.calls[1]![0].data).toMatchObject({ noteId: null });
+    const updateArgs = prisma.transaction.update.mock.calls[0]![0] as { data: unknown };
+    const secondUpdateArgs = prisma.transaction.update.mock.calls[1]![0] as { data: unknown };
+    expect(updateArgs.data).toMatchObject({ noteId: null });
+    expect(secondUpdateArgs.data).toMatchObject({ noteId: null });
   });
 
   it('clears the tag on every referencing transaction when a note is deleted', async () => {
     prisma.note.findUnique.mockResolvedValue(noteRecord());
     prisma.note.update.mockResolvedValue(noteRecord({ deletedAt: NOW, version: 2 }));
     prisma.transaction.findMany.mockResolvedValue([{ id: 'tx-1' }, { id: 'tx-2' }]);
-    prisma.transaction.update.mockImplementation(async (args: { where: { id: string } }) => ({
+    prisma.transaction.update.mockImplementation((args: { where: { id: string } }) => ({
       id: args.where.id,
       version: 2,
     }));
@@ -305,7 +310,8 @@ describe('NotesService', () => {
       where: { noteId: 'note-1', userId: 'user-1' },
     });
     expect(prisma.transaction.update).toHaveBeenCalledTimes(2);
-    expect(prisma.transaction.update.mock.calls[0]![0].data).toMatchObject({ noteId: null });
+    const updateArgs = prisma.transaction.update.mock.calls[0]![0] as { data: unknown };
+    expect(updateArgs.data).toMatchObject({ noteId: null });
     expect(prisma.changeLog.create).toHaveBeenCalledTimes(2);
     expect(prisma.changeLog.create).toHaveBeenCalledWith({
       data: {
@@ -353,11 +359,12 @@ describe('RemindersService', () => {
     const created = await service.create('user-1', {
       title: 'Pay internet bill',
       dueDate: '2026-10-05',
-    } as never);
+    });
 
-    expect(prisma.reminder.create.mock.calls[0]![0].data.dueDate).toEqual(
-      new Date('2026-10-05T00:00:00.000Z'),
-    );
+    const createArgs = prisma.reminder.create.mock.calls[0]![0] as {
+      data: Record<string, unknown>;
+    };
+    expect(createArgs.data.dueDate).toEqual(new Date('2026-10-05T00:00:00.000Z'));
     expect(created.dueDate).toBe('2026-10-05');
     expect(created.completedAt).toBeNull();
   });
@@ -369,9 +376,12 @@ describe('RemindersService', () => {
       title: 'Pay internet bill',
       dueDate: '2026-10-05',
       dueTime: '18:30',
-    } as never);
+    });
 
-    expect(prisma.reminder.create.mock.calls[0]![0].data.dueTime).toBe('18:30');
+    const createArgs = prisma.reminder.create.mock.calls[0]![0] as {
+      data: Record<string, unknown>;
+    };
+    expect(createArgs.data.dueTime).toBe('18:30');
     expect(created.dueTime).toBe('18:30');
   });
 
@@ -381,9 +391,12 @@ describe('RemindersService', () => {
     const created = await service.create('user-1', {
       title: 'Pay internet bill',
       dueDate: '2026-10-05',
-    } as never);
+    });
 
-    expect(prisma.reminder.create.mock.calls[0]![0].data.dueTime).toBeNull();
+    const createArgs = prisma.reminder.create.mock.calls[0]![0] as {
+      data: Record<string, unknown>;
+    };
+    expect(createArgs.data.dueTime).toBeNull();
     expect(created.dueTime).toBeNull();
   });
 
@@ -391,9 +404,10 @@ describe('RemindersService', () => {
     prisma.reminder.findUnique.mockResolvedValue(reminderRecord({ dueTime: '18:30' }));
     prisma.reminder.update.mockResolvedValue(reminderRecord({ dueTime: null, version: 2 }));
 
-    const updated = await service.update('user-1', 'rem-1', { dueTime: null } as never);
+    const updated = await service.update('user-1', 'rem-1', { dueTime: null });
 
-    expect(prisma.reminder.update.mock.calls[0]![0].data).toMatchObject({ dueTime: null });
+    const updateArgs = prisma.reminder.update.mock.calls[0]![0] as { data: unknown };
+    expect(updateArgs.data).toMatchObject({ dueTime: null });
     expect(updated.dueTime).toBeNull();
   });
 
@@ -401,16 +415,20 @@ describe('RemindersService', () => {
     prisma.reminder.findUnique.mockResolvedValue(reminderRecord());
     prisma.reminder.update.mockResolvedValue(reminderRecord({ completedAt: NOW, version: 2 }));
 
-    await service.update('user-1', 'rem-1', { completed: true } as never);
+    await service.update('user-1', 'rem-1', { completed: true });
 
-    expect(prisma.reminder.update.mock.calls[0]![0].data.completedAt).toBeInstanceOf(Date);
+    const doneArgs = prisma.reminder.update.mock.calls[0]![0] as { data: Record<string, unknown> };
+    expect(doneArgs.data.completedAt).toBeInstanceOf(Date);
 
     prisma.reminder.update.mockClear();
     prisma.reminder.update.mockResolvedValue(reminderRecord({ completedAt: null, version: 3 }));
 
-    await service.update('user-1', 'rem-1', { completed: false } as never);
+    await service.update('user-1', 'rem-1', { completed: false });
 
-    expect(prisma.reminder.update.mock.calls[0]![0].data.completedAt).toBeNull();
+    const undoneArgs = prisma.reminder.update.mock.calls[0]![0] as {
+      data: Record<string, unknown>;
+    };
+    expect(undoneArgs.data.completedAt).toBeNull();
   });
 
   it('reports another user’s reminder as missing', async () => {
@@ -426,6 +444,9 @@ describe('RemindersService', () => {
 
     await service.remove('user-1', 'rem-1');
 
-    expect(prisma.reminder.update.mock.calls[0]![0].data.deletedAt).toBeInstanceOf(Date);
+    const deleteArgs = prisma.reminder.update.mock.calls[0]![0] as {
+      data: Record<string, unknown>;
+    };
+    expect(deleteArgs.data.deletedAt).toBeInstanceOf(Date);
   });
 });

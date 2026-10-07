@@ -46,7 +46,7 @@ export default function RegisterPage() {
     setSubmitting(true);
     try {
       await register(parsed.data);
-      navigate(ROUTES.dashboard, { replace: true });
+      await navigate(ROUTES.dashboard, { replace: true });
     } catch (error) {
       setFields(parseFormError(error).fields);
       setBanner(bannerFor(error));
@@ -81,7 +81,7 @@ export default function RegisterPage() {
     setBanner(null);
     setFields({});
     await googleSignIn(idToken);
-    navigate(ROUTES.dashboard, { replace: true });
+    await navigate(ROUTES.dashboard, { replace: true });
   }
 
   function update(key: keyof typeof values) {
@@ -109,11 +109,7 @@ export default function RegisterPage() {
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         <ErrorBanner>{banner}</ErrorBanner>
 
-        <GoogleButton
-          onIdToken={handleGoogle}
-          onError={setBanner}
-          label="Sign up with Google"
-        />
+        <GoogleButton onIdToken={handleGoogle} onError={setBanner} label="Sign up with Google" />
 
         <div className="flex items-center gap-3 text-xs uppercase tracking-wide text-slate-500">
           <span className="h-px flex-1 bg-slate-700" aria-hidden="true" />

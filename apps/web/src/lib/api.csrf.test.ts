@@ -6,7 +6,7 @@ function jsonResponse(body: unknown, status = 200): Response {
   return {
     ok: status >= 200 && status < 300,
     status,
-    json: async () => body,
+    json: () => Promise.resolve(body),
   } as unknown as Response;
 }
 
@@ -83,9 +83,9 @@ describe('silent refresh and replay', () => {
     const mock = stubFetch(fail('UNAUTHORIZED'), ok({ id: 'tx_1' }));
     storeAccessToken({ accessToken: 'stale-token' });
 
-    const handler = vi.fn().mockImplementation(async () => {
+    const handler = vi.fn().mockImplementation(() => {
       storeAccessToken({ accessToken: 'fresh-token' });
-      return true;
+      return Promise.resolve(true);
     });
     setUnauthorizedHandler(handler);
 

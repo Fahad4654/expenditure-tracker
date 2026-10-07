@@ -17,15 +17,15 @@ export type AuthStatus = 'loading' | 'authenticated' | 'anonymous';
 export interface AuthContextValue {
   status: AuthStatus;
   user: UserProfile | null;
-  login(input: LoginInput): Promise<AuthSession>;
-  register(input: RegisterInput): Promise<AuthSession>;
+  login: (input: LoginInput) => Promise<AuthSession>;
+  register: (input: RegisterInput) => Promise<AuthSession>;
   /** Exchange a Firebase Google ID token for a local session. */
-  googleSignIn(idToken: string): Promise<AuthSession>;
+  googleSignIn: (idToken: string) => Promise<AuthSession>;
   /** Consume the reset OTP, set the new password, start a fresh session. */
-  resetPassword(input: ResetPasswordInput): Promise<AuthSession>;
-  logout(): Promise<void>;
+  resetPassword: (input: ResetPasswordInput) => Promise<AuthSession>;
+  logout: () => Promise<void>;
   /** Swap in an updated profile after a settings save. */
-  setUser(user: UserProfile): void;
+  setUser: (user: UserProfile) => void;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
