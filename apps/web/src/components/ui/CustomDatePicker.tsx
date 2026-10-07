@@ -29,11 +29,12 @@ const MONTH_NAMES = [
 
 function formatDisplayDate(dateStr: string): string {
   if (!dateStr) return '';
-  const parts = dateStr.split('-');
-  if (parts.length !== 3) return dateStr;
-  const year = parseInt(parts[0], 10);
-  const month = parseInt(parts[1], 10) - 1;
-  const day = parseInt(parts[2], 10);
+  const match = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(dateStr);
+  if (!match) return dateStr;
+  const [, yearStr = '', monthStr = '', dayStr = ''] = match;
+  const year = parseInt(yearStr, 10);
+  const month = parseInt(monthStr, 10) - 1;
+  const day = parseInt(dayStr, 10);
   const date = new Date(year, month, day);
   if (isNaN(date.getTime())) return dateStr;
   return date.toLocaleDateString(undefined, {
@@ -41,6 +42,12 @@ function formatDisplayDate(dateStr: string): string {
     month: 'short',
     day: 'numeric',
   });
+}
+
+function parseDateStr(dateStr: string): Date | null {
+  if (!dateStr) return null;
+  const d = new Date(dateStr + 'T00:00:00');
+  return isNaN(d.getTime()) ? null : d;
 }
 
 function getTodayString(): string {
@@ -64,23 +71,25 @@ export function CustomDatePicker({
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Initialize displayed month/year based on value or today
-  const initialDate = value ? new Date(value + 'T00:00:00') : new Date();
-  const [viewYear, setViewYear] = useState(
-    isNaN(initialDate.getTime()) ? new Date().getFullYear() : initialDate.getFullYear(),
-  );
-  const [viewMonth, setViewMonth] = useState(
-    isNaN(initialDate.getTime()) ? new Date().getMonth() : initialDate.getMonth(),
-  );
+  const [viewYear, setViewYear] = useState(() => {
+    const d = parseDateStr(value);
+    return d ? d.getFullYear() : new Date().getFullYear();
+  });
+  const [viewMonth, setViewMonth] = useState(() => {
+    const d = parseDateStr(value);
+    return d ? d.getMonth() : new Date().getMonth();
+  });
 
-  useEffect(() => {
-    if (value) {
-      const d = new Date(value + 'T00:00:00');
-      if (!isNaN(d.getTime())) {
+  const handleToggleOpen = () => {
+    if (!isOpen) {
+      const d = parseDateStr(value);
+      if (d) {
         setViewYear(d.getFullYear());
         setViewMonth(d.getMonth());
       }
     }
-  }, [value]);
+    setIsOpen(!isOpen);
+  };
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -158,7 +167,7 @@ export function CustomDatePicker({
         disabled={disabled}
         aria-haspopup="dialog"
         aria-expanded={isOpen}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleToggleOpen}
         className="w-full min-h-[44px] sm:min-h-[40px] flex items-center justify-between gap-2 rounded-xl border border-slate-700/80 bg-slate-900/90 px-3.5 py-2.5 text-sm text-slate-100 outline-none transition-all duration-200 hover:border-slate-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.99]"
       >
         <span className="flex items-center gap-2 truncate">

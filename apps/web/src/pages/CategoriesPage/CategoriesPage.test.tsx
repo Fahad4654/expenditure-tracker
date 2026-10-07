@@ -67,7 +67,7 @@ describe('CategoriesPage', () => {
     const name = await screen.findByText('Pets');
     const card = name.closest('li');
     expect(card).toBeTruthy();
-    const dot = (card as HTMLElement).querySelector('span[aria-hidden]');
+    const dot = (card as HTMLElement).querySelector<HTMLSpanElement>('span[aria-hidden]');
     expect(dot?.style.backgroundColor).toBe('rgb(236, 72, 153)');
     expect(screen.getByRole('button', { name: 'Edit' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Delete' })).toBeTruthy();
