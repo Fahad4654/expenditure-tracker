@@ -81,7 +81,10 @@ export class AuthService {
   }
 
   /** Sends (or re-sends) the 6-digit email OTP for registration/reset. */
-  async sendEmailOtp(input: { email: string; purpose: 'REGISTER' | 'PASSWORD_RESET' }): Promise<EmailOtpChallenge> {
+  async sendEmailOtp(input: {
+    email: string;
+    purpose: 'REGISTER' | 'PASSWORD_RESET';
+  }): Promise<EmailOtpChallenge> {
     return this.otps.sendEmailOtp(input.email, input.purpose);
   }
 

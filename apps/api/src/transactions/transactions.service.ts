@@ -85,8 +85,7 @@ export class TransactionsService {
             userId,
             type: input.type,
             amount: input.amount,
-            currency:
-              input.currency ?? (await this.users.financeDefaults(userId)).defaultCurrency,
+            currency: input.currency ?? (await this.users.financeDefaults(userId)).defaultCurrency,
             categoryId: input.categoryId,
             title: input.title,
             description: input.description ?? null,
@@ -234,11 +233,7 @@ export class TransactionsService {
     });
   }
 
-  async remove(
-    userId: string,
-    id: string,
-    db?: Prisma.TransactionClient,
-  ): Promise<Transaction> {
+  async remove(userId: string, id: string, db?: Prisma.TransactionClient): Promise<Transaction> {
     return withTx(this.prisma, db, async (tx) => {
       const result = await tx.transaction.updateMany({
         where: { id, userId, deletedAt: null },

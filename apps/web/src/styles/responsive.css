@@ -26,7 +26,7 @@
 
 /* ── Bottom nav safe area support (iPhone notch / home indicator) ── */
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
-  nav[aria-label="Mobile bottom navigation"] {
+  nav[aria-label='Mobile bottom navigation'] {
     padding-bottom: calc(0.25rem + env(safe-area-inset-bottom));
   }
 }
@@ -105,7 +105,7 @@
 
 /* ── Prevent landscape overflow on auth pages ── */
 @media (orientation: landscape) and (max-height: 600px) {
-  main[class*="max-w-md"] {
+  main[class*='max-w-md'] {
     padding-top: 1.5vh;
     padding-bottom: 1.5vh;
   }

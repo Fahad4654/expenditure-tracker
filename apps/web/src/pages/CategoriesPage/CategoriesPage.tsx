@@ -137,7 +137,9 @@ export default function CategoriesPage() {
         subtitle="System categories are shared and read-only; yours are private to you."
         actions={
           <Link to={ROUTES.transactionNew} className="w-full sm:w-auto">
-            <Button variant="secondary" className="w-full sm:w-auto">Add transaction</Button>
+            <Button variant="secondary" className="w-full sm:w-auto">
+              Add transaction
+            </Button>
           </Link>
         }
       />
@@ -260,9 +262,7 @@ export default function CategoriesPage() {
                     <Select
                       id="cat-edit-type"
                       value={editType}
-                      onChange={(event) =>
-                        setEditType(event.target.value as TransactionTypeValue)
-                      }
+                      onChange={(event) => setEditType(event.target.value as TransactionTypeValue)}
                     >
                       {TYPE_OPTIONS.map((option) => (
                         <option key={option.value} value={option.value}>
@@ -315,13 +315,7 @@ export default function CategoriesPage() {
 }
 
 /** Swatch row for the category colour — values are data, not theme colours. */
-function ColourSwatches({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (hex: string) => void;
-}) {
+function ColourSwatches({ value, onChange }: { value: string; onChange: (hex: string) => void }) {
   return (
     <div className="flex flex-wrap gap-2">
       {CATEGORY_COLORS.map((hex) => (

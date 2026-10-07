@@ -50,8 +50,7 @@ function StatusPill({ state }: { state: 'loading' | 'up' | 'down' }) {
       : state === 'down'
         ? 'Service disruption'
         : 'Checking status…';
-  const dot =
-    state === 'up' ? 'bg-emerald-400' : state === 'down' ? 'bg-rose-400' : 'bg-amber-400';
+  const dot = state === 'up' ? 'bg-emerald-400' : state === 'down' ? 'bg-rose-400' : 'bg-amber-400';
   return (
     <Link
       to={ROUTES.status}
@@ -69,7 +68,10 @@ function LandingNavbar() {
   return (
     <header className="sticky top-0 z-40 border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-md">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 sm:px-6 py-3.5">
-        <Link to={ROUTES.home} className="flex items-center gap-2 font-bold text-white text-base sm:text-lg">
+        <Link
+          to={ROUTES.home}
+          className="flex items-center gap-2 font-bold text-white text-base sm:text-lg"
+        >
           <span aria-hidden className="text-emerald-400">
             ৳
           </span>
@@ -77,7 +79,10 @@ function LandingNavbar() {
         </Link>
 
         {/* Desktop navigation */}
-        <nav aria-label="Page sections" className="hidden items-center gap-6 text-sm font-medium md:flex">
+        <nav
+          aria-label="Page sections"
+          className="hidden items-center gap-6 text-sm font-medium md:flex"
+        >
           {NAV_ANCHORS.map((item) => (
             <a
               key={item.href}
@@ -114,9 +119,19 @@ function LandingNavbar() {
         >
           <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             {menuOpen ? (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
             ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M4 6h16M4 12h16M4 18h16"
+              />
             )}
           </svg>
         </button>

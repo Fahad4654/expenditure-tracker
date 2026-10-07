@@ -22,7 +22,7 @@ export class SyncController {
     description:
       'Applies up to 200 operations idempotently (replayed `operationId`s ' +
       'return `DUPLICATE`), then returns changes after `cursor` excluding this ' +
-      'device\'s own writes. See docs/synchronization.md for statuses and ' +
+      "device's own writes. See docs/synchronization.md for statuses and " +
       'conflict rules.',
   })
   async push(

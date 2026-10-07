@@ -36,7 +36,8 @@ export class OtpService {
   ) {
     // The dev escape hatch must never exist in production, even if MAIL_SEND
     // was misconfigured there.
-    this.allowDevCode = !mailer.deliveryEnabled && (config.get<string>('env') ?? '') !== 'production';
+    this.allowDevCode =
+      !mailer.deliveryEnabled && (config.get<string>('env') ?? '') !== 'production';
   }
 
   async sendEmailOtp(email: string, purpose: EmailOtpPurpose): Promise<EmailOtpChallenge> {

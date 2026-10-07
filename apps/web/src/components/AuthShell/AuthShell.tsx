@@ -29,7 +29,9 @@ export default function AuthShell({
         <div className="mt-5 sm:mt-6">{children}</div>
       </div>
 
-      {footer ? <p className="mt-5 text-center text-xs sm:text-sm text-slate-400">{footer}</p> : null}
+      {footer ? (
+        <p className="mt-5 text-center text-xs sm:text-sm text-slate-400">{footer}</p>
+      ) : null}
     </main>
   );
 }

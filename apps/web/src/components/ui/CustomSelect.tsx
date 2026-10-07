@@ -125,20 +125,12 @@ export function CustomSelect({
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       setHighlightedIndex((prev) =>
-        visibleOptions.length === 0
-          ? -1
-          : prev < visibleOptions.length - 1
-            ? prev + 1
-            : 0,
+        visibleOptions.length === 0 ? -1 : prev < visibleOptions.length - 1 ? prev + 1 : 0,
       );
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setHighlightedIndex((prev) =>
-        visibleOptions.length === 0
-          ? -1
-          : prev > 0
-            ? prev - 1
-            : visibleOptions.length - 1,
+        visibleOptions.length === 0 ? -1 : prev > 0 ? prev - 1 : visibleOptions.length - 1,
       );
     } else if (e.key === 'Enter') {
       e.preventDefault();
@@ -259,10 +251,10 @@ export function CustomSelect({
                     opt.disabled
                       ? 'cursor-not-allowed opacity-40'
                       : isSelected
-                      ? 'bg-emerald-500/15 text-emerald-400 font-semibold'
-                      : isHighlighted
-                      ? 'bg-slate-800 text-slate-100'
-                      : 'text-slate-300 hover:bg-slate-800/70 hover:text-slate-100'
+                        ? 'bg-emerald-500/15 text-emerald-400 font-semibold'
+                        : isHighlighted
+                          ? 'bg-slate-800 text-slate-100'
+                          : 'text-slate-300 hover:bg-slate-800/70 hover:text-slate-100'
                   }`}
                 >
                   <span className="flex items-center gap-2 truncate">
@@ -275,8 +267,18 @@ export function CustomSelect({
                     <span>{opt.label}</span>
                   </span>
                   {isSelected ? (
-                    <svg className="h-4 w-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                    <svg
+                      className="h-4 w-4 text-emerald-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2.5"
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                   ) : null}
                 </div>

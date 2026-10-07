@@ -1,5 +1,10 @@
 import { useState } from 'react';
-import { googleAuthConfigured, googleAuthErrorMessage, isPopupDismissal, signInWithGoogle } from '../../lib/firebase';
+import {
+  googleAuthConfigured,
+  googleAuthErrorMessage,
+  isPopupDismissal,
+  signInWithGoogle,
+} from '../../lib/firebase';
 import { Button } from '../ui';
 
 /**

@@ -459,7 +459,10 @@ export function ReportsSection() {
               See which category is quietly eating the month.
             </p>
           </figcaption>
-          <div role="img" aria-label="Category breakdown: Food 42 percent, Bills 24 percent, Transport 18 percent, Other 16 percent">
+          <div
+            role="img"
+            aria-label="Category breakdown: Food 42 percent, Bills 24 percent, Transport 18 percent, Other 16 percent"
+          >
             <ul className="mt-4 space-y-3">
               {BREAKDOWN.map((row) => (
                 <li key={row.label} className="flex items-center gap-3 text-sm">
@@ -570,16 +573,14 @@ export function PricingSection() {
             —<span className="text-base font-normal text-slate-600"> / month</span>
           </p>
           <ul className="mt-5 flex-1 space-y-2.5 text-sm text-slate-400">
-            {[
-              'Budgets and spending alerts',
-              'CSV / PDF export',
-              'Shared household budgets',
-            ].map((feature) => (
-              <li key={feature} className="flex gap-2.5">
-                <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-slate-600" />
-                {feature}
-              </li>
-            ))}
+            {['Budgets and spending alerts', 'CSV / PDF export', 'Shared household budgets'].map(
+              (feature) => (
+                <li key={feature} className="flex gap-2.5">
+                  <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-slate-600" />
+                  {feature}
+                </li>
+              ),
+            )}
           </ul>
           <button
             type="button"

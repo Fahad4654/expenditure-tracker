@@ -22,11 +22,7 @@ import { transactionPath } from '../../routes';
 
 /** Chip label for a tagged transaction, falling back to the note's own ref
  * when the transaction is older than the fetched page. */
-function tagLabel(
-  id: string,
-  transactions: Transaction[],
-  refs: NoteTransactionRef[],
-): string {
+function tagLabel(id: string, transactions: Transaction[], refs: NoteTransactionRef[]): string {
   const transaction = transactions.find((row) => row.id === id);
   if (transaction) return `${transaction.title} · ${formatDay(transaction.transactionDate)}`;
   const ref = refs.find((row) => row.id === id);
@@ -218,10 +214,7 @@ export default function NotesPage() {
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 sm:px-6 py-6 sm:py-10">
-      <PageHeader
-        title="Notes"
-        subtitle="Quick thoughts and lists — private to your account."
-      />
+      <PageHeader title="Notes" subtitle="Quick thoughts and lists — private to your account." />
 
       <ErrorBanner>{banner}</ErrorBanner>
 
@@ -399,7 +392,9 @@ export default function NotesPage() {
                     </Button>
                     <Button
                       variant="ghost"
-                      onClick={() => setPendingDeleteId(pendingDeleteId === note.id ? null : note.id)}
+                      onClick={() =>
+                        setPendingDeleteId(pendingDeleteId === note.id ? null : note.id)
+                      }
                     >
                       Delete
                     </Button>

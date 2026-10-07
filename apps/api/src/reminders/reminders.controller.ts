@@ -70,7 +70,11 @@ export class RemindersController {
     logEvent(
       this.logger,
       user.sub,
-      body.completed === undefined ? 'REMINDER_UPDATE' : reminder.completedAt ? 'REMINDER_COMPLETE' : 'REMINDER_REOPEN',
+      body.completed === undefined
+        ? 'REMINDER_UPDATE'
+        : reminder.completedAt
+          ? 'REMINDER_COMPLETE'
+          : 'REMINDER_REOPEN',
       body.completed === undefined ? 'Updated a reminder' : 'Toggled reminder completion',
       { dueDate: reminder.dueDate, dueTime: reminder.dueTime },
       'REMINDER',
@@ -88,7 +92,15 @@ export class RemindersController {
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
   ): Promise<Reminder> {
     const reminder = await this.reminders.remove(user.sub, id);
-    logEvent(this.logger, user.sub, 'REMINDER_DELETE', 'Deleted a reminder', undefined, 'REMINDER', reminder.id);
+    logEvent(
+      this.logger,
+      user.sub,
+      'REMINDER_DELETE',
+      'Deleted a reminder',
+      undefined,
+      'REMINDER',
+      reminder.id,
+    );
     return reminder;
   }
 }

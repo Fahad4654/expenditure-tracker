@@ -14,8 +14,20 @@ const SPENDING_BARS = [38, 64, 45, 72, 55, 88, 61, 47, 70, 58, 82, 52, 66, 74] a
 const RECENT = [
   { title: 'Salary', category: 'Income', date: 'Oct 1', amount: '+৳48,000.00', income: true },
   { title: 'Groceries', category: 'Food', date: 'Sep 30', amount: '−৳1,250.00', income: false },
-  { title: 'Electric bill', category: 'Utilities', date: 'Sep 29', amount: '−৳860.00', income: false },
-  { title: 'Ride to work', category: 'Transport', date: 'Sep 28', amount: '−৳120.00', income: false },
+  {
+    title: 'Electric bill',
+    category: 'Utilities',
+    date: 'Sep 29',
+    amount: '−৳860.00',
+    income: false,
+  },
+  {
+    title: 'Ride to work',
+    category: 'Transport',
+    date: 'Sep 28',
+    amount: '−৳120.00',
+    income: false,
+  },
 ] as const;
 
 function PreviewStat({

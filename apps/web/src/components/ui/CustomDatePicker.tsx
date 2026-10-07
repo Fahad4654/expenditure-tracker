@@ -171,7 +171,12 @@ export function CustomDatePicker({
         className="w-full min-h-[44px] sm:min-h-[40px] flex items-center justify-between gap-2 rounded-xl border border-slate-700/80 bg-slate-900/90 px-3.5 py-2.5 text-sm text-slate-100 outline-none transition-all duration-200 hover:border-slate-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.99]"
       >
         <span className="flex items-center gap-2 truncate">
-          <svg className="h-4 w-4 shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg
+            className="h-4 w-4 shrink-0 text-slate-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -245,10 +250,10 @@ export function CustomDatePicker({
                     isSelected
                       ? 'bg-emerald-500 text-slate-950 font-bold shadow-md shadow-emerald-500/20'
                       : isToday
-                      ? 'border border-emerald-500/50 text-emerald-400 font-semibold'
-                      : item.currentMonth
-                      ? 'text-slate-200 hover:bg-slate-800 hover:text-slate-100'
-                      : 'text-slate-600 hover:bg-slate-800/40'
+                        ? 'border border-emerald-500/50 text-emerald-400 font-semibold'
+                        : item.currentMonth
+                          ? 'text-slate-200 hover:bg-slate-800 hover:text-slate-100'
+                          : 'text-slate-600 hover:bg-slate-800/40'
                   }`}
                 >
                   {item.day}

@@ -138,11 +138,7 @@ export class CategoriesService {
    * Soft delete. Blocked while the category still has transactions — a
    * tombstoned category would leave them without a display name.
    */
-  async remove(
-    userId: string,
-    id: string,
-    db?: Prisma.TransactionClient,
-  ): Promise<Category> {
+  async remove(userId: string, id: string, db?: Prisma.TransactionClient): Promise<Category> {
     return withTx(this.prisma, db, async (tx) => {
       const category = await this.requireOwned(tx, userId, id);
 

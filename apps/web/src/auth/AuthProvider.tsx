@@ -119,19 +119,16 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     return session;
   }, []);
 
-  const resetPassword = useCallback(
-    async (input: ResetPasswordInput): Promise<AuthSession> => {
-      const session = await apiFetch<AuthSession>(API_ROUTES.auth.resetPassword, {
-        method: 'POST',
-        body: JSON.stringify(input),
-        skipAuthRetry: true,
-      });
-      persistSession(session);
-      setState({ status: 'authenticated', user: session.user });
-      return session;
-    },
-    [],
-  );
+  const resetPassword = useCallback(async (input: ResetPasswordInput): Promise<AuthSession> => {
+    const session = await apiFetch<AuthSession>(API_ROUTES.auth.resetPassword, {
+      method: 'POST',
+      body: JSON.stringify(input),
+      skipAuthRetry: true,
+    });
+    persistSession(session);
+    setState({ status: 'authenticated', user: session.user });
+    return session;
+  }, []);
 
   const logout = useCallback(async () => {
     try {

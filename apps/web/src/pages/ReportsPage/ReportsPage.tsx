@@ -96,7 +96,11 @@ export default function ReportsPage() {
         title="Reports"
         subtitle={`${range.from} → ${range.to} · ${timeZone}`}
         actions={
-          <div className="grid grid-cols-4 sm:flex sm:flex-wrap items-center gap-1.5 sm:gap-2 w-full sm:w-auto" role="group" aria-label="Report period">
+          <div
+            className="grid grid-cols-4 sm:flex sm:flex-wrap items-center gap-1.5 sm:gap-2 w-full sm:w-auto"
+            role="group"
+            aria-label="Report period"
+          >
             {PRESETS.map((option) => (
               <Button
                 key={option.value}
@@ -228,7 +232,9 @@ function SummaryCard({
   return (
     <Card>
       <p className="text-xs sm:text-sm text-slate-500">{label}</p>
-      <p className={`mt-1 text-2xl sm:text-3xl font-semibold tabular-nums truncate ${colour}`}>{value}</p>
+      <p className={`mt-1 text-2xl sm:text-3xl font-semibold tabular-nums truncate ${colour}`}>
+        {value}
+      </p>
     </Card>
   );
 }
@@ -254,9 +260,13 @@ function DailyBars({ report, currency }: { report: DailyReport; currency: string
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-semibold text-slate-200">{activePoint.date}</span>
             <span className="text-slate-600">·</span>
-            <span className="font-medium text-emerald-400">+{money(activePoint.income, currency)}</span>
+            <span className="font-medium text-emerald-400">
+              +{money(activePoint.income, currency)}
+            </span>
             <span className="text-slate-600">·</span>
-            <span className="font-medium text-rose-400">−{money(activePoint.expense, currency)}</span>
+            <span className="font-medium text-rose-400">
+              −{money(activePoint.expense, currency)}
+            </span>
           </div>
         ) : (
           <span className="text-slate-500 italic">Hover or tap a bar for details</span>
@@ -288,18 +298,24 @@ function DailyBars({ report, currency }: { report: DailyReport; currency: string
                 <div className="flex h-[calc(100%-20px)] w-full items-end gap-[2px] border-b border-slate-800/80 pb-0.5">
                   <div
                     className={`w-1/2 rounded-t-sm transition-all ${
-                      isHovered ? 'bg-emerald-400 shadow-md shadow-emerald-500/20' : 'bg-emerald-500/80 group-hover:bg-emerald-400'
+                      isHovered
+                        ? 'bg-emerald-400 shadow-md shadow-emerald-500/20'
+                        : 'bg-emerald-500/80 group-hover:bg-emerald-400'
                     }`}
                     style={{ height: `${incHeight}%` }}
                   />
                   <div
                     className={`w-1/2 rounded-t-sm transition-all ${
-                      isHovered ? 'bg-rose-400 shadow-md shadow-rose-500/20' : 'bg-rose-500/80 group-hover:bg-rose-400'
+                      isHovered
+                        ? 'bg-rose-400 shadow-md shadow-rose-500/20'
+                        : 'bg-rose-500/80 group-hover:bg-rose-400'
                     }`}
                     style={{ height: `${expHeight}%` }}
                   />
                 </div>
-                <span className={`mt-1 text-[10px] font-mono transition-colors ${isHovered ? 'text-emerald-400 font-bold' : 'text-slate-500'}`}>
+                <span
+                  className={`mt-1 text-[10px] font-mono transition-colors ${isHovered ? 'text-emerald-400 font-bold' : 'text-slate-500'}`}
+                >
                   {point.date.slice(-2)}
                 </span>
               </div>
@@ -330,11 +346,17 @@ function MonthlyBars({ report, currency }: { report: MonthlyReport; currency: st
       <div className="flex min-h-[28px] items-center justify-between rounded-lg bg-slate-900/90 px-3 py-1 text-xs border border-slate-800">
         {activePoint ? (
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-semibold text-slate-200">{formatMonthLabel(activePoint.month)}</span>
+            <span className="font-semibold text-slate-200">
+              {formatMonthLabel(activePoint.month)}
+            </span>
             <span className="text-slate-600">·</span>
-            <span className="font-medium text-emerald-400">+{money(activePoint.income, currency)}</span>
+            <span className="font-medium text-emerald-400">
+              +{money(activePoint.income, currency)}
+            </span>
             <span className="text-slate-600">·</span>
-            <span className="font-medium text-rose-400">−{money(activePoint.expense, currency)}</span>
+            <span className="font-medium text-rose-400">
+              −{money(activePoint.expense, currency)}
+            </span>
           </div>
         ) : (
           <span className="text-slate-500 italic">Hover or tap a bar for details</span>
@@ -358,7 +380,9 @@ function MonthlyBars({ report, currency }: { report: MonthlyReport; currency: st
                 key={point.month}
                 onMouseEnter={() => setHoveredMonth(point.month)}
                 onMouseLeave={() => setHoveredMonth(null)}
-                onClick={() => setHoveredMonth((prev) => (prev === point.month ? null : point.month))}
+                onClick={() =>
+                  setHoveredMonth((prev) => (prev === point.month ? null : point.month))
+                }
                 className={`group relative flex h-full flex-1 flex-col items-center justify-end cursor-pointer rounded-t-md transition-colors ${
                   isHovered ? 'bg-slate-800/40' : ''
                 }`}
@@ -366,18 +390,24 @@ function MonthlyBars({ report, currency }: { report: MonthlyReport; currency: st
                 <div className="flex h-[calc(100%-24px)] w-full items-end gap-1 border-b border-slate-800/80 pb-0.5">
                   <div
                     className={`w-1/2 rounded-t-md transition-all ${
-                      isHovered ? 'bg-emerald-400 shadow-md shadow-emerald-500/20' : 'bg-emerald-500/80 group-hover:bg-emerald-400'
+                      isHovered
+                        ? 'bg-emerald-400 shadow-md shadow-emerald-500/20'
+                        : 'bg-emerald-500/80 group-hover:bg-emerald-400'
                     }`}
                     style={{ height: `${incHeight}%` }}
                   />
                   <div
                     className={`w-1/2 rounded-t-md transition-all ${
-                      isHovered ? 'bg-rose-400 shadow-md shadow-rose-500/20' : 'bg-rose-500/80 group-hover:bg-rose-400'
+                      isHovered
+                        ? 'bg-rose-400 shadow-md shadow-rose-500/20'
+                        : 'bg-rose-500/80 group-hover:bg-rose-400'
                     }`}
                     style={{ height: `${expHeight}%` }}
                   />
                 </div>
-                <span className={`mt-1.5 text-xs font-medium transition-colors ${isHovered ? 'text-emerald-400 font-bold' : 'text-slate-400'}`}>
+                <span
+                  className={`mt-1.5 text-xs font-medium transition-colors ${isHovered ? 'text-emerald-400 font-bold' : 'text-slate-400'}`}
+                >
                   {formatMonthLabel(point.month)}
                 </span>
               </div>

@@ -63,7 +63,9 @@ const envSchema = z.object({
   FIREBASE_JWKS_URL: z
     .string()
     .url()
-    .default('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'),
+    .default(
+      'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com',
+    ),
 });
 
 export type Env = z.infer<typeof envSchema>;

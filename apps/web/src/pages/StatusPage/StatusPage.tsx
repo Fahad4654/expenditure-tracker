@@ -22,8 +22,7 @@ function StatusRow({
   state: 'loading' | 'up' | 'down';
   detail?: string;
 }) {
-  const text =
-    state === 'up' ? 'Operational' : state === 'down' ? 'Unavailable' : 'Checking…';
+  const text = state === 'up' ? 'Operational' : state === 'down' ? 'Unavailable' : 'Checking…';
   const tone =
     state === 'up' ? 'text-emerald-400' : state === 'down' ? 'text-rose-400' : 'text-amber-300';
   return (
@@ -60,10 +59,7 @@ export default function StatusPage() {
 
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-12">
-      <Link
-        to={ROUTES.home}
-        className="text-sm text-slate-400 transition hover:text-slate-200"
-      >
+      <Link to={ROUTES.home} className="text-sm text-slate-400 transition hover:text-slate-200">
         ← Back to home
       </Link>
 

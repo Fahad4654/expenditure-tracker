@@ -39,7 +39,10 @@ async function bootstrap(): Promise<void> {
   const corsOrigins = config.get<string[]>('app.corsOrigins') ?? [];
   const isProduction = config.get<string>('env') === 'production';
   app.enableCors({
-    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ) => {
       // No Origin header: native Flutter, curl, server-to-server — always fine.
       if (!origin) return callback(null, true);
       if (corsOrigins.includes(origin)) return callback(null, true);

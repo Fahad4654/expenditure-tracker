@@ -52,9 +52,7 @@ export default function AppLayout() {
         </div>
       ) : null}
 
-      <div
-        className={`flex min-h-screen flex-col ${signedIn ? 'lg:pl-60 pb-20 lg:pb-0' : ''}`}
-      >
+      <div className={`flex min-h-screen flex-col ${signedIn ? 'lg:pl-60 pb-20 lg:pb-0' : ''}`}>
         {signedIn ? (
           <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-slate-800/80 bg-slate-950/90 px-4 py-3 backdrop-blur-md lg:hidden">
             <div className="flex items-center gap-3">
@@ -101,10 +99,7 @@ export default function AppLayout() {
           </header>
         ) : (
           <header className="border-b border-slate-800/80 bg-slate-950/90 px-4 sm:px-6 py-4 backdrop-blur-md">
-            <NavLink
-              to={ROUTES.home}
-              className="flex items-center gap-2 font-semibold text-white"
-            >
+            <NavLink to={ROUTES.home} className="flex items-center gap-2 font-semibold text-white">
               <span aria-hidden className="text-emerald-400">
                 ৳
               </span>
@@ -126,4 +121,3 @@ export default function AppLayout() {
     </div>
   );
 }
-

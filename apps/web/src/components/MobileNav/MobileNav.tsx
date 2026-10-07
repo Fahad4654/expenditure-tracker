@@ -9,9 +9,7 @@ import { ROUTES } from '../../routes';
 export default function MobileNav() {
   const navItemClass = ({ isActive }: { isActive: boolean }) =>
     `flex flex-col items-center justify-center gap-0.5 flex-1 py-2 min-h-[52px] text-[10px] leading-tight font-medium transition-colors duration-150 ${
-      isActive
-        ? 'text-emerald-400'
-        : 'text-slate-500 hover:text-slate-300 active:text-slate-200'
+      isActive ? 'text-emerald-400' : 'text-slate-500 hover:text-slate-300 active:text-slate-200'
     }`;
 
   return (
@@ -70,8 +68,18 @@ export default function MobileNav() {
           className="group absolute -top-5 flex flex-col items-center"
         >
           <span className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/40 transition-all duration-150 group-active:scale-95 group-hover:bg-emerald-400 group-hover:shadow-emerald-400/50">
-            <svg className="h-7 w-7 text-slate-950" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
+            <svg
+              className="h-7 w-7 text-slate-950"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2.5"
+                d="M12 4v16m8-8H4"
+              />
             </svg>
           </span>
           <span className="mt-1 text-[9px] font-semibold text-emerald-400">Add</span>

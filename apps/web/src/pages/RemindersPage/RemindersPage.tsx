@@ -34,12 +34,21 @@ function dueLabel(reminder: Reminder, today: string): { text: string; className:
     return { text: `Completed`, className: 'bg-slate-800 text-slate-400' };
   }
   if (reminder.dueDate < today) {
-    return { text: `Overdue · ${formatDay(reminder.dueDate)}${time}`, className: 'bg-rose-950 text-rose-300 border border-rose-900' };
+    return {
+      text: `Overdue · ${formatDay(reminder.dueDate)}${time}`,
+      className: 'bg-rose-950 text-rose-300 border border-rose-900',
+    };
   }
   if (reminder.dueDate === today) {
-    return { text: `Due today${time}`, className: 'bg-amber-950 text-amber-300 border border-amber-900' };
+    return {
+      text: `Due today${time}`,
+      className: 'bg-amber-950 text-amber-300 border border-amber-900',
+    };
   }
-  return { text: `${formatDay(reminder.dueDate)}${time}`, className: 'bg-slate-800 text-slate-400' };
+  return {
+    text: `${formatDay(reminder.dueDate)}${time}`,
+    className: 'bg-slate-800 text-slate-400',
+  };
 }
 
 /**
@@ -75,7 +84,11 @@ export default function RemindersPage() {
   const pending = rows.filter((r) => !r.completedAt);
   const completed = rows.filter((r) => r.completedAt);
   const visible =
-    filter === 'pending' ? pending : filter === 'completed' ? completed : [...pending, ...completed];
+    filter === 'pending'
+      ? pending
+      : filter === 'completed'
+        ? completed
+        : [...pending, ...completed];
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -284,7 +297,10 @@ export default function RemindersPage() {
                       />
                     </Field>
                     <div className="sm:col-span-2">
-                      <label htmlFor={`edit-details-${reminder.id}`} className="mb-1.5 block text-sm font-medium text-slate-300">
+                      <label
+                        htmlFor={`edit-details-${reminder.id}`}
+                        className="mb-1.5 block text-sm font-medium text-slate-300"
+                      >
                         Details
                       </label>
                       <TextInput
@@ -307,7 +323,11 @@ export default function RemindersPage() {
                   <div className="flex flex-wrap items-start gap-3">
                     <button
                       type="button"
-                      aria-label={done ? `Mark ${reminder.title} as pending` : `Mark ${reminder.title} as completed`}
+                      aria-label={
+                        done
+                          ? `Mark ${reminder.title} as pending`
+                          : `Mark ${reminder.title} as completed`
+                      }
                       aria-pressed={done}
                       onClick={() => void handleToggle(reminder)}
                       className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition-colors ${
@@ -316,8 +336,19 @@ export default function RemindersPage() {
                           : 'border-slate-600 text-transparent hover:border-emerald-400'
                       }`}
                     >
-                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      <svg
+                        className="h-4 w-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        aria-hidden
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={3}
+                          d="M5 13l4 4L19 7"
+                        />
                       </svg>
                     </button>
 
@@ -335,7 +366,9 @@ export default function RemindersPage() {
                         </span>
                       </div>
                       {reminder.details ? (
-                        <p className="mt-1 break-words text-sm text-slate-400">{reminder.details}</p>
+                        <p className="mt-1 break-words text-sm text-slate-400">
+                          {reminder.details}
+                        </p>
                       ) : null}
                       <div className="mt-3 flex flex-wrap gap-2">
                         <Button

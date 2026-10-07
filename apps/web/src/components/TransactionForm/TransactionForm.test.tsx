@@ -37,10 +37,7 @@ function makeNote(overrides: Partial<Note> = {}): Note {
   };
 }
 
-const notes: Note[] = [
-  makeNote(),
-  makeNote({ id: 'note-2', title: 'Trip ideas' }),
-];
+const notes: Note[] = [makeNote(), makeNote({ id: 'note-2', title: 'Trip ideas' })];
 
 function renderForm() {
   return render(

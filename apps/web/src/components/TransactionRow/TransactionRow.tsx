@@ -35,11 +35,15 @@ export default function TransactionRow({
             <span>{formatDay(transaction.transactionDate, { weekday: true })}</span>
             {category ? (
               <>
-                <span aria-hidden className="text-slate-700">·</span>
+                <span aria-hidden className="text-slate-700">
+                  ·
+                </span>
                 <span
                   className="rounded-full px-2 py-0.5 font-medium"
                   style={{
-                    backgroundColor: category.color ? `${category.color}22` : 'rgba(100,116,139,0.12)',
+                    backgroundColor: category.color
+                      ? `${category.color}22`
+                      : 'rgba(100,116,139,0.12)',
                     color: category.color ?? '#94a3b8',
                   }}
                 >
